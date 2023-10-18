@@ -337,7 +337,7 @@ class System_Settings(models.Model):
                                       blank=False)
 
     # will be set to random / uuid by initializer so null needs to be True
-    jira_webhook_secret = models.CharField(max_length=64, blank=False, null=True, verbose_name=_('JIRA Webhook URL'),
+    jira_webhook_secret = models.CharField(max_length=64, blank=True, null=True, verbose_name=_('JIRA Webhook URL'),
                                            help_text=_('Secret needed in URL for incoming JIRA Webhook'))
 
     jira_choices = (('Critical', 'Critical'),
@@ -6309,12 +6309,19 @@ class JIRA_Issue(models.Model):
         return text + " | Jira Key: " + str(self.jira_key)
 
 
+NOTIFICATION_CHOICE_SLACK = ("slack", "slack")
+NOTIFICATION_CHOICE_MSTEAMS = ("msteams", "msteams")
+NOTIFICATION_CHOICE_MAIL = ("mail", "mail")
+NOTIFICATION_CHOICE_ALERT = ("alert", "alert")
+
 NOTIFICATION_CHOICES = (
-    ("slack", "slack"), ("msteams", "msteams"), ("mail", "mail"),
-    ("alert", "alert")
+    NOTIFICATION_CHOICE_SLACK,
+    NOTIFICATION_CHOICE_MSTEAMS,
+    NOTIFICATION_CHOICE_MAIL,
+    NOTIFICATION_CHOICE_ALERT,
 )
 
-DEFAULT_NOTIFICATION = ("alert", "alert")
+DEFAULT_NOTIFICATION = NOTIFICATION_CHOICE_ALERT
 
 
 class Debt_JIRA_Issue(models.Model):
@@ -6353,12 +6360,19 @@ class Debt_JIRA_Issue(models.Model):
         return text + " | Jira Key: " + str(self.jira_key)
 
 
+NOTIFICATION_CHOICE_SLACK = ("slack", "slack")
+NOTIFICATION_CHOICE_MSTEAMS = ("msteams", "msteams")
+NOTIFICATION_CHOICE_MAIL = ("mail", "mail")
+NOTIFICATION_CHOICE_ALERT = ("alert", "alert")
+
 NOTIFICATION_CHOICES = (
-    ("slack", "slack"), ("msteams", "msteams"), ("mail", "mail"),
-    ("alert", "alert")
+    NOTIFICATION_CHOICE_SLACK,
+    NOTIFICATION_CHOICE_MSTEAMS,
+    NOTIFICATION_CHOICE_MAIL,
+    NOTIFICATION_CHOICE_ALERT,
 )
 
-DEFAULT_NOTIFICATION = ("alert", "alert")
+DEFAULT_NOTIFICATION = NOTIFICATION_CHOICE_ALERT
 
 
 class Notifications(models.Model):
@@ -6368,6 +6382,7 @@ class Notifications(models.Model):
     test_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
 
     scan_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, help_text=_('Triggered whenever an (re-)import has been done that created/updated/closed findings.'))
+    scan_added_empty = MultiSelectField(choices=NOTIFICATION_CHOICES, default=[], blank=True, help_text=_('Triggered whenever an (re-)import has been done (even if that created/updated/closed no findings).'))
     jira_update = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, verbose_name=_("JIRA problems"), help_text=_("JIRA sync happens in the background, errors will be shown as notifications/alerts so make sure to subscribe"))
     upcoming_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
     stale_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
@@ -6437,6 +6452,7 @@ class Debt_Notifications(models.Model):
     debt_test_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
 
     scan_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, help_text=_('Triggered whenever an (re-)import has been done that created/updated/closed debt_items.'))
+    scan_added_empty = MultiSelectField(choices=NOTIFICATION_CHOICES, default=[], blank=True, help_text=_('Triggered whenever an (re-)import has been done (even if that created/updated/closed no debt items).'))
     jira_update = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, verbose_name=_("JIRA problems"), help_text=_("JIRA sync happens in the background, errors will be shown as notifications/alerts so make sure to subscribe"))
     upcoming_debt_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
     stale_debt_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
@@ -6452,7 +6468,7 @@ class Debt_Notifications(models.Model):
     sla_breach = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True,
                                   verbose_name=_('SLA breach'),
                                   help_text=_('Get notified of (upcoming) SLA breaches'))
-    risk_acceptance_expiration = MultiSelectField(choices=NOTIFICATION_CHOICES, default='alert', blank=True,
+    risk_acceptance_expiration = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True,
                                                   verbose_name=_('Risk Acceptance Expiration'),
                                                   help_text=_('Get notified of (upcoming) Risk Acceptance expiries'))
 

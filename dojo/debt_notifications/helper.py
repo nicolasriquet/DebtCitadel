@@ -390,6 +390,11 @@ def notify_scan_added(debt_test, updated_count, new_debt_items=[], debt_items_mi
     debt_items_untouched = sorted(list(debt_items_untouched), key=lambda x: x.numerical_severity)
 
     title = 'Created/Updated ' + str(updated_count) + " debt_items for " + str(debt_test.debt_engagement.debt_context) + ': ' + str(debt_test.debt_engagement.name) + ': ' + str(debt_test)
-    create_notification(event='scan_added', title=title, debt_items_new=new_debt_items, debt_items_mitigated=debt_items_mitigated, debt_items_reactivated=debt_items_reactivated,
+    if updated_count == 0:
+        event = 'scan_added_empty'
+    else:
+        event = 'scan_added'
+
+    create_notification(event=event, title=title, debt_items_new=new_debt_items, debt_items_mitigated=debt_items_mitigated, debt_items_reactivated=debt_items_reactivated,
                         debt_item_count=updated_count, debt_test=debt_test, debt_engagement=debt_test.debt_engagement, debt_context=debt_test.debt_engagement.debt_context, debt_items_untouched=debt_items_untouched,
                         url=reverse('view_debt_test', args=(debt_test.id,)))

@@ -213,12 +213,15 @@ class FindingSLAFilter(ChoiceFilter):
         return qs
 
     def satisfies_sla(self, qs, name):
-        non_sla_violations = [finding.id for finding in qs if not finding.violates_sla]
-        return Finding.objects.filter(id__in=non_sla_violations)
-
+        for finding in qs:
+            if finding.violates_sla:
+                qs = qs.exclude(id=finding.id)
+        return qs
     def violates_sla(self, qs, name):
-        sla_violations = [finding.id for finding in qs if finding.violates_sla]
-        return Finding.objects.filter(id__in=sla_violations)
+        for finding in qs:
+            if not finding.violates_sla:
+                qs = qs.exclude(id=finding.id)
+        return qs
 
     options = {
         None: (_('Any'), any),
@@ -244,12 +247,16 @@ class DebtItemSLAFilter(ChoiceFilter):
         return qs
 
     def satisfies_sla(self, qs, name):
-        non_sla_violations = [debt_item.id for debt_item in qs if not debt_item.violates_sla]
-        return Debt_Item.objects.filter(id__in=non_sla_violations)
+        for debt_item in qs:
+            if debt_item.violates_sla:
+                qs = qs.exclude(id=debt_item.id)
+        return qs
 
     def violates_sla(self, qs, name):
-        sla_violations = [debt_item.id for debt_item in qs if debt_item.violates_sla]
-        return Debt_Item.objects.filter(id__in=sla_violations)
+        for debt_item in qs:
+            if not debt_item.violates_sla:
+                qs = qs.exclude(id=debt_item.id)
+        return qs
 
     options = {
         None: (_('Any'), any),
@@ -274,12 +281,16 @@ class ProductSLAFilter(ChoiceFilter):
         return qs
 
     def satisfies_sla(self, qs, name):
-        non_sla_violations = [product.id for product in qs if not product.violates_sla]
-        return Product.objects.filter(id__in=non_sla_violations)
+        for product in qs:
+            if product.violates_sla:
+                qs = qs.exclude(id=product.id)
+        return qs
 
     def violates_sla(self, qs, name):
-        sla_violations = [product.id for product in qs if product.violates_sla]
-        return Product.objects.filter(id__in=sla_violations)
+        for product in qs:
+            if product.violates_sla:
+                qs = qs.exclude(id=product.id)
+        return qs
 
     options = {
         None: (_('Any'), any),
@@ -305,12 +316,16 @@ class DebtContextSLAFilter(ChoiceFilter):
         return qs
 
     def satisfies_sla(self, qs, name):
-        non_sla_violations = [debt_context.id for debt_context in qs if not debt_context.violates_sla]
-        return Debt_Context.objects.filter(id__in=non_sla_violations)
+        for debt_context in qs:
+            if debt_context.violates_sla:
+                qs = qs.exclude(id=debt_context.id)
+        return qs
 
     def violates_sla(self, qs, name):
-        sla_violations = [debt_context.id for debt_context in qs if debt_context.violates_sla]
-        return Debt_Context.objects.filter(id__in=sla_violations)
+        for debt_context in qs:
+            if debt_context.violates_sla:
+                qs = qs.exclude(id=debt_context.id)
+        return qs
 
     options = {
         None: (_('Any'), any),
@@ -2003,7 +2018,7 @@ class ApiFindingFilter(DojoFilter):
         help_text='Comma separated list of exact tags not present on product',
         exclude='True')
     has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
-    outside_of_sla = extend_schema_field(OpenApiTypes.NUMBER)(ProductSLAFilter())
+    outside_of_sla = extend_schema_field(OpenApiTypes.NUMBER)(FindingSLAFilter())
 
     o = OrderingFilter(
         # tuple-mapping retains order
@@ -2133,7 +2148,7 @@ class ApiDebtItemFilter(DojoFilter):
         help_text='Comma separated list of exact tags not present on debt_context',
         exclude='True')
     has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
-    outside_of_sla = extend_schema_field(OpenApiTypes.NUMBER)(DebtContextSLAFilter())
+    outside_of_sla = extend_schema_field(OpenApiTypes.NUMBER)(DebtItemSLAFilter())
 
     o = OrderingFilter(
         # tuple-mapping retains order
@@ -3469,6 +3484,7 @@ class ReportFindingFilter(FindingFilterWithTags):
     test__engagement__product__prod_type = ModelMultipleChoiceFilter(
         queryset=Product_Type.objects.none(),
         label="Product Type")
+    test__engagement__product__lifecycle = MultipleChoiceFilter(choices=Product.LIFECYCLE_CHOICES, label="Product Lifecycle")
     severity = MultipleChoiceFilter(choices=SEVERITY_CHOICES)
     active = ReportBooleanFilter()
     is_mitigated = ReportBooleanFilter()
@@ -3481,6 +3497,7 @@ class ReportFindingFilter(FindingFilterWithTags):
     duplicate = ReportBooleanFilter()
     duplicate_finding = ModelChoiceFilter(queryset=Finding.objects.filter(original_finding__isnull=False).distinct())
     out_of_scope = ReportBooleanFilter()
+    outside_of_sla = FindingSLAFilter(label="Outside of SLA")
 
     file_path = CharFilter(lookup_expr='icontains')
 
@@ -3553,6 +3570,7 @@ class ReportDebtItemFilter(DebtItemFilterWithTags):
     test__engagement__debt_context__prod_type = ModelMultipleChoiceFilter(
         queryset=Debt_Context_Type.objects.none(),
         label="Debt_Context Type")
+    debt_test__debt_engagement__debt_context__lifecycle = MultipleChoiceFilter(choices=Debt_Context.LIFECYCLE_CHOICES, label="Debt Context Lifecycle")
     severity = MultipleChoiceFilter(choices=SEVERITY_CHOICES)
     active = ReportBooleanFilter()
     is_mitigated = ReportBooleanFilter()
@@ -3565,6 +3583,7 @@ class ReportDebtItemFilter(DebtItemFilterWithTags):
     duplicate = ReportBooleanFilter()
     duplicate_debt_item = ModelChoiceFilter(queryset=Debt_Item.objects.filter(original_debt_item__isnull=False).distinct())
     out_of_scope = ReportBooleanFilter()
+    outside_of_sla = DebtItemSLAFilter(label="Outside of SLA")
 
     file_path = CharFilter(lookup_expr='icontains')
 
