@@ -798,41 +798,41 @@ class Debt_Context_Type(models.Model):
     """
     name = models.CharField(max_length=255, unique=True)
     description = models.CharField(max_length=4000, null=True, blank=True)
-    critical_product = models.BooleanField(default=False)
-    key_product = models.BooleanField(default=False)
+    critical_context = models.BooleanField(default=False)
+    key_debt_context = models.BooleanField(default=False)
     updated = models.DateTimeField(auto_now=True, null=True)
     created = models.DateTimeField(auto_now_add=True, null=True)
-    members = models.ManyToManyField(Dojo_User, through='Product_Type_Member', related_name='prod_type_members', blank=True)
-    authorization_groups = models.ManyToManyField(Dojo_Group, through='Product_Type_Group', related_name='product_type_groups', blank=True)
+    members = models.ManyToManyField(Dojo_User, through='Debt_Context_Type_Member', related_name='debt_context_type_members', blank=True)
+    authorization_groups = models.ManyToManyField(Dojo_Group, through='Debt_Context_Type_Group', related_name='debt_context_type_groups', blank=True)
 
     @cached_property
     def critical_present(self):
-        c_findings = Finding.objects.filter(
+        c_debt_items = Debt_Item.objects.filter(
             test__engagement__product__prod_type=self, severity='Critical')
-        if c_findings.count() > 0:
+        if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def high_present(self):
-        c_findings = Finding.objects.filter(
+        c_debt_items = Debt_Item.objects.filter(
             test__engagement__product__prod_type=self, severity='High')
-        if c_findings.count() > 0:
+        if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def calc_health(self):
-        h_findings = Finding.objects.filter(
+        h_debt_items = Debt_Item.objects.filter(
             test__engagement__product__prod_type=self, severity='High')
-        c_findings = Finding.objects.filter(
+        c_debt_items = Debt_Item.objects.filter(
             test__engagement__product__prod_type=self, severity='Critical')
         health = 100
-        if c_findings.count() > 0:
+        if c_debt_items.count() > 0:
             health = 40
-            health = health - ((c_findings.count() - 1) * 5)
-        if h_findings.count() > 0:
+            health = health - ((c_debt_items.count() - 1) * 5)
+        if h_debt_items.count() > 0:
             if health == 100:
                 health = 60
-            health = health - ((h_findings.count() - 1) * 2)
+            health = health - ((h_debt_items.count() - 1) * 2)
         if health < 5:
             return 5
         else:
@@ -841,7 +841,7 @@ class Debt_Context_Type(models.Model):
     # only used by bulk risk acceptance api
     @property
     def unaccepted_open_findings(self):
-        return Finding.objects.filter(risk_accepted=False, active=True, duplicate=False, test__engagement__product__prod_type=self)
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__engagement__debt__context__prod_type=self)
 
     class Meta:
         ordering = ('name',)
@@ -851,12 +851,12 @@ class Debt_Context_Type(models.Model):
 
     def get_breadcrumbs(self):
         bc = [{'title': str(self),
-               'url': reverse('edit_product_type', args=(self.id,))}]
+               'url': reverse('edit_debt_context_type', args=(self.id,))}]
         return bc
 
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('product_type', args=[str(self.id)])
+        return reverse('debt_context_type', args=[str(self.id)])
 
 
 class Product_Line(models.Model):
@@ -866,6 +866,13 @@ class Product_Line(models.Model):
     def __str__(self):
         return self.name
 
+
+class Debt_Context_Line(models.Model):
+    name = models.CharField(max_length=300)
+    description = models.CharField(max_length=2000)
+
+    def __str__(self):
+        return self.name
 
 class Report_Type(models.Model):
     name = models.CharField(max_length=255)
@@ -1269,15 +1276,15 @@ class Debt_Context(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.CharField(max_length=4000)
 
-    product_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
-                                        related_name='product_manager', on_delete=models.RESTRICT)
+    debt_context_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
+                                        related_name='debt_context_manager', on_delete=models.RESTRICT)
     technical_contact = models.ForeignKey(Dojo_User, null=True, blank=True,
                                           related_name='technical_contact', on_delete=models.RESTRICT)
     team_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
                                      related_name='team_manager', on_delete=models.RESTRICT)
 
     created = models.DateTimeField(auto_now_add=True, null=True)
-    prod_type = models.ForeignKey(Product_Type, related_name='prod_type',
+    debt_context_type = models.ForeignKey(Debt_Context_Type, related_name='debt_context_type',
                                   null=False, blank=False, on_delete=models.CASCADE)
     updated = models.DateTimeField(auto_now=True, null=True)
     sla_configuration = models.ForeignKey(SLA_Configuration,
@@ -1287,8 +1294,8 @@ class Debt_Context(models.Model):
                                           default=1,
                                           on_delete=models.RESTRICT)
     tid = models.IntegerField(default=0, editable=False)
-    members = models.ManyToManyField(Dojo_User, through='Product_Member', related_name='product_members', blank=True)
-    authorization_groups = models.ManyToManyField(Dojo_Group, through='Product_Group', related_name='product_groups', blank=True)
+    members = models.ManyToManyField(Dojo_User, through='Debt_Context_Member', related_name='debt_context_members', blank=True)
+    authorization_groups = models.ManyToManyField(Dojo_Group, through='Debt_Context_Group', related_name='debt_context_groups', blank=True)
     prod_numeric_grade = models.IntegerField(null=True, blank=True)
 
     # Metadata
@@ -1302,12 +1309,12 @@ class Debt_Context(models.Model):
     internet_accessible = models.BooleanField(default=False, help_text=_('Specify if the application is accessible from the public internet.'))
     regulations = models.ManyToManyField(Regulation, blank=True)
 
-    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this product. Choose from the list or add new tags. Press Enter key to add."))
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this debt context. Choose from the list or add new tags. Press Enter key to add."))
     enable_product_tag_inheritance = models.BooleanField(
         default=False,
         blank=False,
-        verbose_name=_('Enable Product Tag Inheritance'),
-        help_text=_("Enables product tag inheritance. Any tags added on a product will automatically be added to all Engagements, Tests, and Findings"))
+        verbose_name=_('Enable Debt Context Tag Inheritance'),
+        help_text=_("Enables debt context tag inheritance. Any tags added on a product will automatically be added to all Engagements, Tests, and Findings"))
     enable_simple_risk_acceptance = models.BooleanField(default=False, help_text=_('Allows simple risk acceptance by checking/unchecking a checkbox.'))
     enable_full_risk_acceptance = models.BooleanField(default=True, help_text=_('Allows full risk acceptance using a risk acceptance form, expiration date, uploaded proof, etc.'))
 
@@ -1324,27 +1331,27 @@ class Debt_Context(models.Model):
         ordering = ('name',)
 
     @cached_property
-    def findings_count(self):
+    def debt_items_count(self):
         try:
             # if prefetched, it's already there
-            return self.active_finding_count
+            return self.active_debt_item_count
         except AttributeError:
             # ideally it's always prefetched and we can remove this code in the future
-            self.active_finding_count = Finding.objects.filter(active=True,
-                                                               test__engagement__product=self).count()
-            return self.active_finding_count
+            self.active_debt_item_count = Debt_Item.objects.filter(active=True,
+                                                               test__engagement__debt__context=self).count()
+            return self.active_debt_item_count
 
     @cached_property
-    def findings_active_verified_count(self):
+    def debt_items_active_verified_count(self):
         try:
             # if prefetched, it's already there
-            return self.active_verified_finding_count
+            return self.active_verified_debt_item_count
         except AttributeError:
             # ideally it's always prefetched and we can remove this code in the future
-            self.active_verified_finding_count = Finding.objects.filter(active=True,
+            self.active_verified_debt_item_count = Debt_Item.objects.filter(active=True,
                                                                         verified=True,
-                                                                        test__engagement__product=self).count()
-            return self.active_verified_finding_count
+                                                                        test__engagement__debt__context=self).count()
+            return self.active_verified_debt_item_count
 
     @cached_property
     def endpoint_host_count(self):
@@ -1365,11 +1372,11 @@ class Debt_Context(models.Model):
         # active_endpoints is (should be) prefetched
         return len(self.active_endpoints)
 
-    def open_findings(self, start_date=None, end_date=None):
+    def open_debt_items(self, start_date=None, end_date=None):
         if start_date is None or end_date is None:
             return {}
         else:
-            critical = Finding.objects.filter(test__engagement__product=self,
+            critical = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                               mitigated__isnull=True,
                                               verified=True,
                                               false_p=False,
@@ -1378,7 +1385,7 @@ class Debt_Context(models.Model):
                                               severity="Critical",
                                               date__range=[start_date,
                                                            end_date]).count()
-            high = Finding.objects.filter(test__engagement__product=self,
+            high = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                           mitigated__isnull=True,
                                           verified=True,
                                           false_p=False,
@@ -1387,7 +1394,7 @@ class Debt_Context(models.Model):
                                           severity="High",
                                           date__range=[start_date,
                                                        end_date]).count()
-            medium = Finding.objects.filter(test__engagement__product=self,
+            medium = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                             mitigated__isnull=True,
                                             verified=True,
                                             false_p=False,
@@ -1396,7 +1403,7 @@ class Debt_Context(models.Model):
                                             severity="Medium",
                                             date__range=[start_date,
                                                          end_date]).count()
-            low = Finding.objects.filter(test__engagement__product=self,
+            low = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                          mitigated__isnull=True,
                                          verified=True,
                                          false_p=False,
@@ -1413,22 +1420,22 @@ class Debt_Context(models.Model):
 
     def get_breadcrumbs(self):
         bc = [{'title': str(self),
-               'url': reverse('view_product', args=(self.id,))}]
+               'url': reverse('view_debt_context', args=(self.id,))}]
         return bc
 
     @property
-    def get_product_type(self):
-        return self.prod_type if self.prod_type is not None else 'unknown'
+    def get_debt_context_type(self):
+        return self.debt_context_type if self.debt_context_type is not None else 'unknown'
 
     # only used in APIv2 serializers.py, query should be aligned with findings_count
     @cached_property
-    def open_findings_list(self):
-        findings = Finding.objects.filter(test__engagement__product=self,
+    def open_debt_items_list(self):
+        debt_items = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                           active=True)
-        findings_list = []
-        for i in findings:
-            findings_list.append(i.id)
-        return findings_list
+        debt_items_list = []
+        for i in debt_items:
+            debt_items_list.append(i.id)
+        return debt_items_list
 
     @property
     def has_jira_configured(self):
@@ -1437,13 +1444,13 @@ class Debt_Context(models.Model):
 
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('view_product', args=[str(self.id)])
+        return reverse('view_debt_context', args=[str(self.id)])
 
     @property
     def violates_sla(self):
-        findings = Finding.objects.filter(test__engagement__product=self,
+        debt_items = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                           active=True)
-        for f in findings:
+        for f in debt_items:
             if f.violates_sla:
                 return True
         return False
@@ -1455,11 +1462,21 @@ class Product_Member(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
 
+class Debt_Context_Member(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    user = models.ForeignKey(Dojo_User, on_delete=models.CASCADE)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+
 class Product_Group(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     group = models.ForeignKey(Dojo_Group, on_delete=models.CASCADE)
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
+
+class Debt_Context_Group(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    group = models.ForeignKey(Dojo_Group, on_delete=models.CASCADE)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
 class Product_Type_Member(models.Model):
     product_type = models.ForeignKey(Product_Type, on_delete=models.CASCADE)
@@ -1467,11 +1484,21 @@ class Product_Type_Member(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
 
+class Debt_Context_Type_Member(models.Model):
+    debt_context_type = models.ForeignKey(Debt_Context_Type, on_delete=models.CASCADE)
+    user = models.ForeignKey(Dojo_User, on_delete=models.CASCADE)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+
 class Product_Type_Group(models.Model):
     product_type = models.ForeignKey(Product_Type, on_delete=models.CASCADE)
     group = models.ForeignKey(Dojo_Group, on_delete=models.CASCADE)
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
+
+class Debt_Context_Type_Group(models.Model):
+    debt_context_type = models.ForeignKey(Debt_Context_Type, on_delete=models.CASCADE)
+    group = models.ForeignKey(Dojo_Group, on_delete=models.CASCADE)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
 class Tool_Type(models.Model):
     name = models.CharField(max_length=200)
@@ -1514,6 +1541,31 @@ class Tool_Configuration(models.Model):
 
 
 class Product_API_Scan_Configuration(models.Model):
+    product = models.ForeignKey(Product, null=False, blank=False, on_delete=models.CASCADE)
+    tool_configuration = models.ForeignKey(Tool_Configuration, null=False, blank=False, on_delete=models.CASCADE)
+    service_key_1 = models.CharField(max_length=200, null=True, blank=True)
+    service_key_2 = models.CharField(max_length=200, null=True, blank=True)
+    service_key_3 = models.CharField(max_length=200, null=True, blank=True)
+
+    def __str__(self):
+        name = self.tool_configuration.name
+        if self.service_key_1 or self.service_key_2 or self.service_key_3:
+            name += f' ({self.details})'
+        return name
+
+    @property
+    def details(self):
+        details = ''
+        if self.service_key_1:
+            details += f'{self.service_key_1}'
+        if self.service_key_2:
+            details += f' | {self.service_key_2}'
+        if self.service_key_3:
+            details += f' | {self.service_key_3}'
+        return details
+
+
+class Debt_Context_API_Scan_Configuration(models.Model):
     product = models.ForeignKey(Product, null=False, blank=False, on_delete=models.CASCADE)
     tool_configuration = models.ForeignKey(Tool_Configuration, null=False, blank=False, on_delete=models.CASCADE)
     service_key_1 = models.CharField(max_length=200, null=True, blank=True)
@@ -3483,19 +3535,19 @@ class Debt_Item(models.Model):
     duplicate = models.BooleanField(default=False,
                                     verbose_name=_('Duplicate'),
                                     help_text=_("Denotes if this flaw is a duplicate of other flaws reported."))
-    duplicate_finding = models.ForeignKey('self',
+    duplicate_debt_item = models.ForeignKey('self',
                                           editable=False,
                                           null=True,
-                                          related_name='original_finding',
+                                          related_name='original_debt_item',
                                           blank=True, on_delete=models.DO_NOTHING,
-                                          verbose_name=_('Duplicate Finding'),
-                                          help_text=_("Link to the original finding if this finding is a duplicate."))
+                                          verbose_name=_('Duplicate Debt Item'),
+                                          help_text=_("Link to the original debt item if this debt item is a duplicate."))
     out_of_scope = models.BooleanField(default=False,
                                        verbose_name=_('Out Of Scope'),
                                        help_text=_("Denotes if this flaw falls outside the scope of the test and/or engagement."))
     risk_accepted = models.BooleanField(default=False,
                                         verbose_name=_('Risk Accepted'),
-                                        help_text=_("Denotes if this finding has been marked as an accepted risk."))
+                                        help_text=_("Denotes if this debt item has been marked as an accepted risk."))
     under_review = models.BooleanField(default=False,
                                        verbose_name=_('Under Review'),
                                        help_text=_("Denotes is this flaw is currently being reviewed."))
@@ -3522,7 +3574,7 @@ class Debt_Item(models.Model):
     # Defect Tracking Review
     under_defect_review = models.BooleanField(default=False,
                                               verbose_name=_('Under Defect Review'),
-                                              help_text=_("Denotes if this finding is under defect review."))
+                                              help_text=_("Denotes if this debt item is under defect review."))
     defect_review_requested_by = models.ForeignKey(Dojo_User,
                                                    null=True,
                                                    blank=True,
@@ -3702,9 +3754,9 @@ class Debt_Item(models.Model):
                                          blank=True,
                                          max_length=99,
                                          verbose_name=_('Effort for fixing'),
-                                         help_text=_('Effort for fixing / remediating the vulnerability (Low, Medium, High)'))
+                                         help_text=_('Effort for debt item / remediating the vulnerability (Low, Medium, High)'))
 
-    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this finding. Choose from the list or add new tags. Press Enter key to add."))
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this debt item. Choose from the list or add new tags. Press Enter key to add."))
     inherited_tags = TagField(blank=True, force_lowercase=True, help_text=_("Internal use tags sepcifically for maintaining parity with product. This field will be present as a subset in the tags field"))
 
     SEVERITIES = {'Info': 4, 'Low': 3, 'Medium': 2,
@@ -3791,10 +3843,10 @@ class Debt_Item(models.Model):
 
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('view_finding', args=[str(self.id)])
+        return reverse('view_debt_item', args=[str(self.id)])
 
     def delete(self, *args, **kwargs):
-        logger.debug('%d finding delete', self.id)
+        logger.debug('%d debt item delete', self.id)
         import dojo.finding.helper as helper
         helper.finding_delete(self)
         super().delete(*args, **kwargs)
@@ -3802,7 +3854,7 @@ class Debt_Item(models.Model):
 
     # only used by bulk risk acceptance api
     @classmethod
-    def unaccepted_open_findings(cls):
+    def unaccepted_open_debt_item(cls):
         return cls.objects.filter(active=True, verified=True, duplicate=False, risk_accepted=False)
 
     @property
@@ -3947,16 +3999,16 @@ class Debt_Item(models.Model):
         logger.debug('fields_to_hash lower: %s', fields_to_hash.lower())
         return hashlib.sha256(fields_to_hash.casefold().encode('utf-8').strip()).hexdigest()
 
-    def duplicate_finding_set(self):
+    def duplicate_debt_item_set(self):
         if self.duplicate:
-            if self.duplicate_finding is not None:
+            if self.duplicate_debt_item is not None:
                 originals = Finding.objects.get(
-                    id=self.duplicate_finding.id).original_finding.all().order_by('title')
+                    id=self.duplicate_debt_item.id).original_debt_item.all().order_by('title')
                 return originals  # we need to add the duplicate_finding  here as well
             else:
                 return []
         else:
-            return self.original_finding.all().order_by('title')
+            return self.original_debt_item.all().order_by('title')
 
     def get_scanner_confidence_text(self):
         if self.scanner_confidence and isinstance(self.scanner_confidence, int):
@@ -4142,8 +4194,8 @@ class Debt_Item(models.Model):
         return jira_helper.has_jira_configured(self)
 
     @cached_property
-    def has_finding_group(self):
-        return self.finding_group is not None
+    def has_debt_item_group(self):
+        return self.debt_item_group is not None
 
     def save_no_options(self, *args, **kwargs):
         return self.save(dedupe_option=False, rules_option=False, product_grading_option=False,
@@ -4152,7 +4204,7 @@ class Debt_Item(models.Model):
     def save(self, dedupe_option=True, rules_option=True, product_grading_option=True,
              issue_updater_option=True, push_to_jira=False, user=None, *args, **kwargs):
 
-        from dojo.finding import helper as finding_helper
+        from dojo.debt_item import helper as debt_item_helper
 
         if not user:
             from dojo.utils import get_current_user
@@ -4163,7 +4215,7 @@ class Debt_Item(models.Model):
         self.title = titlecase(self.title[:511])
 
         # Assign the numerical severity for correct sorting order
-        self.numerical_severity = Finding.get_numerical_severity(self.severity)
+        self.numerical_severity = Debt_Item.get_numerical_severity(self.severity)
 
         # Synchronize cvssv3 score using cvssv3 vector
         if self.cvssv3:
@@ -4196,7 +4248,7 @@ class Debt_Item(models.Model):
 
             # because we have reduced the number of (super()).save() calls, the helper is no longer called for new findings
             # so we call it manually
-            finding_helper.update_finding_status(self, user, changed_fields={'id': (None, None)})
+            debt_item_helper.update_finding_status(self, user, changed_fields={'id': (None, None)})
 
         else:
             # logger.debug('setting static / dynamic in save')
@@ -4208,13 +4260,13 @@ class Debt_Item(models.Model):
                 self.static_finding = True
 
         logger.debug("Saving finding of id " + str(self.id) + " dedupe_option:" + str(dedupe_option) + " (self.pk is %s)", "None" if self.pk is None else "not None")
-        super(Finding, self).save(*args, **kwargs)
+        super(Debt_Item, self).save(*args, **kwargs)
 
         self.found_by.add(self.test.test_type)
 
         # only perform post processing (in celery task) if needed. this check avoids submitting 1000s of tasks to celery that will do nothing
         if dedupe_option or issue_updater_option or product_grading_option or push_to_jira:
-            finding_helper.post_process_finding_save(self, dedupe_option=dedupe_option, rules_option=rules_option, product_grading_option=product_grading_option,
+            debt_item_helper.post_process_finding_save(self, dedupe_option=dedupe_option, rules_option=rules_option, product_grading_option=product_grading_option,
                                                      issue_updater_option=issue_updater_option, push_to_jira=push_to_jira, user=user, *args, **kwargs)
         else:
             logger.debug('no options selected that require finding post processing')
@@ -4367,6 +4419,13 @@ class FindingAdmin(admin.ModelAdmin):
     )
 
 
+class DebtItemAdmin(admin.ModelAdmin):
+    # For efficiency with large databases, display many-to-many fields with raw
+    # IDs rather than multi-select
+    raw_id_fields = (
+        'endpoints',
+    )
+
 class Vulnerability_Id(models.Model):
     finding = models.ForeignKey(Finding, editable=False, on_delete=models.CASCADE)
     vulnerability_id = models.TextField(max_length=50, blank=False, null=False)
@@ -4485,6 +4544,91 @@ class Finding_Group(TimeStampedModel):
         ordering = ['id']
 
 
+class Debt_Item_Group(TimeStampedModel):
+
+    GROUP_BY_OPTIONS = [('component_name', 'Component Name'),
+                        ('component_name+component_version', 'Component Name + Version'),
+                        ('file_path', 'File path'),
+                        ('debt_item_title', 'Debt Item Title')]
+
+    name = models.CharField(max_length=255, blank=False, null=False)
+    test = models.ForeignKey(Test, on_delete=models.CASCADE)
+    debt_items = models.ManyToManyField(Debt_Item)
+    creator = models.ForeignKey(Dojo_User, on_delete=models.RESTRICT)
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def has_jira_issue(self):
+        import dojo.jira_link.helper as jira_helper
+        return jira_helper.has_jira_issue(self)
+
+    @cached_property
+    def severity(self):
+        if not self.debt_items.all():
+            return None
+        max_number_severity = max([Debt_Item.get_number_severity(debt_item.severity) for debt_item in self.debt_items.all()])
+        return Debt_Item.get_severity(max_number_severity)
+
+    @cached_property
+    def components(self):
+        components: Dict[str, Set[Optional[str]]] = {}
+        for debt_item in self.debt_items.all():
+            if debt_item.component_name is not None:
+                components.setdefault(debt_item.component_name, set()).add(debt_item.component_version)
+        return "; ".join(f"""{name}: {", ".join(map(str, versions))}""" for name, versions in components.items())
+
+    @property
+    def age(self):
+        if not self.debt_items.all():
+            return None
+
+        return max([debt_item.age for debt_item in self.debt_items.all()])
+
+    @cached_property
+    def sla_days_remaining_internal(self):
+        if not self.debt_items.all():
+            return None
+
+        return min([debt_item.sla_days_remaining() for debt_item in self.debt_items.all() if debt_item.sla_days_remaining()], default=None)
+
+    def sla_days_remaining(self):
+        return self.sla_days_remaining_internal
+
+    def sla_deadline(self):
+        if not self.debt_items.all():
+            return None
+
+        return min([find.sla_deadline() for find in self.debt_items.all() if find.sla_deadline()], default=None)
+
+    def status(self):
+        if not self.debt_items.all():
+            return None
+
+        if any([debt_item.active for debt_item in self.debt_items.all()]):
+            return 'Active'
+
+        if all([debt_item.is_mitigated for debt_item in self.debt_items.all()]):
+            return 'Mitigated'
+
+        return 'Inactive'
+
+    @cached_property
+    def mitigated(self):
+        return all([debt_item.mitigated is not None for debt_item in self.debt_items.all()])
+
+    def get_sla_start_date(self):
+        return min([debt_item.get_sla_start_date() for debt_item in self.debt_items.all()])
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('view_test', args=[str(self.test.id)])
+
+    class Meta:
+        ordering = ['id']
+
+
 class Finding_Template(models.Model):
     title = models.TextField(max_length=1000)
     cwe = models.IntegerField(default=None, null=True, blank=True)
@@ -4548,6 +4692,69 @@ class Finding_Template(models.Model):
 
         return vulnerability_ids
 
+
+class Debt_Item_Template(models.Model):
+    title = models.TextField(max_length=1000)
+    cwe = models.IntegerField(default=None, null=True, blank=True)
+    cve = models.CharField(max_length=50,
+                           null=True,
+                           blank=False,
+                           verbose_name="Vulnerability Id",
+                           help_text="An id of a vulnerability in a security advisory associated with this finding. Can be a Common Vulnerabilities and Exposures (CVE) or from other sources.")
+    cvssv3_regex = RegexValidator(regex=r'^AV:[NALP]|AC:[LH]|PR:[UNLH]|UI:[NR]|S:[UC]|[CIA]:[NLH]', message="CVSS must be entered in format: 'AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H'")
+    cvssv3 = models.TextField(validators=[cvssv3_regex], max_length=117, null=True)
+    severity = models.CharField(max_length=200, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    mitigation = models.TextField(null=True, blank=True)
+    impact = models.TextField(null=True, blank=True)
+    references = models.TextField(null=True, blank=True, db_column="refs")
+    last_used = models.DateTimeField(null=True, editable=False)
+    numerical_severity = models.CharField(max_length=4, null=True, blank=True, editable=False)
+    template_match = models.BooleanField(default=False, verbose_name=_('Template Match Enabled'), help_text=_("Enables this template for matching remediation advice. Match will be applied to all active, verified findings by CWE."))
+    template_match_title = models.BooleanField(default=False, verbose_name=_('Match Template by Title and CWE'), help_text=_('Matches by title text (contains search) and CWE.'))
+
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this finding template. Choose from the list or add new tags. Press Enter key to add."))
+
+    SEVERITIES = {'Info': 4, 'Low': 3, 'Medium': 2,
+                  'High': 1, 'Critical': 0}
+
+    class Meta:
+        ordering = ['-cwe']
+
+    def __str__(self):
+        return self.title
+
+    def get_breadcrumbs(self):
+        bc = [{'title': str(self),
+               'url': reverse('view_template', args=(self.id,))}]
+        return bc
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('edit_template', args=[str(self.id)])
+
+    @cached_property
+    def vulnerability_ids(self):
+        # Get vulnerability ids from database and convert to list of strings
+        vulnerability_ids_model = self.vulnerability_id_template_set.all()
+        vulnerability_ids = list()
+        for vulnerability_id in vulnerability_ids_model:
+            vulnerability_ids.append(vulnerability_id.vulnerability_id)
+
+        # Synchronize the cve field with the unsaved_vulnerability_ids
+        # We do this to be as flexible as possible to handle the fields until
+        # the cve field is not needed anymore and can be removed.
+        if vulnerability_ids and self.cve:
+            # Make sure the first entry of the list is the value of the cve field
+            vulnerability_ids.insert(0, self.cve)
+        elif not vulnerability_ids and self.cve:
+            # If there is no list, make one with the value of the cve field
+            vulnerability_ids = [self.cve]
+
+        # Remove duplicates
+        vulnerability_ids = list(dict.fromkeys(vulnerability_ids))
+
+        return vulnerability_ids
 
 class Vulnerability_Id_Template(models.Model):
     finding_template = models.ForeignKey(Finding_Template, editable=False, on_delete=models.CASCADE)
@@ -5541,11 +5748,15 @@ def enable_disable_auditlog(enable=True):
         auditlog.register(Endpoint)
         auditlog.register(Engagement)
         auditlog.register(Finding)
+        auditlog.register(Debt_Item)
         auditlog.register(Product_Type)
         auditlog.register(Product)
+        auditlog.register(Debt_Context_Type)
+        auditlog.register(Debt_Context)
         auditlog.register(Test)
         auditlog.register(Risk_Acceptance)
         auditlog.register(Finding_Template)
+        auditlog.register(Debt_Item_Template)
         auditlog.register(Cred_User, exclude_fields=['password'])
     else:
         logger.info('disabling audit logging')
@@ -5553,11 +5764,15 @@ def enable_disable_auditlog(enable=True):
         auditlog.unregister(Endpoint)
         auditlog.unregister(Engagement)
         auditlog.unregister(Finding)
+        auditlog.unregister(Debt_Item)
         auditlog.unregister(Product_Type)
         auditlog.unregister(Product)
+        auditlog.unregister(Debt_Context_Type)
+        auditlog.unregister(Debt_Context)
         auditlog.unregister(Test)
         auditlog.unregister(Risk_Acceptance)
         auditlog.unregister(Finding_Template)
+        auditlog.unregister(Debt_Item_Template)
         auditlog.unregister(Cred_User)
 
 
@@ -5565,15 +5780,19 @@ from dojo.utils import calculate_grade, get_system_setting, to_str_typed
 enable_disable_auditlog(enable=get_system_setting('enable_auditlog'))  # on startup choose safe to retrieve system settiung)
 
 tagulous.admin.register(Product.tags)
+tagulous.admin.register(Debt_Context.tags)
 tagulous.admin.register(Test.tags)
 tagulous.admin.register(Test.inherited_tags)
 tagulous.admin.register(Finding.tags)
 tagulous.admin.register(Finding.inherited_tags)
+tagulous.admin.register(Debt_Item.tags)
+tagulous.admin.register(Debt_Item.inherited_tags)
 tagulous.admin.register(Engagement.tags)
 tagulous.admin.register(Engagement.inherited_tags)
 tagulous.admin.register(Endpoint.tags)
 tagulous.admin.register(Endpoint.inherited_tags)
 tagulous.admin.register(Finding_Template.tags)
+tagulous.admin.register(Debt_Item_Template.tags)
 tagulous.admin.register(App_Analysis.tags)
 tagulous.admin.register(Objects_Product.tags)
 
@@ -5597,6 +5816,7 @@ admin.site.register(Language_Type)
 admin.site.register(App_Analysis)
 admin.site.register(Test)
 admin.site.register(Finding, FindingAdmin)
+admin.site.register(Debt_Item, DebtItemAdmin)
 admin.site.register(FileUpload)
 admin.site.register(FileAccessToken)
 admin.site.register(Stub_Finding)
@@ -5609,6 +5829,8 @@ admin.site.register(Endpoint_Status)
 admin.site.register(Endpoint)
 admin.site.register(Product)
 admin.site.register(Product_Type)
+admin.site.register(Debt_Context)
+admin.site.register(Debt_Context_Type)
 admin.site.register(UserContactInfo)
 admin.site.register(Notes)
 admin.site.register(Note_Type)
@@ -5643,15 +5865,22 @@ admin.site.register(Product_Member)
 admin.site.register(Product_Group)
 admin.site.register(Product_Type_Member)
 admin.site.register(Product_Type_Group)
+admin.site.register(Debt_Context_Member)
+admin.site.register(Debt_Context_Group)
+admin.site.register(Debt_Context_Type_Member)
+admin.site.register(Debt_Context_Type_Group)
 
 admin.site.register(Contact)
 admin.site.register(NoteHistory)
 admin.site.register(Product_Line)
+admin.site.register(Debt_Context_Line)
 admin.site.register(Report_Type)
 admin.site.register(DojoMeta)
 admin.site.register(Product_API_Scan_Configuration)
+admin.site.register(Debt_Context_API_Scan_Configuration)
 admin.site.register(Development_Environment)
 admin.site.register(Finding_Template)
+admin.site.register(Debt_Item_Template)
 admin.site.register(Vulnerability_Id)
 admin.site.register(Vulnerability_Id_Template)
 admin.site.register(BurpRawRequestResponse)
@@ -5664,3 +5893,4 @@ admin.site.register(General_Survey)
 admin.site.register(Test_Import)
 admin.site.register(Test_Import_Finding_Action)
 admin.site.register(Finding_Group)
+admin.site.register(Debt_Item_Group)

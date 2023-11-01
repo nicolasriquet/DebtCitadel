@@ -19,7 +19,8 @@ from django_filters.filters import ChoiceFilter, _truncate
 from django.db.models import JSONField
 import pytz
 from django.db.models import Q
-from dojo.models import Dojo_User, Finding_Group, Product_API_Scan_Configuration, Product_Type, Finding, Product, Test_Import, Test_Type, \
+from dojo.models import Dojo_User, Finding_Group, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration, \
+    Product_Type, Debt_Context_Type, Finding, Product, Debt_Context, Test_Import, Test_Type, \
     Endpoint, Development_Environment, Finding_Template, Note_Type, Risk_Acceptance, Cred_Mapping, \
     Engagement_Survey, Question, TextQuestion, ChoiceQuestion, Endpoint_Status, Engagement, \
     ENGAGEMENT_STATUS_CHOICES, Test, App_Analysis, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Dojo_Group, Vulnerability_Id, \
@@ -32,6 +33,8 @@ import tagulous
 from dojo.authorization.roles_permissions import Permissions
 from dojo.product_type.queries import get_authorized_product_types
 from dojo.product.queries import get_authorized_products
+from dojo.debt_context_type.queries import get_authorized_debt_context_types
+from dojo.debt_context.queries import get_authorized_debt_contexts
 from dojo.engagement.queries import get_authorized_engagements
 from dojo.test.queries import get_authorized_tests
 from dojo.finding.queries import get_authorized_findings
