@@ -3794,7 +3794,7 @@ class Debt_Item(models.Model):
             models.Index(fields=['component_name']),
             models.Index(fields=['duplicate']),
             models.Index(fields=['is_mitigated']),
-            models.Index(fields=['duplicate_finding', 'id']),
+            models.Index(fields=['duplicate_debt_item', 'id']),
         ]
 
     def __init__(self, *args, **kwargs):
@@ -4004,7 +4004,7 @@ class Debt_Item(models.Model):
             if self.duplicate_debt_item is not None:
                 originals = Finding.objects.get(
                     id=self.duplicate_debt_item.id).original_debt_item.all().order_by('title')
-                return originals  # we need to add the duplicate_finding  here as well
+                return originals  # we need to add the duplicate_debt_item  here as well
             else:
                 return []
         else:
