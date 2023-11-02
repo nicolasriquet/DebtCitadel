@@ -10,7 +10,7 @@ from dojo.group.queries import get_authorized_groups
 from dojo.authorization.roles_permissions import Permissions
 
 
-def get_authorized_products(permission, user=None):
+def get_authorized_debt_contexts(permission, user=None):
 
     if user is None:
         user = get_current_user()
