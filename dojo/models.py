@@ -25,6 +25,7 @@ from django.utils.timezone import now
 from django.utils.functional import cached_property
 from django.utils import timezone
 from django.utils.html import escape
+from multiselectfield.utils import get_max_length
 from pytz import all_timezones
 from polymorphic.models import PolymorphicModel
 from multiselectfield import MultiSelectField
@@ -1279,16 +1280,16 @@ class Debt_Context(models.Model):
     debt_context_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
                                         related_name='debt_context_manager', on_delete=models.RESTRICT)
     technical_contact = models.ForeignKey(Dojo_User, null=True, blank=True,
-                                          related_name='technical_contact', on_delete=models.RESTRICT)
+                                          related_name='debt_technical_contact', on_delete=models.RESTRICT)
     team_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
-                                     related_name='team_manager', on_delete=models.RESTRICT)
+                                     related_name='debt_team_manager', on_delete=models.RESTRICT)
 
     created = models.DateTimeField(auto_now_add=True, null=True)
     debt_context_type = models.ForeignKey(Debt_Context_Type, related_name='debt_context_type',
                                   null=False, blank=False, on_delete=models.CASCADE)
     updated = models.DateTimeField(auto_now=True, null=True)
     sla_configuration = models.ForeignKey(SLA_Configuration,
-                                          related_name='sla_config',
+                                          related_name='debt_sla_config',
                                           null=False,
                                           blank=False,
                                           default=1,
@@ -1862,6 +1863,53 @@ class Endpoint_Status(models.Model):
         ]
         constraints = [
             models.UniqueConstraint(fields=['finding', 'endpoint'], name='endpoint-finding relation')
+        ]
+
+
+class Debt_Endpoint_Status(models.Model):
+    date = models.DateField(default=get_current_date)
+    last_modified = models.DateTimeField(null=True, editable=False, default=get_current_datetime)
+    mitigated = models.BooleanField(default=False, blank=True)
+    mitigated_time = models.DateTimeField(editable=False, null=True, blank=True)
+    mitigated_by = models.ForeignKey(Dojo_User, editable=True, null=True, on_delete=models.RESTRICT)
+    false_positive = models.BooleanField(default=False, blank=True)
+    out_of_scope = models.BooleanField(default=False, blank=True)
+    risk_accepted = models.BooleanField(default=False, blank=True)
+    endpoint = models.ForeignKey('Endpoint', null=False, blank=False, on_delete=models.CASCADE, related_name='debt_status_endpoint')
+    debt_item = models.ForeignKey('Debt_Item', null=False, blank=False, on_delete=models.CASCADE, related_name='debt_status_debt_item')
+
+    @property
+    def age(self):
+
+        if self.mitigated:
+            diff = self.mitigated_time.date() - self.date
+        else:
+            diff = get_current_date() - self.date
+        days = diff.days
+        return days if days > 0 else 0
+
+    def __str__(self):
+        return "'{}' on '{}'".format(str(self.debt_item), str(self.endpoint))
+
+    def copy(self, debt_item=None):
+        copy = self
+        current_endpoint = self.endpoint
+        copy.pk = None
+        copy.id = None
+        if debt_item:
+            copy.finding = debt_item
+        copy.endpoint = current_endpoint
+        copy.save()
+
+        return copy
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['debt_item', 'mitigated']),
+            models.Index(fields=['endpoint', 'mitigated']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['debt_item', 'endpoint'], name='endpoint-debt_item relation')
         ]
 
 
@@ -3510,7 +3558,7 @@ class Debt_Item(models.Model):
                                        blank=True,
                                        verbose_name=_('Endpoints'),
                                        help_text=_("The hosts within the product that are susceptible to this flaw. + The status of the endpoint associated with this flaw (Vulnerable, Mitigated, ...)."),
-                                       through=Endpoint_Status)
+                                       through=Debt_Endpoint_Status)
     references = models.TextField(null=True,
                                   blank=True,
                                   db_column="refs",
@@ -3562,7 +3610,7 @@ class Debt_Item(models.Model):
     review_requested_by = models.ForeignKey(Dojo_User,
                                             null=True,
                                             blank=True,
-                                            related_name='review_requested_by',
+                                            related_name='debt_review_requested_by',
                                             on_delete=models.RESTRICT,
                                             verbose_name=_('Review Requested By'),
                                             help_text=_("Documents who requested a review for this finding."))
@@ -3578,7 +3626,7 @@ class Debt_Item(models.Model):
     defect_review_requested_by = models.ForeignKey(Dojo_User,
                                                    null=True,
                                                    blank=True,
-                                                   related_name='defect_review_requested_by',
+                                                   related_name='debt_defect_review_requested_by',
                                                    on_delete=models.RESTRICT,
                                                    verbose_name=_('Defect Review Requested By'),
                                                    help_text=_("Documents who requested a defect review for this flaw."))
@@ -3596,14 +3644,14 @@ class Debt_Item(models.Model):
     mitigated_by = models.ForeignKey(Dojo_User,
                                      null=True,
                                      editable=False,
-                                     related_name="mitigated_by",
+                                     related_name="debt_mitigated_by",
                                      on_delete=models.RESTRICT,
                                      verbose_name=_('Mitigated By'),
                                      help_text=_("Documents who has marked this flaw as fixed."))
     reporter = models.ForeignKey(Dojo_User,
                                  editable=False,
                                  default=1,
-                                 related_name='reporter',
+                                 related_name='debt_reporter',
                                  on_delete=models.RESTRICT,
                                  verbose_name=_('Reporter'),
                                  help_text=_("Documents who reported the flaw."))
@@ -3622,7 +3670,7 @@ class Debt_Item(models.Model):
     last_reviewed_by = models.ForeignKey(Dojo_User,
                                          null=True,
                                          editable=False,
-                                         related_name='last_reviewed_by',
+                                         related_name='debt_last_reviewed_by',
                                          on_delete=models.RESTRICT,
                                          verbose_name=_('Last Reviewed By'),
                                          help_text=_("Provides the person who last reviewed the flaw."))
@@ -5241,11 +5289,11 @@ class Notifications(models.Model):
     product = models.ForeignKey(Product, default=None, null=True, editable=False, on_delete=models.CASCADE)
     template = models.BooleanField(default=False)
     sla_breach = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True,
-        verbose_name=_('SLA breach'),
-        help_text=_('Get notified of (upcoming) SLA breaches'))
+                                  verbose_name=_('SLA breach'),
+                                  help_text=_('Get notified of (upcoming) SLA breaches'))
     risk_acceptance_expiration = MultiSelectField(choices=NOTIFICATION_CHOICES, default='alert', blank=True,
-        verbose_name=_('Risk Acceptance Expiration'),
-        help_text=_('Get notified of (upcoming) Risk Acceptance expiries'))
+                                                  verbose_name=_('Risk Acceptance Expiration'),
+                                                  help_text=_('Get notified of (upcoming) Risk Acceptance expiries'))
 
     class Meta:
         constraints = [
@@ -5288,6 +5336,78 @@ class Notifications(models.Model):
                 result.risk_acceptance_expiration = merge_sets_safe(result.risk_acceptance_expiration, notifications.risk_acceptance_expiration)
 
         return result
+
+
+# class Notifications(models.Model):
+#     product_type_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     #debt_context_type_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     product_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     #debt_context_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     engagement_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     test_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#
+#     scan_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, help_text=_('Triggered whenever an (re-)import has been done that created/updated/closed findings.'), max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     jira_update = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, verbose_name=_("JIRA problems"), help_text=_("JIRA sync happens in the background, errors will be shown as notifications/alerts so make sure to subscribe"), max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     upcoming_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     stale_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     auto_close_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     close_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     user_mentioned = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     code_review = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     review_requested = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     other = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     user = models.ForeignKey(Dojo_User, default=None, null=True, editable=False, on_delete=models.CASCADE)
+#     product = models.ForeignKey(Product, default=None, null=True, editable=False, on_delete=models.CASCADE)
+#     #debt_context = models.ForeignKey(Debt_Context, default=None, null=True, editable=False, on_delete=models.CASCADE)
+#     template = models.BooleanField(default=False)
+#     sla_breach = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True,
+#         verbose_name=_('SLA breach'),
+#         help_text=_('Get notified of (upcoming) SLA breaches'), max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#     risk_acceptance_expiration = MultiSelectField(choices=NOTIFICATION_CHOICES, default='alert', blank=True,
+#         verbose_name=_('Risk Acceptance Expiration'),
+#         help_text=_('Get notified of (upcoming) Risk Acceptance expiries'), max_length=get_max_length(NOTIFICATION_CHOICES, None))
+#
+#     class Meta:
+#         constraints = [
+#             models.UniqueConstraint(fields=['user', 'product'], name="notifications_user_product")
+#         ]
+#         indexes = [
+#             models.Index(fields=['user', 'product']),
+#         ]
+#
+#     @classmethod
+#     def merge_notifications_list(cls, notifications_list):
+#         if not notifications_list:
+#             return []
+#
+#         result = None
+#         for notifications in notifications_list:
+#             if result is None:
+#                 # we start by copying the first instance, because creating a new instance would set all notification columns to 'alert' :-()
+#                 result = notifications
+#                 # result.pk = None # detach from db
+#             else:
+#                 # TODO This concat looks  better, but requires Python 3.6+
+#                 # result.scan_added = [*result.scan_added, *notifications.scan_added]
+#                 from dojo.utils import merge_sets_safe
+#                 result.product_type_added = merge_sets_safe(result.product_type_added, notifications.product_type_added)
+#                 result.product_added = merge_sets_safe(result.product_added, notifications.product_added)
+#                 result.engagement_added = merge_sets_safe(result.engagement_added, notifications.engagement_added)
+#                 result.test_added = merge_sets_safe(result.test_added, notifications.test_added)
+#                 result.scan_added = merge_sets_safe(result.scan_added, notifications.scan_added)
+#                 result.jira_update = merge_sets_safe(result.jira_update, notifications.jira_update)
+#                 result.upcoming_engagement = merge_sets_safe(result.upcoming_engagement, notifications.upcoming_engagement)
+#                 result.stale_engagement = merge_sets_safe(result.stale_engagement, notifications.stale_engagement)
+#                 result.auto_close_engagement = merge_sets_safe(result.auto_close_engagement, notifications.auto_close_engagement)
+#                 result.close_engagement = merge_sets_safe(result.close_engagement, notifications.close_engagement)
+#                 result.user_mentioned = merge_sets_safe(result.user_mentioned, notifications.user_mentioned)
+#                 result.code_review = merge_sets_safe(result.code_review, notifications.code_review)
+#                 result.review_requested = merge_sets_safe(result.review_requested, notifications.review_requested)
+#                 result.other = merge_sets_safe(result.other, notifications.other)
+#                 result.sla_breach = merge_sets_safe(result.sla_breach, notifications.sla_breach)
+#                 result.risk_acceptance_expiration = merge_sets_safe(result.risk_acceptance_expiration, notifications.risk_acceptance_expiration)
+#
+#         return result
 
 
 class Tool_Product_Settings(models.Model):
