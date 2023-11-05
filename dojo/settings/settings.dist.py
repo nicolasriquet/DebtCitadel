@@ -17,7 +17,9 @@ env = environ.Env(
     # Set casting and default values
     DD_SITE_URL=(str, 'http://localhost:8080'),
     DD_DEBUG=(bool, False),
+    #DD_DEBUG=(bool, True),
     DD_TEMPLATE_DEBUG=(bool, False),
+    #DD_TEMPLATE_DEBUG=(bool, True),
     DD_LOG_LEVEL=(str, ''),
     DD_DJANGO_METRICS_ENABLED=(bool, False),
     DD_LOGIN_REDIRECT_URL=(str, '/'),
