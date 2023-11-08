@@ -36,6 +36,15 @@ class Permissions(IntEnum):
     Product_Type_Delete = 1007
     Product_Type_Add = 1008
 
+    Debt_Context_Type_Add_Debt_Context = 1001
+    Debt_Context_Type_View = 1002
+    Debt_Context_Type_Member_Delete = 1003
+    Debt_Context_Type_Manage_Members = 1004
+    Debt_Context_Type_Member_Add_Owner = 1005
+    Debt_Context_Type_Edit = 1006
+    Debt_Context_Type_Delete = 1007
+    Debt_Context_Type_Add = 1008
+
     Product_View = 1102
     Product_Member_Delete = 1103
     Product_Manage_Members = 1104
@@ -43,6 +52,14 @@ class Permissions(IntEnum):
     Product_Configure_Notifications = 1106
     Product_Edit = 1107
     Product_Delete = 1108
+
+    Debt_Context_View = 1102
+    Debt_Context_Member_Delete = 1103
+    Debt_Context_Manage_Members = 1104
+    Debt_Context_Member_Add_Owner = 1105
+    Debt_Context_Configure_Notifications = 1106
+    Debt_Context_Edit = 1107
+    Debt_Context_Delete = 1108
 
     Engagement_View = 1202
     Engagement_Add = 1203
@@ -60,6 +77,12 @@ class Permissions(IntEnum):
     Import_Scan_Result = 1404
     Finding_Edit = 1406
     Finding_Delete = 1407
+
+    Debt_Item_View = 1402
+    Debt_Item_Add = 1403
+    Debt_Item_Scan_Result = 1404
+    Debt_Item_Edit = 1406
+    Debt_Item_Delete = 1407
 
     Endpoint_View = 1502
     Endpoint_Add = 1503
@@ -81,17 +104,34 @@ class Permissions(IntEnum):
     Finding_Group_Edit = 1906
     Finding_Group_Delete = 1907
 
+    Debt_Item_Group_View = 1902
+    Debt_Item_Group_Add = 1903
+    Debt_Item_Group_Edit = 1906
+    Debt_Item_Group_Delete = 1907
+
     Product_Type_Group_View = 2002
     Product_Type_Group_Add = 2003
     Product_Type_Group_Add_Owner = 2005
     Product_Type_Group_Edit = 2006
     Product_Type_Group_Delete = 2007
 
+    Debt_Context_Type_Group_View = 2002
+    Debt_Context_Type_Group_Add = 2003
+    Debt_Context_Type_Group_Add_Owner = 2005
+    Debt_Context_Type_Group_Edit = 2006
+    Debt_Context_Type_Group_Delete = 2007
+
     Product_Group_View = 2102
     Product_Group_Add = 2103
     Product_Group_Add_Owner = 2105
     Product_Group_Edit = 2106
     Product_Group_Delete = 2107
+
+    Debt_Context_Group_View = 2102
+    Debt_Context_Group_Add = 2103
+    Debt_Context_Group_Add_Owner = 2105
+    Debt_Context_Group_Edit = 2106
+    Debt_Context_Group_Delete = 2107
 
     Group_View = 2202
     Group_Member_Delete = 2203
@@ -115,10 +155,20 @@ class Permissions(IntEnum):
     Product_API_Scan_Configuration_Edit = 2506
     Product_API_Scan_Configuration_Delete = 2507
 
+    Debt_Context_API_Scan_Configuration_View = 2502
+    Debt_Context_API_Scan_Configuration_Add = 2503
+    Debt_Context_API_Scan_Configuration_Edit = 2506
+    Debt_Context_API_Scan_Configuration_Delete = 2507
+
     Product_Tracking_Files_View = 2602
     Product_Tracking_Files_Add = 2603
     Product_Tracking_Files_Edit = 2606
     Product_Tracking_Files_Delete = 2607
+
+    Debt_Context_Tracking_Files_View = 2602
+    Debt_Context_Tracking_Files_Add = 2603
+    Debt_Context_Tracking_Files_Edit = 2606
+    Debt_Context_Tracking_Files_Delete = 2607
 
     Credential_View = 2702
     Credential_Add = 2703
