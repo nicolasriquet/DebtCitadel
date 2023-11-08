@@ -1,12 +1,12 @@
 # DebtDojo
 
-**DebtDojo** is a socio-technical debt management platform.
+**DebtDojo** is a sociotechnical debt management platform.
 
 ## Quick Start
 
 ```sh
 git clone https://github.com/nicolasriquet/DebtDojo.git
-cd django-DebtDojo
+cd DebtDojo
 # building
 ./dc-build.sh
 # running (for other profiles besides postgres-redis look at https://github.com/DefectDojo/django-DefectDojo/blob/dev/readme-docs/DOCKER.md)
