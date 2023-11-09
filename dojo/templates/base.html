@@ -224,6 +224,40 @@
                                             </a>
                                         </li>
                                         <li>
+                                            <a id="debt-context-side-menu" href="{% url 'debt_context' %}" aria-expanded="false" aria-label="Debt Context">
+                                                <i class="fa-solid fa-list-ul fa-fw"></i>
+                                                <span>{% trans "Debt Contexts" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <li>
+                                                    <a href="{% url 'debt_context' %}">
+                                                        {% trans "All Debt Contexts" %}
+                                                    </a>
+                                                </li>
+                                                {% if request.user|can_add_debt_context %}
+                                                    <li>
+                                                        <a href="{% url 'new_debt_context' %}">
+                                                            {% trans "Add Debt Context" %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                                <li>
+                                                    <a href="{% url 'debt_context_type' %}">
+                                                        {% trans "All Debt Context Types" %}
+                                                    </a>
+                                                </li>
+                                                {% if "Debt_Context_Type_Add"|has_global_permission %}
+                                                    <li>
+                                                        <a id="pop-out-add-debt_context-type" href="{% url 'add_debt_context_type' %}">
+                                                            {% trans "Add Debt Context Type" %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
+                                            <!-- /.nav-second-level -->
+                                        </li>
+                                        <li>
                                             <a id="product-side-menu" href="{% url 'product' %}" aria-expanded="false" aria-label="Products">
                                                 <i class="fa-solid fa-list-ul fa-fw"></i>
                                                 <span>{% trans "Products" %}</span>

@@ -3602,6 +3602,22 @@ class ProductTypeFilter(DojoFilter):
         include = ('name',)
 
 
+class DebtContextTypeFilter(DojoFilter):
+    name = CharFilter(lookup_expr='icontains')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('name', 'name'),
+        ),
+    )
+
+    class Meta:
+        model = Debt_Context_Type
+        exclude = []
+        include = ('name',)
+
+
 class TestTypeFilter(DojoFilter):
     name = CharFilter(lookup_expr='icontains')
 

@@ -1248,7 +1248,7 @@ class Debt_Context(models.Model):
     RETIREMENT = 'retirement'
     LIFECYCLE_CHOICES = (
         (CONSTRUCTION, _('Construction')),
-        (PRODUCTION, _('Debt_Contextion')),
+        (PRODUCTION, _('Production')),
         (RETIREMENT, _('Retirement')),
     )
 

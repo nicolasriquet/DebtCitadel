@@ -33,11 +33,15 @@ from dojo.development_environment.urls import urlpatterns as dev_env_urls
 from dojo.endpoint.urls import urlpatterns as endpoint_urls
 from dojo.engagement.urls import urlpatterns as eng_urls
 from dojo.finding.urls import urlpatterns as finding_urls
+from dojo.debt_item.urls import urlpatterns as debt_item_urls
 from dojo.finding_group.urls import urlpatterns as finding_group_urls
+#from dojo.debt_item_group.urls import urlpatterns as debt_item_group_urls
 from dojo.home.urls import urlpatterns as home_urls
 from dojo.metrics.urls import urlpatterns as metrics_urls
 from dojo.product.urls import urlpatterns as prod_urls
+from dojo.debt_context.urls import urlpatterns as debt_context_urls
 from dojo.product_type.urls import urlpatterns as pt_urls
+from dojo.debt_context_type.urls import urlpatterns as debt_context_type_urls
 from dojo.reports.urls import urlpatterns as reports_urls
 from dojo.search.urls import urlpatterns as search_urls
 from dojo.test.urls import urlpatterns as test_urls
@@ -151,11 +155,15 @@ ur += dev_env_urls
 ur += endpoint_urls
 ur += eng_urls
 ur += finding_urls
+ur += debt_item_urls
 ur += finding_group_urls
+#ur += debt_item_group_urls
 ur += home_urls
 ur += metrics_urls
 ur += prod_urls
+ur += debt_context_urls
 ur += pt_urls
+ur += debt_context_type_urls
 ur += reports_urls
 ur += search_urls
 ur += test_type_urls

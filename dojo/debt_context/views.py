@@ -60,79 +60,79 @@ logger = logging.getLogger(__name__)
 
 
 def debt_context(request):
-    # validate prod_type param
+    # validate debt_context_type param
     debt_context_type = None
-    if 'prod_type' in request.GET:
-        p = request.GET.getlist('prod_type', [])
+    if 'debt_context_type' in request.GET:
+        p = request.GET.getlist('debt_context_type', [])
         if len(p) == 1:
             debt_context_type = get_object_or_404(Debt_Context_Type, id=p[0])
 
-    prods = get_authorized_debt_contexts(Permissions.Debt_Context_View)
+    debt_contexts = get_authorized_debt_contexts(Permissions.Debt_Context_View)
 
     # perform all stuff for filtering and pagination first, before annotation/prefetching
     # otherwise the paginator will perform all the annotations/prefetching already only to count the total number of records
     # see https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
-    name_words = prods.values_list('name', flat=True)
+    name_words = debt_contexts.values_list('name', flat=True)
 
-    prod_filter = DebtContextFilter(request.GET, queryset=prods, user=request.user)
+    debt_context_filter = DebtContextFilter(request.GET, queryset=debt_contexts, user=request.user)
 
-    prod_list = get_page_items(request, prod_filter.qs, 25)
+    debt_context_list = get_page_items(request, debt_context_filter.qs, 25)
 
     # perform annotation/prefetching by replacing the queryset in the page with an annotated/prefetched queryset.
-    prod_list.object_list = prefetch_for_debt_context(prod_list.object_list)
+    debt_context_list.object_list = prefetch_for_debt_context(debt_context_list.object_list)
 
-    # print(prod_list.object_list.explain)
+    # print(debt_context_list.object_list.explain)
 
     add_breadcrumb(title=_("debt_context List"), top_level=not len(request.GET), request=request)
 
     return render(request, 'dojo/debt_context.html', {
-        'prod_list': prod_list,
-        'prod_filter': prod_filter,
+        'debt_context_list': debt_context_list,
+        'debt_context_filter': debt_context_filter,
         'name_words': sorted(set(name_words)),
         'user': request.user})
 
 
-def prefetch_for_debt_context(prods):
-    prefetched_prods = prods
-    if isinstance(prods,
-                  QuerySet):  # old code can arrive here with prods being a list because the query was already executed
+def prefetch_for_debt_context(debt_contexts):
+    prefetched_debt_contexts = debt_contexts
+    if isinstance(debt_contexts,
+                  QuerySet):  # old code can arrive here with debt_contexts being a list because the query was already executed
 
-        prefetched_prods = prefetched_prods.prefetch_related('team_manager')
-        prefetched_prods = prefetched_prods.prefetch_related('debt_context_manager')
-        prefetched_prods = prefetched_prods.prefetch_related('technical_contact')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('team_manager')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('debt_context_manager')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('technical_contact')
 
-        prefetched_prods = prefetched_prods.annotate(
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(
             active_engagement_count=Count('engagement__id', filter=Q(engagement__active=True)))
-        prefetched_prods = prefetched_prods.annotate(
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(
             closed_engagement_count=Count('engagement__id', filter=Q(engagement__active=False)))
-        prefetched_prods = prefetched_prods.annotate(last_engagement_date=Max('engagement__target_start'))
-        prefetched_prods = prefetched_prods.annotate(active_finding_count=Count('engagement__test__finding__id',
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(last_engagement_date=Max('engagement__target_start'))
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(active_finding_count=Count('engagement__test__finding__id',
                                                                                 filter=Q(
                                                                                     engagement__test__finding__active=True)))
-        prefetched_prods = prefetched_prods.annotate(
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(
             active_verified_finding_count=Count('engagement__test__finding__id',
                                                 filter=Q(
                                                     engagement__test__finding__active=True,
                                                     engagement__test__finding__verified=True)))
-        prefetched_prods = prefetched_prods.prefetch_related('jira_project_set__jira_instance')
-        prefetched_prods = prefetched_prods.prefetch_related('members')
-        prefetched_prods = prefetched_prods.prefetch_related('prod_type__members')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('jira_project_set__jira_instance')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('members')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('debt_context_type__members')
         active_endpoint_query = Endpoint.objects.filter(
             finding__active=True,
             finding__mitigated__isnull=True).distinct()
-        prefetched_prods = prefetched_prods.prefetch_related(
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related(
             Prefetch('endpoint_set', queryset=active_endpoint_query, to_attr='active_endpoints'))
-        prefetched_prods = prefetched_prods.prefetch_related('tags')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('tags')
 
         if get_system_setting('enable_github'):
-            prefetched_prods = prefetched_prods.prefetch_related(
+            prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related(
                 Prefetch('github_pkey_set', queryset=GITHUB_PKey.objects.all().select_related('git_conf'),
                          to_attr='github_confs'))
 
     else:
         logger.debug('unable to prefetch because query was already executed')
 
-    return prefetched_prods
+    return prefetched_debt_contexts
 
 
 def iso_to_gregorian(iso_year, iso_week, iso_day):
@@ -143,22 +143,22 @@ def iso_to_gregorian(iso_year, iso_week, iso_day):
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def view_debt_context(request, pid):
-    prod_query = Debt_Context.objects.all().select_related('debt_context_manager', 'technical_contact', 'team_manager', 'sla_configuration') \
+    debt_context_query = Debt_Context.objects.all().select_related('debt_context_manager', 'technical_contact', 'team_manager', 'sla_configuration') \
                                       .prefetch_related('members') \
-                                      .prefetch_related('prod_type__members')
-    prod = get_object_or_404(prod_query, id=pid)
-    debt_context_members = get_authorized_members_for_debt_context(prod, Permissions.Debt_Context_View)
-    debt_context_type_members = get_authorized_members_for_debt_context_type(prod.prod_type, Permissions.Debt_Context_Type_View)
-    debt_context_groups = get_authorized_groups_for_debt_context(prod, Permissions.Debt_Context_View)
-    debt_context_type_groups = get_authorized_groups_for_debt_context_type(prod.prod_type, Permissions.Debt_Context_Type_View)
+                                      .prefetch_related('debt_context_type__members')
+    debt_context = get_object_or_404(debt_context_query, id=pid)
+    debt_context_members = get_authorized_members_for_debt_context(debt_context, Permissions.Debt_Context_View)
+    debt_context_type_members = get_authorized_members_for_debt_context_type(debt_context.debt_context_type, Permissions.Debt_Context_Type_View)
+    debt_context_groups = get_authorized_groups_for_debt_context(debt_context, Permissions.Debt_Context_View)
+    debt_context_type_groups = get_authorized_groups_for_debt_context_type(debt_context.debt_context_type, Permissions.Debt_Context_Type_View)
     personal_notifications_form = DebtContextNotificationsForm(
-        instance=Notifications.objects.filter(user=request.user).filter(debt_context=prod).first())
-    langSummary = Languages.objects.filter(debt_context=prod).aggregate(Sum('files'), Sum('code'), Count('files'))
-    languages = Languages.objects.filter(debt_context=prod).order_by('-code').select_related('language')
-    app_analysis = App_Analysis.objects.filter(debt_context=prod).order_by('name')
-    benchmarks = Benchmark_Debt_Context_Summary.objects.filter(debt_context=prod, publish=True,
+        instance=Notifications.objects.filter(user=request.user).filter(debt_context=debt_context).first())
+    langSummary = Languages.objects.filter(debt_context=debt_context).aggregate(Sum('files'), Sum('code'), Count('files'))
+    languages = Languages.objects.filter(debt_context=debt_context).order_by('-code').select_related('language')
+    app_analysis = App_Analysis.objects.filter(debt_context=debt_context).order_by('name')
+    benchmarks = Benchmark_Debt_Context_Summary.objects.filter(debt_context=debt_context, publish=True,
                                                           benchmark_type__enabled=True).order_by('benchmark_type__name')
-    sla = SLA_Configuration.objects.filter(id=prod.sla_configuration_id).first()
+    sla = SLA_Configuration.objects.filter(id=debt_context.sla_configuration_id).first()
     benchAndPercent = []
     for i in range(0, len(benchmarks)):
         desired_level, total, total_pass, total_wait, total_fail, total_viewed = asvs_calc_level(benchmarks[i])
@@ -179,9 +179,9 @@ def view_debt_context(request, pid):
         })
     system_settings = System_Settings.objects.get()
 
-    debt_context_metadata = dict(prod.debt_context_meta.order_by('name').values_list('name', 'value'))
+    debt_context_metadata = dict(debt_context.debt_context_meta.order_by('name').values_list('name', 'value'))
 
-    open_findings = Finding.objects.filter(test__engagement__debt_context=prod,
+    open_findings = Finding.objects.filter(test__engagement__debt_context=debt_context,
                                            false_p=False,
                                            active=True,
                                            duplicate=False,
@@ -208,9 +208,9 @@ def view_debt_context(request, pid):
 
     total = critical + high + medium + low + info
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("debt_context"), tab="overview")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("debt_context"), tab="overview")
     return render(request, 'dojo/view_debt_context_details.html', {
-        'prod': prod,
+        'debt_context': debt_context,
         'debt_context_tab': debt_context_tab,
         'debt_context_metadata': debt_context_metadata,
         'critical': critical,
@@ -237,8 +237,8 @@ def view_debt_context(request, pid):
 
 @user_is_authorized(Debt_Context, Permissions.Component_View, 'pid')
 def view_debt_context_components(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
-    debt_context_tab = Debt_Context_Tab(prod, title=_("debt_context"), tab="components")
+    debt_context = get_object_or_404(Debt_Context, id=pid)
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("debt_context"), tab="components")
     separator = ', '
 
     # Get components ordered by component_name and concat component versions to the same row
@@ -266,7 +266,7 @@ def view_debt_context_components(request, pid):
     component_words = component_query.exclude(component_name__isnull=True).values_list('component_name', flat=True)
 
     return render(request, 'dojo/debt_context_components.html', {
-        'prod': prod,
+        'debt_context': debt_context,
         'filter': comp_filter,
         'debt_context_tab': debt_context_tab,
         'result': result,
@@ -295,10 +295,10 @@ def identify_view(request):
     return 'Finding'
 
 
-def finding_querys(request, prod):
+def finding_querys(request, debt_context):
     filters = dict()
 
-    findings_query = Finding.objects.filter(test__engagement__debt_context=prod,
+    findings_query = Finding.objects.filter(test__engagement__debt_context=debt_context,
                                             severity__in=('Critical', 'High', 'Medium', 'Low', 'Info'))
 
     # prefetch only what's needed to avoid lots of repeated queries
@@ -310,7 +310,7 @@ def finding_querys(request, prod):
         # 'test__test_type',
         # 'risk_acceptance_set',
         'reporter')
-    findings = MetricsFindingFilter(request.GET, queryset=findings_query, pid=prod)
+    findings = MetricsFindingFilter(request.GET, queryset=findings_query, pid=debt_context)
     findings_qs = queryset_check(findings)
     filters['form'] = findings.form
 
@@ -340,7 +340,7 @@ def finding_querys(request, prod):
         end_date = timezone.now()
     week = end_date - timedelta(days=7)  # seven days and /newnewer are considered "new"
 
-    # risk_acceptances = Risk_Acceptance.objects.filter(engagement__in=Engagement.objects.filter(debt_context=prod)).prefetch_related('accepted_findings')
+    # risk_acceptances = Risk_Acceptance.objects.filter(engagement__in=Engagement.objects.filter(debt_context=debt_context)).prefetch_related('accepted_findings')
     # filters['accepted'] = [finding for ra in risk_acceptances for finding in ra.accepted_findings.all()]
 
     from dojo.finding.helper import ACCEPTED_FINDINGS_QUERY
@@ -412,9 +412,9 @@ def finding_querys(request, prod):
     return filters
 
 
-def endpoint_querys(request, prod):
+def endpoint_querys(request, debt_context):
     filters = dict()
-    endpoints_query = Endpoint_Status.objects.filter(finding__test__engagement__debt_context=prod,
+    endpoints_query = Endpoint_Status.objects.filter(finding__test__engagement__debt_context=debt_context,
                                                      finding__severity__in=(
                                                          'Critical', 'High', 'Medium', 'Low', 'Info')).prefetch_related(
         'finding__test__engagement',
@@ -497,27 +497,27 @@ def endpoint_querys(request, prod):
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def view_debt_context_metrics(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
-    engs = Engagement.objects.filter(debt_context=prod, active=True)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
+    engs = Engagement.objects.filter(debt_context=debt_context, active=True)
     view = identify_view(request)
 
     result = EngagementFilter(
         request.GET,
-        queryset=Engagement.objects.filter(debt_context=prod, active=False).order_by('-target_end'))
+        queryset=Engagement.objects.filter(debt_context=debt_context, active=False).order_by('-target_end'))
 
     inactive_engs_page = get_page_items(request, result.qs, 10)
 
     filters = dict()
     if view == 'Finding':
-        filters = finding_querys(request, prod)
+        filters = finding_querys(request, debt_context)
     elif view == 'Endpoint':
-        filters = endpoint_querys(request, prod)
+        filters = endpoint_querys(request, debt_context)
 
     start_date = filters['start_date']
     end_date = filters['end_date']
     week_date = filters['week']
 
-    tests = Test.objects.filter(engagement__debt_context=prod).prefetch_related('finding_set', 'test_type')
+    tests = Test.objects.filter(engagement__debt_context=debt_context).prefetch_related('finding_set', 'test_type')
     tests = tests.annotate(verified_finding_count=Count('finding__id', filter=Q(finding__verified=True)))
 
     open_vulnerabilities = filters['open_vulns']
@@ -531,7 +531,7 @@ def view_debt_context_metrics(request, pid):
 
     punchcard, ticks = get_punchcard_data(filters.get('open', None), start_date, weeks_between, view)
 
-    add_breadcrumb(parent=prod, top_level=False, request=request)
+    add_breadcrumb(parent=debt_context, top_level=False, request=request)
 
     open_close_weekly = OrderedDict()
     new_weekly = OrderedDict()
@@ -628,12 +628,12 @@ def view_debt_context_metrics(request, pid):
         else:
             test_data[t.test_type.name] = t.verified_finding_count
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("debt_context"), tab="metrics")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("debt_context"), tab="metrics")
 
     open_objs_by_age = {x: len([_ for _ in filters.get('open') if _.age == x]) for x in set([_.age for _ in filters.get('open')])}
 
     return render(request, 'dojo/debt_context_metrics.html', {
-        'prod': prod,
+        'debt_context': debt_context,
         'debt_context_tab': debt_context_tab,
         'engs': engs,
         'inactive_engs': inactive_engs_page,
@@ -658,7 +658,7 @@ def view_debt_context_metrics(request, pid):
         'all_objs': filters.get('all', None),
         'all_objs_by_severity': sum_by_severity_level(filters.get('all')),
         'form': filters.get('form', None),
-        'reset_link': reverse('view_debt_context_metrics', args=(prod.id,)) + '?type=' + view,
+        'reset_link': reverse('view_debt_context_metrics', args=(debt_context.id,)) + '?type=' + view,
         'open_vulnerabilities': open_vulnerabilities,
         'all_vulnerabilities': all_vulnerabilities,
         'start_date': start_date,
@@ -675,8 +675,8 @@ def view_debt_context_metrics(request, pid):
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def async_burndown_metrics(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
-    open_findings_burndown = get_open_findings_burndown(prod)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
+    open_findings_burndown = get_open_findings_burndown(debt_context)
 
     return JsonResponse({
         'critical': open_findings_burndown.get('Critical', []),
@@ -691,13 +691,13 @@ def async_burndown_metrics(request, pid):
 
 @user_is_authorized(Debt_Context, Permissions.Engagement_View, 'pid')
 def view_engagements(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
 
     default_page_num = 10
     recent_test_day_count = 7
 
     # In Progress Engagements
-    engs = Engagement.objects.filter(debt_context=prod, active=True, status="In Progress").order_by('-updated')
+    engs = Engagement.objects.filter(debt_context=debt_context, active=True, status="In Progress").order_by('-updated')
     active_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='active')
     result_active_engs = get_page_items(request, active_engs_filter.qs, default_page_num, prefix="engs")
     # prefetch only after creating the filters to avoid https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
@@ -705,22 +705,22 @@ def view_engagements(request, pid):
                                                                    recent_test_day_count)
 
     # Engagements that are queued because they haven't started or paused
-    engs = Engagement.objects.filter(~Q(status="In Progress"), debt_context=prod, active=True).order_by('-updated')
+    engs = Engagement.objects.filter(~Q(status="In Progress"), debt_context=debt_context, active=True).order_by('-updated')
     queued_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='queued')
     result_queued_engs = get_page_items(request, queued_engs_filter.qs, default_page_num, prefix="queued_engs")
     result_queued_engs.object_list = prefetch_for_view_engagements(result_queued_engs.object_list,
                                                                    recent_test_day_count)
 
     # Cancelled or Completed Engagements
-    engs = Engagement.objects.filter(debt_context=prod, active=False).order_by('-target_end')
+    engs = Engagement.objects.filter(debt_context=debt_context, active=False).order_by('-target_end')
     inactive_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='closed')
     result_inactive_engs = get_page_items(request, inactive_engs_filter.qs, default_page_num, prefix="inactive_engs")
     result_inactive_engs.object_list = prefetch_for_view_engagements(result_inactive_engs.object_list,
                                                                      recent_test_day_count)
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("All Engagements"), tab="engagements")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("All Engagements"), tab="engagements")
     return render(request, 'dojo/view_engagements.html', {
-        'prod': prod,
+        'debt_context': debt_context,
         'debt_context_tab': debt_context_tab,
         'engs': result_active_engs,
         'engs_count': result_active_engs.paginator.count,
@@ -769,21 +769,21 @@ def prefetch_for_view_engagements(engagements, recent_test_day_count):
 
 
 # Authorization is within the import_scan_results method
-def import_scan_results_prod(request, pid=None):
+def import_scan_results_debt_context(request, pid=None):
     from dojo.engagement.views import import_scan_results
     return import_scan_results(request, pid=pid)
 
 
 def new_debt_context(request, ptid=None):
-    if get_authorized_debt_context_types(Permissions.Debt_Context_Type_Add_debt_context).count() == 0:
+    if get_authorized_debt_context_types(Permissions.Debt_Context_Type_Add_Debt_Context).count() == 0:
         raise PermissionDenied()
 
     jira_project_form = None
     error = False
     initial = None
     if ptid is not None:
-        prod_type = get_object_or_404(Debt_Context_Type, pk=ptid)
-        initial = {'prod_type': prod_type}
+        debt_context_type = get_object_or_404(Debt_Context_Type, pk=ptid)
+        initial = {'debt_context_type': debt_context_type}
 
     form = DebtContextForm(initial=initial)
 
@@ -796,7 +796,7 @@ def new_debt_context(request, ptid=None):
             gform = None
 
         if form.is_valid():
-            debt_context_type = form.instance.prod_type
+            debt_context_type = form.instance.debt_context_type
             user_has_permission_or_403(request.user, debt_context_type, Permissions.Debt_Context_Type_Add_Debt_Context)
 
             debt_context = form.save()
@@ -954,7 +954,7 @@ def delete_debt_context(request, pid):
         if 'id' in request.POST and str(debt_context.id) == request.POST['id']:
             form = DeleteDebtContextForm(request.POST, instance=debt_context)
             if form.is_valid():
-                debt_context_type = debt_context.prod_type
+                debt_context_type = debt_context.debt_context_type
                 if get_setting("ASYNC_OBJECT_DELETE"):
                     async_del = async_delete()
                     async_del.delete(debt_context)
@@ -1090,7 +1090,7 @@ def new_eng_for_app(request, pid, cicd=False):
 
 
 @user_is_authorized(Debt_Context, Permissions.Technology_Add, 'pid')
-def new_tech_for_prod(request, pid):
+def new_tech_for_debt_context(request, pid):
     if request.method == 'POST':
         form = AppAnalysisForm(request.POST)
         if form.is_valid():
@@ -1162,9 +1162,9 @@ def new_eng_for_app_cicd(request, pid):
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def add_meta_data(request, pid):
-    prod = debt_context.objects.get(id=pid)
+    debt_context = Debt_Context.objects.get(id=pid)
     if request.method == 'POST':
-        form = DojoMetaDataForm(request.POST, instance=DojoMeta(debt_context=prod))
+        form = DojoMetaDataForm(request.POST, instance=DojoMeta(debt_context=debt_context))
         if form.is_valid():
             form.save()
             messages.add_message(request,
@@ -1178,18 +1178,18 @@ def add_meta_data(request, pid):
     else:
         form = DojoMetaDataForm()
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("Add Metadata"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Add Metadata"), tab="settings")
 
     return render(request, 'dojo/add_debt_context_meta_data.html',
                   {'form': form,
                    'debt_context_tab': debt_context_tab,
-                   'debt_context': prod,
+                   'debt_context': debt_context,
                    })
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def edit_meta_data(request, pid):
-    prod = debt_context.objects.get(id=pid)
+    debt_context = Debt_Context.objects.get(id=pid)
     if request.method == 'POST':
         for key, value in request.POST.items():
             if key.startswith('cfv_'):
@@ -1210,9 +1210,9 @@ def edit_meta_data(request, pid):
                              extra_tags='alert-success')
         return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("Edit Metadata"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit Metadata"), tab="settings")
     return render(request, 'dojo/edit_debt_context_meta_data.html',
-                  {'debt_context': prod,
+                  {'debt_context': debt_context,
                    'debt_context_tab': debt_context_tab,
                    })
 
@@ -1498,23 +1498,23 @@ class AdHocFindingView(View):
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def engagement_presets(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
-    presets = Engagement_Presets.objects.filter(debt_context=prod).all()
+    debt_context = get_object_or_404(Debt_Context, id=pid)
+    presets = Engagement_Presets.objects.filter(debt_context=debt_context).all()
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("Engagement Presets"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Engagement Presets"), tab="settings")
 
     return render(request, 'dojo/view_presets.html',
                   {'debt_context_tab': debt_context_tab,
                    'presets': presets,
-                   'prod': prod})
+                   'debt_context': debt_context})
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def edit_engagement_presets(request, pid, eid):
-    prod = get_object_or_404(Debt_Context, id=pid)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("Edit Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit Engagement Preset"), tab="settings")
 
     if request.method == 'POST':
         tform = EngagementPresetsForm(request.POST, instance=preset)
@@ -1532,17 +1532,17 @@ def edit_engagement_presets(request, pid, eid):
     return render(request, 'dojo/edit_presets.html',
                   {'debt_context_tab': debt_context_tab,
                    'tform': tform,
-                   'prod': prod})
+                   'debt_context': debt_context})
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def add_engagement_presets(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
         tform = EngagementPresetsForm(request.POST)
         if tform.is_valid():
             form_copy = tform.save(commit=False)
-            form_copy.debt_context = prod
+            form_copy.debt_context = debt_context
             form_copy.save()
             tform.save_m2m()
             messages.add_message(
@@ -1554,13 +1554,13 @@ def add_engagement_presets(request, pid):
     else:
         tform = EngagementPresetsForm()
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("New Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("New Engagement Preset"), tab="settings")
     return render(request, 'dojo/new_params.html', {'tform': tform, 'pid': pid, 'debt_context_tab': debt_context_tab})
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def delete_engagement_presets(request, pid, eid):
-    prod = get_object_or_404(Debt_Context, id=pid)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
     form = DeleteEngagementPresetsForm(instance=preset)
 
@@ -1579,7 +1579,7 @@ def delete_engagement_presets(request, pid, eid):
     collector.collect([preset])
     rels = collector.nested()
 
-    debt_context_tab = Debt_Context_Tab(prod, title=_("Delete Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Delete Engagement Preset"), tab="settings")
     return render(request, 'dojo/delete_presets.html',
                   {'debt_context': debt_context,
                    'form': form,
@@ -1590,11 +1590,11 @@ def delete_engagement_presets(request, pid, eid):
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def edit_notifications(request, pid):
-    prod = get_object_or_404(Debt_Context, id=pid)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
-        debt_context_notifications = Notifications.objects.filter(user=request.user).filter(debt_context=prod).first()
+        debt_context_notifications = Notifications.objects.filter(user=request.user).filter(debt_context=debt_context).first()
         if not debt_context_notifications:
-            debt_context_notifications = Notifications(user=request.user, debt_context=prod)
+            debt_context_notifications = Notifications(user=request.user, debt_context=debt_context)
             logger.debug('no existing debt_context notifications found')
         else:
             logger.debug('existing debt_context notifications found')
