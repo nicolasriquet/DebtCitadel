@@ -21,22 +21,29 @@ from dojo.models import (
     STATS_FIELDS,
     Dojo_User,
     Finding_Group,
+    Debt_Item_Group,
     Product,
+    Debt_Context,
     Engagement,
     Test,
     Finding,
+    Debt_Item,
     User,
     Stub_Finding,
+    Stub_Debt_Item,
     Risk_Acceptance,
     Finding_Template,
+    Debt_Item_Template,
     Test_Type,
     Development_Environment,
     NoteHistory,
     JIRA_Issue,
     Tool_Product_Settings,
+    Tool_Debt_Context_Settings,
     Tool_Configuration,
     Tool_Type,
     Product_Type,
+    Debt_Context_Type,
     JIRA_Instance,
     Endpoint,
     JIRA_Project,
@@ -57,9 +64,13 @@ from dojo.models import (
     Test_Import,
     Test_Import_Finding_Action,
     Product_Type_Member,
+    Debt_Context_Type_Member,
     Product_Member,
+    Debt_Context_Member,
     Product_Group,
+    Debt_Context_Group,
     Product_Type_Group,
+    Debt_Context_Type_Group,
     Dojo_Group,
     Role,
     Global_Role,
@@ -72,6 +83,7 @@ from dojo.models import (
     Network_Locations,
     UserContactInfo,
     Product_API_Scan_Configuration,
+    Debt_Context_API_Scan_Configuration,
     DEFAULT_NOTIFICATION,
     Vulnerability_Id,
     Vulnerability_Id_Template,
@@ -179,6 +191,15 @@ def get_product_id_from_dict(data):
             raise serializers.ValidationError("product must be an integer")
     return product_id
 
+
+def get_debt_context_id_from_dict(data):
+    debt_context_id = data.get("debt_context", None)
+    if debt_context_id:
+        if isinstance(debt_context_id, Debt_Context):
+            product_id = debt_context_id.id
+        elif isinstance(debt_context_id, str) and not debt_context_id.isdigit():
+            raise serializers.ValidationError("debt context must be an integer")
+    return debt_context_id
 
 class StatusStatisticsSerializer(serializers.Serializer):
     def __init__(self, *args, **kwargs):
@@ -477,6 +498,11 @@ class ProductMetaSerializer(serializers.ModelSerializer):
         model = DojoMeta
         fields = ("name", "value")
 
+
+class DebtContextMetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DojoMeta
+        fields = ("name", "value")
 
 class UserSerializer(serializers.ModelSerializer):
     last_login = serializers.DateTimeField(read_only=True)
@@ -913,6 +939,48 @@ class ProductMemberSerializer(serializers.ModelSerializer):
         return data
 
 
+class DebtContextMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_Member
+        fields = "__all__"
+
+    def validate(self, data):
+        if (
+                self.instance is not None
+                and data.get("debt_context") != self.instance.debt_context
+                and not user_has_permission(
+            self.context["request"].user,
+            data.get("debt_context"),
+            Permissions.Debt_Context_Manage_Members,
+        )
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a member to this debt_context"
+            )
+
+        if (
+                self.instance is None
+                or data.get("debt_context") != self.instance.debt_context
+                or data.get("user") != self.instance.user
+        ):
+            members = Debt_Context_Member.objects.filter(
+                debt_context=data.get("debt_context"), user=data.get("user")
+            )
+            if members.count() > 0:
+                raise ValidationError("Debt_Context_Member already exists")
+
+        if data.get("role").is_owner and not user_has_permission(
+                self.context["request"].user,
+                data.get("debt_context"),
+                Permissions.Debt_Context_Member_Add_Owner,
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a member as Owner to this debt_context"
+            )
+
+        return data
+
+
 class ProductGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product_Group
@@ -950,6 +1018,48 @@ class ProductGroupSerializer(serializers.ModelSerializer):
         ):
             raise PermissionDenied(
                 "You are not permitted to add a group as Owner to this product"
+            )
+
+        return data
+
+
+class DebtContextGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_Group
+        fields = "__all__"
+
+    def validate(self, data):
+        if (
+                self.instance is not None
+                and data.get("debt_context") != self.instance.debt_context
+                and not user_has_permission(
+            self.context["request"].user,
+            data.get("debt_context"),
+            Permissions.debt_context_Group_Add,
+        )
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a group to this debt_context"
+            )
+
+        if (
+                self.instance is None
+                or data.get("debt_context") != self.instance.debt_context
+                or data.get("group") != self.instance.group
+        ):
+            members = Debt_Context_Group.objects.filter(
+                debt_context=data.get("debt_context"), group=data.get("group")
+            )
+            if members.count() > 0:
+                raise ValidationError("debt_context_Group already exists")
+
+        if data.get("role").is_owner and not user_has_permission(
+                self.context["request"].user,
+                data.get("debt_context"),
+                Permissions.debt_context_Group_Add_Owner,
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a group as Owner to this debt_context"
             )
 
         return data
@@ -1008,6 +1118,58 @@ class ProductTypeMemberSerializer(serializers.ModelSerializer):
         return data
 
 
+class DebtContextTypeMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_Type_Member
+        fields = "__all__"
+
+    def validate(self, data):
+        if (
+                self.instance is not None
+                and data.get("debt_context_type") != self.instance.debt_context_type
+                and not user_has_permission(
+            self.context["request"].user,
+            data.get("debt_context_type"),
+            Permissions.Debt_Context_Type_Manage_Members,
+        )
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a member to this debt_context type"
+            )
+
+        if (
+                self.instance is None
+                or data.get("debt_context_type") != self.instance.debt_context_type
+                or data.get("user") != self.instance.user
+        ):
+            members = Debt_Context_Type_Member.objects.filter(
+                debt_context_type=data.get("debt_context_type"), user=data.get("user")
+            )
+            if members.count() > 0:
+                raise ValidationError("Debt_Context_Type_Member already exists")
+
+        if self.instance is not None and not data.get("role").is_owner:
+            owners = (
+                Debt_Context_Type_Member.objects.filter(
+                    debt_context_type=data.get("debt_context_type"), role__is_owner=True
+                )
+                .exclude(id=self.instance.id)
+                .count()
+            )
+            if owners < 1:
+                raise ValidationError("There must be at least one owner")
+
+        if data.get("role").is_owner and not user_has_permission(
+                self.context["request"].user,
+                data.get("debt_context_type"),
+                Permissions.Debt_Context_Type_Member_Add_Owner,
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a member as Owner to this debt_context type"
+            )
+
+        return data
+
 class ProductTypeGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product_Type_Group
@@ -1050,11 +1212,57 @@ class ProductTypeGroupSerializer(serializers.ModelSerializer):
         return data
 
 
+class DebtContextTypeGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_Type_Group
+        fields = "__all__"
+
+    def validate(self, data):
+        if (
+                self.instance is not None
+                and data.get("debt_context_type") != self.instance.debt_context_type
+                and not user_has_permission(
+            self.context["request"].user,
+            data.get("debt_context_type"),
+            Permissions.Debt_Context_Type_Group_Add,
+        )
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a group to this debt_context type"
+            )
+
+        if (
+                self.instance is None
+                or data.get("debt_context_type") != self.instance.debt_context_type
+                or data.get("group") != self.instance.group
+        ):
+            members = Debt_Context_Type_Group.objects.filter(
+                debt_context_type=data.get("debt_context_type"), group=data.get("group")
+            )
+            if members.count() > 0:
+                raise ValidationError("Debt_Context_Type_Group already exists")
+
+        if data.get("role").is_owner and not user_has_permission(
+                self.context["request"].user,
+                data.get("debt_context_type"),
+                Permissions.Debt_Context_Type_Group_Add_Owner,
+        ):
+            raise PermissionDenied(
+                "You are not permitted to add a group as Owner to this debt_context type"
+            )
+
+        return data
+
 class ProductTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product_Type
         fields = "__all__"
 
+
+class DebtContextTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_Type
+        fields = "__all__"
 
 class EngagementSerializer(TaggitSerializer, serializers.ModelSerializer):
     tags = TagListSerializerField(required=False)
@@ -1160,6 +1368,16 @@ class ToolProductSettingsSerializer(serializers.ModelSerializer):
         model = Tool_Product_Settings
         fields = "__all__"
 
+
+class ToolDebtContextSettingsSerializer(serializers.ModelSerializer):
+    setting_url = serializers.CharField(source="url")
+    debt_context = serializers.PrimaryKeyRelatedField(
+        queryset=Debt_Context.objects.all(), required=True
+    )
+
+    class Meta:
+        model = Tool_Debt_Context_Settings
+        fields = "__all__"
 
 class EndpointStatusSerializer(serializers.ModelSerializer):
     class Meta:
@@ -1378,6 +1596,11 @@ class ProductAPIScanConfigurationSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class DebtContextAPIScanConfigurationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_API_Scan_Configuration
+        fields = "__all__"
+
 class DevelopmentEnvironmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Development_Environment
@@ -1391,6 +1614,13 @@ class FindingGroupSerializer(serializers.ModelSerializer):
         model = Finding_Group
         fields = ("id", "name", "test", "jira_issue")
 
+
+class DebtItemGroupSerializer(serializers.ModelSerializer):
+    jira_issue = JIRAIssueSerializer(read_only=True)
+
+    class Meta:
+        model = Debt_Item_Group
+        fields = ("id", "name", "test", "jira_issue")
 
 class TestSerializer(TaggitSerializer, serializers.ModelSerializer):
     tags = TagListSerializerField(required=False)
@@ -1537,11 +1767,21 @@ class FindingMetaSerializer(serializers.ModelSerializer):
         fields = ("name", "value")
 
 
+class DebtItemMetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DojoMeta
+        fields = ("name", "value")
+
 class FindingProdTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product_Type
         fields = ["id", "name"]
 
+
+class DebtItemDebtContextTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Context_Type
+        fields = ["id", "name"]
 
 class FindingProductSerializer(serializers.ModelSerializer):
     prod_type = FindingProdTypeSerializer(required=False)
@@ -1550,6 +1790,13 @@ class FindingProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ["id", "name", "prod_type"]
 
+
+class DebtItemDebtContextSerializer(serializers.ModelSerializer):
+    prod_type = DebtItemDebtContextTypeSerializer(required=False)
+
+    class Meta:
+        model = Product
+        fields = ["id", "name", "prod_type"]
 
 class FindingEngagementSerializer(serializers.ModelSerializer):
     product = FindingProductSerializer(required=False)
@@ -1573,7 +1820,34 @@ class FindingEngagementSerializer(serializers.ModelSerializer):
         ]
 
 
+class DebtItemEngagementSerializer(serializers.ModelSerializer):
+    product = DebtItemDebtContextSerializer(required=False)
+
+    class Meta:
+        model = Engagement
+        fields = [
+            "id",
+            "name",
+            "description",
+            "debt_context",
+            "target_start",
+            "target_end",
+            "branch_tag",
+            "engagement_type",
+            "build_id",
+            "commit_hash",
+            "version",
+            "created",
+            "updated",
+        ]
+
 class FindingEnvironmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Development_Environment
+        fields = ["id", "name"]
+
+
+class DebtItemEnvironmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Development_Environment
         fields = ["id", "name"]
@@ -1585,10 +1859,35 @@ class FindingTestTypeSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
+class DebtItemTestTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Test_Type
+        fields = ["id", "name"]
+
 class FindingTestSerializer(serializers.ModelSerializer):
     engagement = FindingEngagementSerializer(required=False)
     environment = FindingEnvironmentSerializer(required=False)
     test_type = FindingTestTypeSerializer(required=False)
+
+    class Meta:
+        model = Test
+        fields = [
+            "id",
+            "title",
+            "test_type",
+            "engagement",
+            "environment",
+            "branch_tag",
+            "build_id",
+            "commit_hash",
+            "version",
+        ]
+
+
+class DebtItemTestSerializer(serializers.ModelSerializer):
+    engagement = DebtItemEngagementSerializer(required=False)
+    environment = DebtItemEnvironmentSerializer(required=False)
+    test_type = DebtItemTestTypeSerializer(required=False)
 
     class Meta:
         model = Test
@@ -1613,6 +1912,26 @@ class FindingRelatedFieldsSerializer(serializers.Serializer):
     @swagger_serializer_method(FindingTestSerializer)
     def get_test(self, obj):
         return FindingTestSerializer(read_only=True).to_representation(
+            obj.test
+        )
+
+    @extend_schema_field(JIRAIssueSerializer)
+    @swagger_serializer_method(JIRAIssueSerializer)
+    def get_jira(self, obj):
+        issue = jira_helper.get_jira_issue(obj)
+        if issue is None:
+            return None
+        return JIRAIssueSerializer(read_only=True).to_representation(issue)
+
+
+class DebtItemRelatedFieldsSerializer(serializers.Serializer):
+    test = serializers.SerializerMethodField()
+    jira = serializers.SerializerMethodField()
+
+    @extend_schema_field(DebtItemTestSerializer)
+    @swagger_serializer_method(DebtItemTestSerializer)
+    def get_test(self, obj):
+        return DebtItemTestSerializer(read_only=True).to_representation(
             obj.test
         )
 
@@ -1796,6 +2115,171 @@ class FindingSerializer(TaggitSerializer, serializers.ModelSerializer):
         return serialized_burps.data
 
 
+class DebtItemSerializer(TaggitSerializer, serializers.ModelSerializer):
+    tags = TagListSerializerField(required=False)
+    request_response = serializers.SerializerMethodField()
+    accepted_risks = RiskAcceptanceSerializer(
+        many=True, read_only=True, source="risk_acceptance_set"
+    )
+    push_to_jira = serializers.BooleanField(default=False)
+    age = serializers.IntegerField(read_only=True)
+    sla_days_remaining = serializers.IntegerField(read_only=True)
+    debt_item_meta = DebtItemMetaSerializer(read_only=True, many=True)
+    related_fields = serializers.SerializerMethodField()
+    # for backwards compatibility
+    jira_creation = serializers.SerializerMethodField(read_only=True)
+    jira_change = serializers.SerializerMethodField(read_only=True)
+    display_status = serializers.SerializerMethodField()
+    debt_item_groups = DebtItemGroupSerializer(
+        source="debt_item_group_set", many=True, read_only=True
+    )
+    vulnerability_ids = VulnerabilityIdSerializer(
+        source="vulnerability_id_set", many=True, required=False
+    )
+    reporter = serializers.PrimaryKeyRelatedField(
+        required=False, queryset=User.objects.all()
+    )
+
+    class Meta:
+        model = Debt_Item
+        exclude = (
+            "cve",
+            "inherited_tags",
+        )
+
+    @extend_schema_field(serializers.DateTimeField())
+    @swagger_serializer_method(serializers.DateTimeField())
+    def get_jira_creation(self, obj):
+        return jira_helper.get_jira_creation(obj)
+
+    @extend_schema_field(serializers.DateTimeField())
+    @swagger_serializer_method(serializers.DateTimeField())
+    def get_jira_change(self, obj):
+        return jira_helper.get_jira_change(obj)
+
+    @extend_schema_field(DebtItemRelatedFieldsSerializer)
+    @swagger_serializer_method(DebtItemRelatedFieldsSerializer)
+    def get_related_fields(self, obj):
+        request = self.context.get("request", None)
+        if request is None:
+            return None
+
+        query_params = request.query_params
+        if query_params.get("related_fields", "false") == "true":
+            return DebtItemRelatedFieldsSerializer(
+                required=False
+            ).to_representation(obj)
+        else:
+            return None
+
+    def get_display_status(self, obj) -> str:
+        return obj.status()
+
+    # Overriding this to push add Push to JIRA functionality
+    def update(self, instance, validated_data):
+        # remove tags from validated data and store them seperately
+        to_be_tagged, validated_data = self._pop_tags(validated_data)
+
+        # pop push_to_jira so it won't get send to the model as a field
+        # TODO: JIRA can we remove this is_push_all_issues, already checked in
+        # apiv2 viewset?
+        push_to_jira = validated_data.pop(
+            "push_to_jira"
+        ) or jira_helper.is_push_all_issues(instance)
+
+        # Save vulnerability ids and pop them
+        if "vulnerability_id_set" in validated_data:
+            vulnerability_id_set = validated_data.pop("vulnerability_id_set")
+            vulnerability_ids = list()
+            if vulnerability_id_set:
+                for vulnerability_id in vulnerability_id_set:
+                    vulnerability_ids.append(
+                        vulnerability_id["vulnerability_id"]
+                    )
+            save_vulnerability_ids(instance, vulnerability_ids)
+
+        instance = super(TaggitSerializer, self).update(
+            instance, validated_data
+        )
+        # Save the reporter on the debt_item
+        if reporter_id := validated_data.get("reporter"):
+            instance.reporter = reporter_id
+
+        # If we need to push to JIRA, an extra save call is needed.
+        # Also if we need to update the mitigation date of the debt_item.
+        # TODO try to combine create and save, but for now I'm just fixing a
+        # bug and don't want to change to much
+        if push_to_jira:
+            instance.save(push_to_jira=push_to_jira)
+
+        # not sure why we are returning a tag_object, but don't want to change
+        # too much now as we're just fixing a bug
+        tag_object = self._save_tags(instance, to_be_tagged)
+        return tag_object
+
+    def validate(self, data):
+        if self.context["request"].method == "PATCH":
+            is_active = data.get("active", self.instance.active)
+            is_verified = data.get("verified", self.instance.verified)
+            is_duplicate = data.get("duplicate", self.instance.duplicate)
+            is_false_p = data.get("false_p", self.instance.false_p)
+            is_risk_accepted = data.get(
+                "risk_accepted", self.instance.risk_accepted
+            )
+        else:
+            is_active = data.get("active", True)
+            is_verified = data.get("verified", False)
+            is_duplicate = data.get("duplicate", False)
+            is_false_p = data.get("false_p", False)
+            is_risk_accepted = data.get("risk_accepted", False)
+
+        if (is_active or is_verified) and is_duplicate:
+            raise serializers.ValidationError(
+                "Duplicate debt_items cannot be" " verified or active"
+            )
+        if is_false_p and is_verified:
+            raise serializers.ValidationError(
+                "False positive debt_items cannot " "be verified."
+            )
+
+        if is_risk_accepted and not self.instance.risk_accepted:
+            if (
+                    not self.instance.test.engagement.debt_context.enable_simple_risk_acceptance
+            ):
+                raise serializers.ValidationError(
+                    "Simple risk acceptance is disabled for this debt_context, use the UI to accept this debt_item."
+                )
+
+        if is_active and is_risk_accepted:
+            raise serializers.ValidationError(
+                "Active debt_items cannot be risk accepted."
+            )
+
+        return data
+
+    def build_relational_field(self, field_name, relation_info):
+        if field_name == "notes":
+            return NoteSerializer, {"many": True, "read_only": True}
+        return super().build_relational_field(field_name, relation_info)
+
+    @extend_schema_field(BurpRawRequestResponseSerializer)
+    @swagger_serializer_method(
+        serializer_or_field=BurpRawRequestResponseSerializer
+    )
+    def get_request_response(self, obj):
+        # burp_req_resp = BurpRawRequestResponse.objects.filter(debt_item=obj)
+        burp_req_resp = obj.burprawrequestresponse_set.all()
+        burp_list = []
+        for burp in burp_req_resp:
+            request = burp.get_request()
+            response = burp.get_response()
+            burp_list.append({"request": request, "response": response})
+        serialized_burps = BurpRawRequestResponseSerializer(
+            {"req_resp": burp_list}
+        )
+        return serialized_burps.data
+
+
 class FindingCreateSerializer(TaggitSerializer, serializers.ModelSerializer):
     notes = serializers.PrimaryKeyRelatedField(
         read_only=True, allow_null=True, required=False, many=True
@@ -1904,6 +2388,114 @@ class FindingCreateSerializer(TaggitSerializer, serializers.ModelSerializer):
         return data
 
 
+class DebtItemCreateSerializer(TaggitSerializer, serializers.ModelSerializer):
+    notes = serializers.PrimaryKeyRelatedField(
+        read_only=True, allow_null=True, required=False, many=True
+    )
+    test = serializers.PrimaryKeyRelatedField(queryset=Test.objects.all())
+    thread_id = serializers.IntegerField(default=0)
+    found_by = serializers.PrimaryKeyRelatedField(
+        queryset=Test_Type.objects.all(), many=True
+    )
+    url = serializers.CharField(allow_null=True, default=None)
+    tags = TagListSerializerField(required=False)
+    push_to_jira = serializers.BooleanField(default=False)
+    vulnerability_ids = VulnerabilityIdSerializer(
+        source="vulnerability_id_set", many=True, required=False
+    )
+    reporter = serializers.PrimaryKeyRelatedField(
+        required=False, queryset=User.objects.all()
+    )
+
+    class Meta:
+        model = Debt_Item
+        exclude = (
+            "cve",
+            "inherited_tags",
+        )
+        extra_kwargs = {
+            "active": {"required": True},
+            "verified": {"required": True},
+        }
+
+    # Overriding this to push add Push to JIRA functionality
+    def create(self, validated_data):
+        # remove tags from validated data and store them seperately
+        to_be_tagged, validated_data = self._pop_tags(validated_data)
+
+        # pop push_to_jira so it won't get send to the model as a field
+        push_to_jira = validated_data.pop("push_to_jira")
+
+        # Save vulnerability ids and pop them
+        if "vulnerability_id_set" in validated_data:
+            vulnerability_id_set = validated_data.pop("vulnerability_id_set")
+        else:
+            vulnerability_id_set = None
+
+        # first save, so we have an instance to get push_all_to_jira from
+        new_debt_item = super(TaggitSerializer, self).create(validated_data)
+
+        if vulnerability_id_set:
+            vulnerability_ids = list()
+            for vulnerability_id in vulnerability_id_set:
+                vulnerability_ids.append(vulnerability_id["vulnerability_id"])
+            validated_data["cve"] = vulnerability_ids[0]
+            save_vulnerability_ids(new_debt_item, vulnerability_ids)
+            new_debt_item.save()
+
+        # TODO: JIRA can we remove this is_push_all_issues, already checked in
+        # apiv2 viewset?
+        push_to_jira = push_to_jira or jira_helper.is_push_all_issues(
+            new_debt_item
+        )
+
+        # If we need to push to JIRA, an extra save call is needed.
+        # TODO try to combine create and save, but for now I'm just fixing a
+        # bug and don't want to change to much
+        if push_to_jira or new_debt_item:
+            new_debt_item.save(push_to_jira=push_to_jira)
+
+        # not sure why we are returning a tag_object, but don't want to change
+        # too much now as we're just fixing a bug
+        tag_object = self._save_tags(new_debt_item, to_be_tagged)
+        return tag_object
+
+    def validate(self, data):
+        if "reporter" not in data:
+            request = self.context["request"]
+            data["reporter"] = request.user
+
+        if (data.get("active") or data.get("verified")) and data.get(
+                "duplicate"
+        ):
+            raise serializers.ValidationError(
+                "Duplicate debt_items cannot be verified or active"
+            )
+        if data.get("false_p") and data.get("verified"):
+            raise serializers.ValidationError(
+                "False positive debt_items cannot be verified."
+            )
+
+        if "risk_accepted" in data and data.get("risk_accepted"):
+            test = data.get("test")
+            # test = Test.objects.get(id=test_id)
+            if not test.engagement.debt_item.enable_simple_risk_acceptance:
+                raise serializers.ValidationError(
+                    "Simple risk acceptance is disabled for this debt_item, use the UI to accept this debt_item."
+                )
+
+        if (
+                data.get("active")
+                and "risk_accepted" in data
+                and data.get("risk_accepted")
+        ):
+            raise serializers.ValidationError(
+                "Active debt_items cannot be risk accepted."
+            )
+
+        return data
+
+
 class VulnerabilityIdTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vulnerability_Id_Template
@@ -1962,6 +2554,59 @@ class FindingTemplateSerializer(TaggitSerializer, serializers.ModelSerializer):
         return super(TaggitSerializer, self).update(instance, validated_data)
 
 
+class DebtItemTemplateSerializer(TaggitSerializer, serializers.ModelSerializer):
+    tags = TagListSerializerField(required=False)
+    vulnerability_ids = VulnerabilityIdTemplateSerializer(
+        source="vulnerability_id_template_set", many=True, required=False
+    )
+
+    class Meta:
+        model = Debt_Item_Template
+        exclude = ("cve",)
+
+    def create(self, validated_data):
+        # Save vulnerability ids and pop them
+        if "vulnerability_id_template_set" in validated_data:
+            vulnerability_id_set = validated_data.pop(
+                "vulnerability_id_template_set"
+            )
+        else:
+            vulnerability_id_set = None
+
+        new_debt_item_template = super(TaggitSerializer, self).create(
+            validated_data
+        )
+
+        if vulnerability_id_set:
+            vulnerability_ids = list()
+            for vulnerability_id in vulnerability_id_set:
+                vulnerability_ids.append(vulnerability_id["vulnerability_id"])
+            validated_data["cve"] = vulnerability_ids[0]
+            save_vulnerability_ids_template(
+                new_debt_item_template, vulnerability_ids
+            )
+            new_debt_item_template.save()
+
+        return new_debt_item_template
+
+    def update(self, instance, validated_data):
+        # Save vulnerability ids and pop them
+        if "vulnerability_id_template_set" in validated_data:
+            vulnerability_id_set = validated_data.pop(
+                "vulnerability_id_template_set"
+            )
+            vulnerability_ids = list()
+            if vulnerability_id_set:
+                for vulnerability_id in vulnerability_id_set:
+                    vulnerability_ids.append(
+                        vulnerability_id["vulnerability_id"]
+                    )
+            save_vulnerability_ids_template(instance, vulnerability_ids)
+
+        return super(TaggitSerializer, self).update(instance, validated_data)
+
+
+
 class CredentialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cred_User
@@ -1980,11 +2625,28 @@ class StubFindingSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class StubDebtItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Stub_Debt_Item
+        fields = "__all__"
+
+
 class StubFindingCreateSerializer(serializers.ModelSerializer):
     test = serializers.PrimaryKeyRelatedField(queryset=Test.objects.all())
 
     class Meta:
         model = Stub_Finding
+        fields = "__all__"
+        extra_kwargs = {
+            "reporter": {"default": serializers.CurrentUserDefault()},
+        }
+
+
+class StubDebtItemCreateSerializer(serializers.ModelSerializer):
+    test = serializers.PrimaryKeyRelatedField(queryset=Test.objects.all())
+
+    class Meta:
+        model = Stub_Debt_Item
         fields = "__all__"
         extra_kwargs = {
             "reporter": {"default": serializers.CurrentUserDefault()},
@@ -2016,6 +2678,33 @@ class ProductSerializer(TaggitSerializer, serializers.ModelSerializer):
     )
     def get_findings_list(self, obj) -> List[int]:
         return obj.open_findings_list
+
+
+class DebtContextSerializer(TaggitSerializer, serializers.ModelSerializer):
+    debt_items_count = serializers.SerializerMethodField()
+    debt_items_list = serializers.SerializerMethodField()
+
+    tags = TagListSerializerField(required=False)
+    debt_context_meta = DebtContextMetaSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Debt_Context
+        exclude = (
+            "tid",
+            "updated",
+        )
+
+    def get_debt_items_count(self, obj) -> int:
+        return obj.debt_items_count
+
+    #  -> List[int] as return type doesn't seem enough for drf-yasg
+    @swagger_serializer_method(
+        serializer_or_field=serializers.ListField(
+            child=serializers.IntegerField()
+        )
+    )
+    def get_debt_items_list(self, obj) -> List[int]:
+        return obj.open_debt_items_list
 
 
 class ImportScanSerializer(serializers.Serializer):
@@ -2779,6 +3468,12 @@ class FindingToNotesSerializer(serializers.Serializer):
     notes = NoteSerializer(many=True)
 
 
+class DebtItemToNotesSerializer(serializers.Serializer):
+    debt_item_id = serializers.PrimaryKeyRelatedField(
+        queryset=Debt_Item.objects.all(), many=False, allow_null=True
+    )
+    notes = NoteSerializer(many=True)
+
 class FindingToFilesSerializer(serializers.Serializer):
     finding_id = serializers.PrimaryKeyRelatedField(
         queryset=Finding.objects.all(), many=False, allow_null=True
@@ -2806,6 +3501,32 @@ class FindingToFilesSerializer(serializers.Serializer):
         return new_data
 
 
+class DebtItemToFilesSerializer(serializers.Serializer):
+    debt_item_id = serializers.PrimaryKeyRelatedField(
+        queryset=Debt_Item.objects.all(), many=False, allow_null=True
+    )
+    files = FileSerializer(many=True)
+
+    def to_representation(self, data):
+        debt_item = data.get("debt_item_id")
+        files = data.get("files")
+        new_files = []
+        for file in files:
+            new_files.append(
+                {
+                    "id": file.id,
+                    "file": "{site_url}/{file_access_url}".format(
+                        site_url=settings.SITE_URL,
+                        file_access_url=file.get_accessible_url(
+                            debt_item, debt_item.id
+                        ),
+                    ),
+                    "title": file.title,
+                }
+            )
+        new_data = {"debt_item_id": debt_item.id, "files": new_files}
+        return new_data
+
 class FindingCloseSerializer(serializers.ModelSerializer):
     is_mitigated = serializers.BooleanField(required=False)
     mitigated = serializers.DateTimeField(required=False)
@@ -2815,6 +3536,24 @@ class FindingCloseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Finding
+        fields = (
+            "is_mitigated",
+            "mitigated",
+            "false_p",
+            "out_of_scope",
+            "duplicate",
+        )
+
+
+class DebtItemCloseSerializer(serializers.ModelSerializer):
+    is_mitigated = serializers.BooleanField(required=False)
+    mitigated = serializers.DateTimeField(required=False)
+    false_p = serializers.BooleanField(required=False)
+    out_of_scope = serializers.BooleanField(required=False)
+    duplicate = serializers.BooleanField(required=False)
+
+    class Meta:
+        model = Debt_Item
         fields = (
             "is_mitigated",
             "mitigated",
@@ -2898,6 +3637,9 @@ class SystemSettingsSerializer(TaggitSerializer, serializers.ModelSerializer):
 class FindingNoteSerializer(serializers.Serializer):
     note_id = serializers.IntegerField()
 
+
+class DebtItemNoteSerializer(serializers.Serializer):
+    note_id = serializers.IntegerField()
 
 class NotificationsSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(

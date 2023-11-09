@@ -1,7 +1,8 @@
 from crum import get_current_user
 from django.db.models import Q
-from dojo.models import Dojo_Group_Member, Product_Member, Product_Type_Member, \
-    Product_Group, Product_Type_Group, Dojo_User
+from dojo.models import Dojo_Group_Member, Product_Member, Debt_Context_Member, Product_Type_Member, \
+    Debt_Context_Type_Member, Product_Type_Group, Debt_Context_Type_Group, Dojo_User, \
+    Product_Group, Debt_Context_Group
 from dojo.authorization.authorization import get_roles_for_permission, user_has_global_permission
 from dojo.product.queries import get_authorized_products
 from dojo.product_type.queries import get_authorized_product_types
@@ -50,6 +51,32 @@ def get_authorized_users_for_product_and_product_type(users, product, permission
         Q(global_role__role__in=roles) |
         Q(is_superuser=True))
 
+
+def get_authorized_users_for_debt_context_and_debt_context_type(users, debt_context, permission):
+    if users is None:
+        users = Dojo_User.objects.filter(is_active=True)
+
+    roles = get_roles_for_permission(permission)
+    debt_context_members = Debt_Context_Member.objects \
+        .filter(debt_context=debt_context, role__in=roles) \
+        .select_related('user')
+    debt_context_type_members = Debt_Context_Type_Member.objects \
+        .filter(debt_context_type=debt_context.prod_type, role__in=roles) \
+        .select_related('user')
+    debt_context_groups = Debt_Context_Group.objects \
+        .filter(debt_context=debt_context, role__in=roles)
+    debt_context_type_groups = Debt_Context_Type_Group.objects \
+        .filter(debt_context_type=debt_context.prod_type, role__in=roles)
+    group_members = Dojo_Group_Member.objects \
+        .filter(
+        Q(group__in=[pg.group for pg in debt_context_groups]) |
+        Q(group__in=[ptg.group for ptg in debt_context_type_groups])) \
+        .select_related('user')
+    return users.filter(Q(id__in=[pm.user.id for pm in debt_context_members]) |
+                        Q(id__in=[ptm.user.id for ptm in debt_context_type_members]) |
+                        Q(id__in=[gm.user.id for gm in group_members]) |
+                        Q(global_role__role__in=roles) |
+                        Q(is_superuser=True))
 
 # Cached because it is a complex SQL query and it is called 3 times for the engagement lists in products
 @cache_for_request

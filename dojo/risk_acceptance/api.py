@@ -91,6 +91,34 @@ class AcceptedFindingsMixin(ABC):
         return Response(status=201, data=result.data)
 
 
+class AcceptedDebtItemsMixin(ABC):
+
+    @swagger_auto_schema(
+        request_body=AcceptedRiskSerializer(many=True),
+        responses={status.HTTP_201_CREATED: RiskAcceptanceSerializer(many=True)},
+    )
+    @extend_schema(
+        request=AcceptedRiskSerializer(many=True),
+        responses={status.HTTP_201_CREATED: RiskAcceptanceSerializer(many=True)},
+    )
+    @action(methods=['post'], detail=False, permission_classes=[IsAdminUser], serializer_class=AcceptedRiskSerializer)
+    def accept_risks(self, request):
+        serializer = AcceptedRiskSerializer(data=request.data, many=True)
+        if serializer.is_valid():
+            accepted_risks = serializer.save()
+        else:
+            return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        owner = request.user
+        accepted_result = []
+        for engagement in get_authorized_engagements(Permissions.Engagement_View):
+            base_debt_items = engagement.unaccepted_open_debt_items
+            accepted = _accept_risks(accepted_risks, base_debt_items, owner)
+            engagement.accept_risks(accepted)
+            accepted_result.extend(accepted)
+        result = RiskAcceptanceSerializer(instance=accepted_result, many=True)
+        return Response(status=201, data=result.data)
+
+
 def _accept_risks(accepted_risks: List[AcceptedRisk], base_findings: QuerySet, owner: User):
     accepted = []
     for risk in accepted_risks:

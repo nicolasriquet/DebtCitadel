@@ -24,22 +24,21 @@ from django.utils.translation import gettext as _
 from django.views import View
 
 from dojo.templatetags.display_tags import asvs_calc_level
-from dojo.filters import debt_contextEngagementFilter, debt_contextFilter, EngagementFilter, MetricsEndpointFilter, \
-    MetricsFindingFilter, debt_contextComponentFilter
-from dojo.forms import debt_contextForm, EngForm, Deletedebt_contextForm, DojoMetaDataForm, JIRAProjectForm, JIRAFindingForm, \
-    AdHocFindingForm, \
-    EngagementPresetsForm, DeleteEngagementPresetsForm, debt_contextNotificationsForm, \
-    GITHUB_debt_context_Form, GITHUBFindingForm, AppAnalysisForm, JIRAEngagementForm, Add_debt_context_MemberForm, \
-    Edit_debt_context_MemberForm, Delete_debt_context_MemberForm, Add_debt_context_GroupForm, Edit_debt_context_Group_Form, \
-    Delete_debt_context_GroupForm, SLA_Configuration, \
-    DeleteAppAnalysisForm, debt_context_API_Scan_ConfigurationForm, Deletedebt_context_API_Scan_ConfigurationForm
-from dojo.models import debt_context_Type, Note_Type, Finding, debt_context, Engagement, Test, GITHUB_PKey, \
-    Test_Type, System_Settings, Languages, App_Analysis, Benchmark_debt_context_Summary, Endpoint_Status, \
-    Endpoint, Engagement_Presets, DojoMeta, Notifications, BurpRawRequestResponse, debt_context_Member, \
-    debt_context_Group, debt_context_API_Scan_Configuration
+from dojo.filters import DebtContextEngagementFilter, DebtContextFilter, EngagementFilter, MetricsEndpointFilter, \
+    MetricsFindingFilter, DebtContextComponentFilter
+from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMetaDataForm, JIRAProjectForm, JIRAFindingForm, \
+    AdHocFindingForm, EngagementPresetsForm, DeleteEngagementPresetsForm, DebtContextNotificationsForm, \
+    GITHUBDebtItemForm, GITHUB_Debt_Context_Form, GITHUBFindingForm, AppAnalysisForm, JIRAEngagementForm, Add_Debt_Context_MemberForm, \
+    Edit_Debt_Context_MemberForm, Delete_Debt_Context_MemberForm, Add_Debt_Context_GroupForm, Edit_Debt_Context_Group_Form, \
+    Delete_Debt_Context_GroupForm, SLA_Configuration, \
+    DeleteAppAnalysisForm, Debt_Context_API_Scan_ConfigurationForm, DeleteDebt_Context_API_Scan_ConfigurationForm
+from dojo.models import Debt_Context_Type, Note_Type, Finding, Debt_Context, Engagement, Test, GITHUB_PKey, \
+    Test_Type, System_Settings, Languages, App_Analysis, Benchmark_Debt_Context_Summary, Endpoint_Status, \
+    Endpoint, Engagement_Presets, DojoMeta, Notifications, BurpRawRequestResponse, Debt_Context_Member, \
+    Debt_Context_Group, Debt_Context_API_Scan_Configuration
 from dojo.utils import add_external_issue, add_error_message_to_response, add_field_errors_to_response, get_page_items, \
     add_breadcrumb, async_delete, \
-    get_system_setting, get_setting, debt_context_Tab, get_punchcard_data, queryset_check, is_title_in_breadcrumbs, \
+    get_system_setting, get_setting, Debt_Context_Tab, get_punchcard_data, queryset_check, is_title_in_breadcrumbs, \
     get_enabled_notifications_list, get_zero_severity_level, sum_by_severity_level, get_open_findings_burndown
 
 from dojo.notifications.helper import create_notification
@@ -66,16 +65,16 @@ def debt_context(request):
     if 'prod_type' in request.GET:
         p = request.GET.getlist('prod_type', [])
         if len(p) == 1:
-            debt_context_type = get_object_or_404(debt_context_Type, id=p[0])
+            debt_context_type = get_object_or_404(Debt_Context_Type, id=p[0])
 
-    prods = get_authorized_debt_contexts(Permissions.debt_context_View)
+    prods = get_authorized_debt_contexts(Permissions.Debt_Context_View)
 
     # perform all stuff for filtering and pagination first, before annotation/prefetching
     # otherwise the paginator will perform all the annotations/prefetching already only to count the total number of records
     # see https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
     name_words = prods.values_list('name', flat=True)
 
-    prod_filter = debt_contextFilter(request.GET, queryset=prods, user=request.user)
+    prod_filter = DebtContextFilter(request.GET, queryset=prods, user=request.user)
 
     prod_list = get_page_items(request, prod_filter.qs, 25)
 
@@ -142,22 +141,22 @@ def iso_to_gregorian(iso_year, iso_week, iso_day):
     return start + timedelta(weeks=iso_week - 1, days=iso_day - 1)
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def view_debt_context(request, pid):
-    prod_query = debt_context.objects.all().select_related('debt_context_manager', 'technical_contact', 'team_manager', 'sla_configuration') \
+    prod_query = Debt_Context.objects.all().select_related('debt_context_manager', 'technical_contact', 'team_manager', 'sla_configuration') \
                                       .prefetch_related('members') \
                                       .prefetch_related('prod_type__members')
     prod = get_object_or_404(prod_query, id=pid)
-    debt_context_members = get_authorized_members_for_debt_context(prod, Permissions.debt_context_View)
-    debt_context_type_members = get_authorized_members_for_debt_context_type(prod.prod_type, Permissions.debt_context_Type_View)
-    debt_context_groups = get_authorized_groups_for_debt_context(prod, Permissions.debt_context_View)
-    debt_context_type_groups = get_authorized_groups_for_debt_context_type(prod.prod_type, Permissions.debt_context_Type_View)
-    personal_notifications_form = debt_contextNotificationsForm(
+    debt_context_members = get_authorized_members_for_debt_context(prod, Permissions.Debt_Context_View)
+    debt_context_type_members = get_authorized_members_for_debt_context_type(prod.prod_type, Permissions.Debt_Context_Type_View)
+    debt_context_groups = get_authorized_groups_for_debt_context(prod, Permissions.Debt_Context_View)
+    debt_context_type_groups = get_authorized_groups_for_debt_context_type(prod.prod_type, Permissions.Debt_Context_Type_View)
+    personal_notifications_form = DebtContextNotificationsForm(
         instance=Notifications.objects.filter(user=request.user).filter(debt_context=prod).first())
     langSummary = Languages.objects.filter(debt_context=prod).aggregate(Sum('files'), Sum('code'), Count('files'))
     languages = Languages.objects.filter(debt_context=prod).order_by('-code').select_related('language')
     app_analysis = App_Analysis.objects.filter(debt_context=prod).order_by('name')
-    benchmarks = Benchmark_debt_context_Summary.objects.filter(debt_context=prod, publish=True,
+    benchmarks = Benchmark_Debt_Context_Summary.objects.filter(debt_context=prod, publish=True,
                                                           benchmark_type__enabled=True).order_by('benchmark_type__name')
     sla = SLA_Configuration.objects.filter(id=prod.sla_configuration_id).first()
     benchAndPercent = []
@@ -209,7 +208,7 @@ def view_debt_context(request, pid):
 
     total = critical + high + medium + low + info
 
-    debt_context_tab = debt_context_Tab(prod, title=_("debt_context"), tab="overview")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("debt_context"), tab="overview")
     return render(request, 'dojo/view_debt_context_details.html', {
         'prod': prod,
         'debt_context_tab': debt_context_tab,
@@ -236,10 +235,10 @@ def view_debt_context(request, pid):
         'sla': sla})
 
 
-@user_is_authorized(debt_context, Permissions.Component_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Component_View, 'pid')
 def view_debt_context_components(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
-    debt_context_tab = debt_context_Tab(prod, title=_("debt_context"), tab="components")
+    prod = get_object_or_404(Debt_Context, id=pid)
+    debt_context_tab = Debt_Context_Tab(prod, title=_("debt_context"), tab="components")
     separator = ', '
 
     # Get components ordered by component_name and concat component versions to the same row
@@ -260,7 +259,7 @@ def view_debt_context_components(request, pid):
     # Default sort by total descending
     component_query = component_query.order_by('-total')
 
-    comp_filter = debt_contextComponentFilter(request.GET, queryset=component_query)
+    comp_filter = DebtContextComponentFilter(request.GET, queryset=component_query)
     result = get_page_items(request, comp_filter.qs, 25)
 
     # Filter out None values for auto-complete
@@ -496,9 +495,9 @@ def endpoint_querys(request, prod):
     return filters
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def view_debt_context_metrics(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     engs = Engagement.objects.filter(debt_context=prod, active=True)
     view = identify_view(request)
 
@@ -629,7 +628,7 @@ def view_debt_context_metrics(request, pid):
         else:
             test_data[t.test_type.name] = t.verified_finding_count
 
-    debt_context_tab = debt_context_Tab(prod, title=_("debt_context"), tab="metrics")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("debt_context"), tab="metrics")
 
     open_objs_by_age = {x: len([_ for _ in filters.get('open') if _.age == x]) for x in set([_.age for _ in filters.get('open')])}
 
@@ -674,9 +673,9 @@ def view_debt_context_metrics(request, pid):
         'user': request.user})
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def async_burndown_metrics(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     open_findings_burndown = get_open_findings_burndown(prod)
 
     return JsonResponse({
@@ -690,16 +689,16 @@ def async_burndown_metrics(request, pid):
     })
 
 
-@user_is_authorized(debt_context, Permissions.Engagement_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Engagement_View, 'pid')
 def view_engagements(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
 
     default_page_num = 10
     recent_test_day_count = 7
 
     # In Progress Engagements
     engs = Engagement.objects.filter(debt_context=prod, active=True, status="In Progress").order_by('-updated')
-    active_engs_filter = debt_contextEngagementFilter(request.GET, queryset=engs, prefix='active')
+    active_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='active')
     result_active_engs = get_page_items(request, active_engs_filter.qs, default_page_num, prefix="engs")
     # prefetch only after creating the filters to avoid https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
     result_active_engs.object_list = prefetch_for_view_engagements(result_active_engs.object_list,
@@ -707,19 +706,19 @@ def view_engagements(request, pid):
 
     # Engagements that are queued because they haven't started or paused
     engs = Engagement.objects.filter(~Q(status="In Progress"), debt_context=prod, active=True).order_by('-updated')
-    queued_engs_filter = debt_contextEngagementFilter(request.GET, queryset=engs, prefix='queued')
+    queued_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='queued')
     result_queued_engs = get_page_items(request, queued_engs_filter.qs, default_page_num, prefix="queued_engs")
     result_queued_engs.object_list = prefetch_for_view_engagements(result_queued_engs.object_list,
                                                                    recent_test_day_count)
 
     # Cancelled or Completed Engagements
     engs = Engagement.objects.filter(debt_context=prod, active=False).order_by('-target_end')
-    inactive_engs_filter = debt_contextEngagementFilter(request.GET, queryset=engs, prefix='closed')
+    inactive_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='closed')
     result_inactive_engs = get_page_items(request, inactive_engs_filter.qs, default_page_num, prefix="inactive_engs")
     result_inactive_engs.object_list = prefetch_for_view_engagements(result_inactive_engs.object_list,
                                                                      recent_test_day_count)
 
-    debt_context_tab = debt_context_Tab(prod, title=_("All Engagements"), tab="engagements")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("All Engagements"), tab="engagements")
     return render(request, 'dojo/view_engagements.html', {
         'prod': prod,
         'debt_context_tab': debt_context_tab,
@@ -776,29 +775,29 @@ def import_scan_results_prod(request, pid=None):
 
 
 def new_debt_context(request, ptid=None):
-    if get_authorized_debt_context_types(Permissions.debt_context_Type_Add_debt_context).count() == 0:
+    if get_authorized_debt_context_types(Permissions.Debt_Context_Type_Add_debt_context).count() == 0:
         raise PermissionDenied()
 
     jira_project_form = None
     error = False
     initial = None
     if ptid is not None:
-        prod_type = get_object_or_404(debt_context_Type, pk=ptid)
+        prod_type = get_object_or_404(Debt_Context_Type, pk=ptid)
         initial = {'prod_type': prod_type}
 
-    form = debt_contextForm(initial=initial)
+    form = DebtContextForm(initial=initial)
 
     if request.method == 'POST':
-        form = debt_contextForm(request.POST, instance=debt_context())
+        form = DebtContextForm(request.POST, instance=Debt_Context())
 
         if get_system_setting('enable_github'):
-            gform = GITHUB_debt_context_Form(request.POST, instance=GITHUB_PKey())
+            gform = GITHUB_Debt_Context_Form(request.POST, instance=GITHUB_PKey())
         else:
             gform = None
 
         if form.is_valid():
             debt_context_type = form.instance.prod_type
-            user_has_permission_or_403(request.user, debt_context_type, Permissions.debt_context_Type_Add_debt_context)
+            user_has_permission_or_403(request.user, debt_context_type, Permissions.Debt_Context_Type_Add_Debt_Context)
 
             debt_context = form.save()
             messages.add_message(request,
@@ -854,7 +853,7 @@ def new_debt_context(request, ptid=None):
             jira_project_form = JIRAProjectForm()
 
         if get_system_setting('enable_github'):
-            gform = GITHUB_debt_context_Form()
+            gform = GITHUB_Debt_Context_Form()
         else:
             gform = None
 
@@ -865,9 +864,9 @@ def new_debt_context(request, ptid=None):
                    'gform': gform})
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Edit, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def edit_debt_context(request, pid):
-    debt_context = debt_context.objects.get(pk=pid)
+    debt_context = Debt_Context.objects.get(pk=pid)
     system_settings = System_Settings.objects.get()
     jira_enabled = system_settings.enable_jira
     jira_project = None
@@ -884,7 +883,7 @@ def edit_debt_context(request, pid):
         pass
 
     if request.method == 'POST':
-        form = debt_contextForm(request.POST, instance=debt_context)
+        form = DebtContextForm(request.POST, instance=debt_context)
         jira_project = jira_helper.get_jira_project(debt_context)
         if form.is_valid():
             form.save()
@@ -898,14 +897,14 @@ def edit_debt_context(request, pid):
             error = not success
 
             if get_system_setting('enable_github') and github_inst:
-                gform = GITHUB_debt_context_Form(request.POST, instance=github_inst)
+                gform = GITHUB_Debt_Context_Form(request.POST, instance=github_inst)
                 # need to handle delete
                 try:
                     gform.save()
                 except:
                     pass
             elif get_system_setting('enable_github'):
-                gform = GITHUB_debt_context_Form(request.POST)
+                gform = GITHUB_Debt_Context_Form(request.POST)
                 if gform.is_valid():
                     new_conf = gform.save(commit=False)
                     new_conf.debt_context_id = pid
@@ -918,7 +917,7 @@ def edit_debt_context(request, pid):
             if not error:
                 return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
     else:
-        form = debt_contextForm(instance=debt_context)
+        form = DebtContextForm(instance=debt_context)
 
         if jira_enabled:
             jira_project = jira_helper.get_jira_project(debt_context)
@@ -928,13 +927,13 @@ def edit_debt_context(request, pid):
 
         if github_enabled:
             if github_inst is not None:
-                gform = GITHUB_debt_context_Form(instance=github_inst)
+                gform = GITHUB_Debt_Context_Form(instance=github_inst)
             else:
-                gform = GITHUB_debt_context_Form()
+                gform = GITHUB_Debt_Context_Form()
         else:
             gform = None
 
-    debt_context_tab = debt_context_Tab(debt_context, title=_("Edit debt_context"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Edit debt_context"), tab="settings")
     return render(request,
                   'dojo/edit_debt_context.html',
                   {'form': form,
@@ -945,15 +944,15 @@ def edit_debt_context(request, pid):
                    })
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Delete, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Delete, 'pid')
 def delete_debt_context(request, pid):
-    debt_context = get_object_or_404(debt_context, pk=pid)
-    form = Deletedebt_contextForm(instance=debt_context)
+    debt_context = get_object_or_404(Debt_Context, pk=pid)
+    form = DeleteDebtContextForm(instance=debt_context)
 
     if request.method == 'POST':
         logger.debug('delete_debt_context: POST')
         if 'id' in request.POST and str(debt_context.id) == request.POST['id']:
-            form = Deletedebt_contextForm(request.POST, instance=debt_context)
+            form = DeleteDebtContextForm(request.POST, instance=debt_context)
             if form.is_valid():
                 debt_context_type = debt_context.prod_type
                 if get_setting("ASYNC_OBJECT_DELETE"):
@@ -989,7 +988,7 @@ def delete_debt_context(request, pid):
         collector.collect([debt_context])
         rels = collector.nested()
 
-    debt_context_tab = debt_context_Tab(debt_context, title=_("debt_context"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("debt_context"), tab="settings")
 
     logger.debug('delete_debt_context: GET RENDER')
 
@@ -1000,13 +999,13 @@ def delete_debt_context(request, pid):
         'rels': rels})
 
 
-@user_is_authorized(debt_context, Permissions.Engagement_Add, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Engagement_Add, 'pid')
 def new_eng_for_app(request, pid, cicd=False):
     jira_project = None
     jira_project_form = None
     jira_epic_form = None
 
-    debt_context = debt_context.objects.get(id=pid)
+    debt_context = Debt_Context.objects.get(id=pid)
     jira_error = False
 
     if request.method == 'POST':
@@ -1081,7 +1080,7 @@ def new_eng_for_app(request, pid, cicd=False):
     else:
         title = _('New Interactive Engagement')
 
-    debt_context_tab = debt_context_Tab(debt_context, title=title, tab="engagements")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=title, tab="engagements")
     return render(request, 'dojo/new_eng.html', {
         'form': form,
         'title': title,
@@ -1090,7 +1089,7 @@ def new_eng_for_app(request, pid, cicd=False):
         'jira_project_form': jira_project_form})
 
 
-@user_is_authorized(debt_context, Permissions.Technology_Add, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Technology_Add, 'pid')
 def new_tech_for_prod(request, pid):
     if request.method == 'POST':
         form = AppAnalysisForm(request.POST)
@@ -1105,7 +1104,7 @@ def new_tech_for_prod(request, pid):
             return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
 
     form = AppAnalysisForm(initial={'user': request.user})
-    debt_context_tab = debt_context_Tab(get_object_or_404(debt_context, id=pid), title=_("Add Technology"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(get_object_or_404(Debt_Context, id=pid), title=_("Add Technology"), tab="settings")
     return render(request, 'dojo/new_tech.html',
                   {'form': form,
                    'debt_context_tab': debt_context_tab,
@@ -1126,7 +1125,7 @@ def edit_technology(request, tid):
                                  extra_tags='alert-success')
             return HttpResponseRedirect(reverse('view_debt_context', args=(technology.debt_context.id,)))
 
-    debt_context_tab = debt_context_Tab(technology.debt_context, title=_("Edit Technology"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(technology.debt_context, title=_("Edit Technology"), tab="settings")
     return render(request, 'dojo/edit_technology.html',
                   {'form': form,
                    'debt_context_tab': debt_context_tab,
@@ -1138,7 +1137,7 @@ def delete_technology(request, tid):
     technology = get_object_or_404(App_Analysis, id=tid)
     form = DeleteAppAnalysisForm(instance=technology)
     if request.method == 'POST':
-        form = Delete_debt_context_MemberForm(request.POST, instance=technology)
+        form = Delete_Debt_Context_MemberForm(request.POST, instance=technology)
         technology = form.instance
         technology.delete()
         messages.add_message(request,
@@ -1147,7 +1146,7 @@ def delete_technology(request, tid):
                              extra_tags='alert-success')
         return HttpResponseRedirect(reverse('view_debt_context', args=(technology.debt_context.id,)))
 
-    debt_context_tab = debt_context_Tab(technology.debt_context, title=_("Delete Technology"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(technology.debt_context, title=_("Delete Technology"), tab="settings")
     return render(request, 'dojo/delete_technology.html', {
         'technology': technology,
         'form': form,
@@ -1155,13 +1154,13 @@ def delete_technology(request, tid):
     })
 
 
-@user_is_authorized(debt_context, Permissions.Engagement_Add, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Engagement_Add, 'pid')
 def new_eng_for_app_cicd(request, pid):
     # we have to use pid=pid here as new_eng_for_app expects kwargs, because that is how django calls the function based on urls.py named groups
     return new_eng_for_app(request, pid=pid, cicd=True)
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Edit, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def add_meta_data(request, pid):
     prod = debt_context.objects.get(id=pid)
     if request.method == 'POST':
@@ -1179,7 +1178,7 @@ def add_meta_data(request, pid):
     else:
         form = DojoMetaDataForm()
 
-    debt_context_tab = debt_context_Tab(prod, title=_("Add Metadata"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("Add Metadata"), tab="settings")
 
     return render(request, 'dojo/add_debt_context_meta_data.html',
                   {'form': form,
@@ -1188,7 +1187,7 @@ def add_meta_data(request, pid):
                    })
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Edit, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def edit_meta_data(request, pid):
     prod = debt_context.objects.get(id=pid)
     if request.method == 'POST':
@@ -1211,7 +1210,7 @@ def edit_meta_data(request, pid):
                              extra_tags='alert-success')
         return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
 
-    debt_context_tab = debt_context_Tab(prod, title=_("Edit Metadata"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("Edit Metadata"), tab="settings")
     return render(request, 'dojo/edit_debt_context_meta_data.html',
                   {'debt_context': prod,
                    'debt_context_tab': debt_context_tab,
@@ -1220,7 +1219,7 @@ def edit_meta_data(request, pid):
 
 class AdHocFindingView(View):
     def get_debt_context(self, debt_context_id: int):
-        return get_object_or_404(debt_context, id=debt_context_id)
+        return get_object_or_404(Debt_Context, id=debt_context_id)
 
     def get_test_type(self):
         test_type, nil = Test_Type.objects.get_or_create(name=_("Pen Test"))
@@ -1254,7 +1253,7 @@ class AdHocFindingView(View):
     def get_initial_context(self, request: HttpRequest, test: Test):
         # Get the finding form first since it is used in another place
         finding_form = self.get_finding_form(request, test.engagement.debt_context)
-        debt_context_tab = debt_context_Tab(test.engagement.debt_context, title=_("Add Finding"), tab="engagements")
+        debt_context_tab = Debt_Context_Tab(test.engagement.debt_context, title=_("Add Finding"), tab="engagements")
         debt_context_tab.setEngagement(test.engagement)
         return {
             "form": finding_form,
@@ -1497,12 +1496,12 @@ class AdHocFindingView(View):
         return render(request, self.get_template(), context)
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def engagement_presets(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     presets = Engagement_Presets.objects.filter(debt_context=prod).all()
 
-    debt_context_tab = debt_context_Tab(prod, title=_("Engagement Presets"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("Engagement Presets"), tab="settings")
 
     return render(request, 'dojo/view_presets.html',
                   {'debt_context_tab': debt_context_tab,
@@ -1510,12 +1509,12 @@ def engagement_presets(request, pid):
                    'prod': prod})
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Edit, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def edit_engagement_presets(request, pid, eid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
 
-    debt_context_tab = debt_context_Tab(prod, title=_("Edit Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("Edit Engagement Preset"), tab="settings")
 
     if request.method == 'POST':
         tform = EngagementPresetsForm(request.POST, instance=preset)
@@ -1536,9 +1535,9 @@ def edit_engagement_presets(request, pid, eid):
                    'prod': prod})
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Edit, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def add_engagement_presets(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
         tform = EngagementPresetsForm(request.POST)
         if tform.is_valid():
@@ -1555,13 +1554,13 @@ def add_engagement_presets(request, pid):
     else:
         tform = EngagementPresetsForm()
 
-    debt_context_tab = debt_context_Tab(prod, title=_("New Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("New Engagement Preset"), tab="settings")
     return render(request, 'dojo/new_params.html', {'tform': tform, 'pid': pid, 'debt_context_tab': debt_context_tab})
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Edit, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
 def delete_engagement_presets(request, pid, eid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
     form = DeleteEngagementPresetsForm(instance=preset)
 
@@ -1580,7 +1579,7 @@ def delete_engagement_presets(request, pid, eid):
     collector.collect([preset])
     rels = collector.nested()
 
-    debt_context_tab = debt_context_Tab(prod, title=_("Delete Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(prod, title=_("Delete Engagement Preset"), tab="settings")
     return render(request, 'dojo/delete_presets.html',
                   {'debt_context': debt_context,
                    'form': form,
@@ -1589,9 +1588,9 @@ def delete_engagement_presets(request, pid, eid):
                    })
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def edit_notifications(request, pid):
-    prod = get_object_or_404(debt_context, id=pid)
+    prod = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
         debt_context_notifications = Notifications.objects.filter(user=request.user).filter(debt_context=prod).first()
         if not debt_context_notifications:
@@ -1600,7 +1599,7 @@ def edit_notifications(request, pid):
         else:
             logger.debug('existing debt_context notifications found')
 
-        form = debt_contextNotificationsForm(request.POST, instance=debt_context_notifications)
+        form = DebtContextNotificationsForm(request.POST, instance=debt_context_notifications)
         # print(vars(form))
 
         if form.is_valid():
@@ -1613,15 +1612,15 @@ def edit_notifications(request, pid):
     return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Manage_Members, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Manage_Members, 'pid')
 def add_debt_context_member(request, pid):
-    debt_context = get_object_or_404(debt_context, pk=pid)
-    memberform = Add_debt_context_MemberForm(initial={'debt_context': debt_context.id})
+    debt_context = get_object_or_404(Debt_Context, pk=pid)
+    memberform = Add_Debt_Context_MemberForm(initial={'debt_context': debt_context.id})
     if request.method == 'POST':
-        memberform = Add_debt_context_MemberForm(request.POST, initial={'debt_context': debt_context.id})
+        memberform = Add_Debt_Context_MemberForm(request.POST, initial={'debt_context': debt_context.id})
         if memberform.is_valid():
             if memberform.cleaned_data['role'].is_owner and not user_has_permission(request.user, debt_context,
-                                                                                    Permissions.debt_context_Member_Add_Owner):
+                                                                                    Permissions.Debt_Context_Member_Add_Owner):
                 messages.add_message(request,
                                      messages.WARNING,
                                      _('You are not permitted to add users as owners.'),
@@ -1629,9 +1628,9 @@ def add_debt_context_member(request, pid):
             else:
                 if 'users' in memberform.cleaned_data and len(memberform.cleaned_data['users']) > 0:
                     for user in memberform.cleaned_data['users']:
-                        existing_members = debt_context_Member.objects.filter(debt_context=debt_context, user=user)
+                        existing_members = Debt_Context_Member.objects.filter(debt_context=debt_context, user=user)
                         if existing_members.count() == 0:
-                            debt_context_member = debt_context_Member()
+                            debt_context_member = Debt_Context_Member()
                             debt_context_member.debt_context = debt_context
                             debt_context_member.user = user
                             debt_context_member.role = memberform.cleaned_data['role']
@@ -1641,7 +1640,7 @@ def add_debt_context_member(request, pid):
                                      _('debt_context members added successfully.'),
                                      extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
-    debt_context_tab = debt_context_Tab(debt_context, title=_("Add debt_context Member"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Add debt_context Member"), tab="settings")
     return render(request, 'dojo/new_debt_context_member.html', {
         'debt_context': debt_context,
         'form': memberform,
@@ -1649,15 +1648,15 @@ def add_debt_context_member(request, pid):
     })
 
 
-@user_is_authorized(debt_context_Member, Permissions.debt_context_Manage_Members, 'memberid')
+@user_is_authorized(Debt_Context_Member, Permissions.Debt_Context_Manage_Members, 'memberid')
 def edit_debt_context_member(request, memberid):
-    member = get_object_or_404(debt_context_Member, pk=memberid)
-    memberform = Edit_debt_context_MemberForm(instance=member)
+    member = get_object_or_404(Debt_Context_Member, pk=memberid)
+    memberform = Edit_Debt_Context_MemberForm(instance=member)
     if request.method == 'POST':
-        memberform = Edit_debt_context_MemberForm(request.POST, instance=member)
+        memberform = Edit_Debt_Context_MemberForm(request.POST, instance=member)
         if memberform.is_valid():
             if member.role.is_owner and not user_has_permission(request.user, member.debt_context,
-                                                                Permissions.debt_context_Member_Add_Owner):
+                                                                Permissions.Debt_Context_Member_Add_Owner):
                 messages.add_message(request,
                                      messages.WARNING,
                                      _('You are not permitted to make users to owners.'),
@@ -1672,7 +1671,7 @@ def edit_debt_context_member(request, memberid):
                     return HttpResponseRedirect(reverse('view_user', args=(member.user.id,)))
                 else:
                     return HttpResponseRedirect(reverse('view_debt_context', args=(member.debt_context.id,)))
-    debt_context_tab = debt_context_Tab(member.debt_context, title=_("Edit debt_context Member"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(member.debt_context, title=_("Edit debt_context Member"), tab="settings")
     return render(request, 'dojo/edit_debt_context_member.html', {
         'memberid': memberid,
         'form': memberform,
@@ -1680,12 +1679,12 @@ def edit_debt_context_member(request, memberid):
     })
 
 
-@user_is_authorized(debt_context_Member, Permissions.debt_context_Member_Delete, 'memberid')
+@user_is_authorized(Debt_Context_Member, Permissions.Debt_Context_Member_Delete, 'memberid')
 def delete_debt_context_member(request, memberid):
-    member = get_object_or_404(debt_context_Member, pk=memberid)
-    memberform = Delete_debt_context_MemberForm(instance=member)
+    member = get_object_or_404(Debt_Context_Member, pk=memberid)
+    memberform = Delete_Debt_Context_MemberForm(instance=member)
     if request.method == 'POST':
-        memberform = Delete_debt_context_MemberForm(request.POST, instance=member)
+        memberform = Delete_Debt_Context_MemberForm(request.POST, instance=member)
         member = memberform.instance
         user = member.user
         member.delete()
@@ -1700,7 +1699,7 @@ def delete_debt_context_member(request, memberid):
                 return HttpResponseRedirect(reverse('debt_context'))
             else:
                 return HttpResponseRedirect(reverse('view_debt_context', args=(member.debt_context.id,)))
-    debt_context_tab = debt_context_Tab(member.debt_context, title=_("Delete debt_context Member"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(member.debt_context, title=_("Delete debt_context Member"), tab="settings")
     return render(request, 'dojo/delete_debt_context_member.html', {
         'memberid': memberid,
         'form': memberform,
@@ -1708,11 +1707,11 @@ def delete_debt_context_member(request, memberid):
     })
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_API_Scan_Configuration_Add, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_API_Scan_Configuration_Add, 'pid')
 def add_api_scan_configuration(request, pid):
-    debt_context = get_object_or_404(debt_context, id=pid)
+    debt_context = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
-        form = debt_context_API_Scan_ConfigurationForm(request.POST)
+        form = Debt_Context_API_Scan_ConfigurationForm(request.POST)
         if form.is_valid():
             debt_context_api_scan_configuration = form.save(commit=False)
             debt_context_api_scan_configuration.debt_context = debt_context
@@ -1740,9 +1739,9 @@ def add_api_scan_configuration(request, pid):
                                      str(e),
                                      extra_tags='alert-danger')
     else:
-        form = debt_context_API_Scan_ConfigurationForm()
+        form = Debt_Context_API_Scan_ConfigurationForm()
 
-    debt_context_tab = debt_context_Tab(debt_context, title=_("Add API Scan Configuration"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Add API Scan Configuration"), tab="settings")
 
     return render(request,
                   'dojo/add_debt_context_api_scan_configuration.html',
@@ -1753,11 +1752,11 @@ def add_api_scan_configuration(request, pid):
                    })
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_View, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def view_api_scan_configurations(request, pid):
-    debt_context_api_scan_configurations = debt_context_API_Scan_Configuration.objects.filter(debt_context=pid)
+    debt_context_api_scan_configurations = Debt_Context_API_Scan_Configuration.objects.filter(debt_context=pid)
 
-    debt_context_tab = debt_context_Tab(get_object_or_404(debt_context, id=pid), title=_("API Scan Configurations"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(get_object_or_404(Debt_Context, id=pid), title=_("API Scan Configurations"), tab="settings")
     return render(request,
                   'dojo/view_debt_context_api_scan_configurations.html',
                   {
@@ -1767,16 +1766,16 @@ def view_api_scan_configurations(request, pid):
                   })
 
 
-@user_is_authorized(debt_context_API_Scan_Configuration, Permissions.debt_context_API_Scan_Configuration_Edit, 'pascid')
+@user_is_authorized(Debt_Context_API_Scan_Configuration, Permissions.Debt_Context_API_Scan_Configuration_Edit, 'pascid')
 def edit_api_scan_configuration(request, pid, pascid):
-    debt_context_api_scan_configuration = get_object_or_404(debt_context_API_Scan_Configuration, id=pascid)
+    debt_context_api_scan_configuration = get_object_or_404(Debt_Context_API_Scan_Configuration, id=pascid)
 
     if debt_context_api_scan_configuration.debt_context.pk != int(
             pid):  # user is trying to edit Tool Configuration from another debt_context (trying to by-pass auth)
         raise Http404()
 
     if request.method == 'POST':
-        form = debt_context_API_Scan_ConfigurationForm(request.POST, instance=debt_context_api_scan_configuration)
+        form = Debt_Context_API_Scan_ConfigurationForm(request.POST, instance=debt_context_api_scan_configuration)
         if form.is_valid():
             try:
                 form_copy = form.save(commit=False)
@@ -1801,9 +1800,9 @@ def edit_api_scan_configuration(request, pid, pascid):
                                      str(e),
                                      extra_tags='alert-danger')
     else:
-        form = debt_context_API_Scan_ConfigurationForm(instance=debt_context_api_scan_configuration)
+        form = Debt_Context_API_Scan_ConfigurationForm(instance=debt_context_api_scan_configuration)
 
-    debt_context_tab = debt_context_Tab(get_object_or_404(debt_context, id=pid), title=_("Edit API Scan Configuration"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(get_object_or_404(Debt_Context, id=pid), title=_("Edit API Scan Configuration"), tab="settings")
     return render(request,
                   'dojo/edit_debt_context_api_scan_configuration.html',
                   {
@@ -1813,16 +1812,16 @@ def edit_api_scan_configuration(request, pid, pascid):
                   })
 
 
-@user_is_authorized(debt_context_API_Scan_Configuration, Permissions.debt_context_API_Scan_Configuration_Delete, 'pascid')
+@user_is_authorized(Debt_Context_API_Scan_Configuration, Permissions.Debt_Context_API_Scan_Configuration_Delete, 'pascid')
 def delete_api_scan_configuration(request, pid, pascid):
-    debt_context_api_scan_configuration = get_object_or_404(debt_context_API_Scan_Configuration, id=pascid)
+    debt_context_api_scan_configuration = get_object_or_404(Debt_Context_API_Scan_Configuration, id=pascid)
 
     if debt_context_api_scan_configuration.debt_context.pk != int(
             pid):  # user is trying to delete Tool Configuration from another debt_context (trying to by-pass auth)
         raise Http404()
 
     if request.method == 'POST':
-        form = debt_context_API_Scan_ConfigurationForm(request.POST)
+        form = Debt_Context_API_Scan_ConfigurationForm(request.POST)
         debt_context_api_scan_configuration.delete()
         messages.add_message(request,
                              messages.SUCCESS,
@@ -1830,9 +1829,9 @@ def delete_api_scan_configuration(request, pid, pascid):
                              extra_tags='alert-success')
         return HttpResponseRedirect(reverse('view_api_scan_configurations', args=(pid,)))
     else:
-        form = Deletedebt_context_API_Scan_ConfigurationForm(instance=debt_context_api_scan_configuration)
+        form = DeleteDebt_Context_API_Scan_ConfigurationForm(instance=debt_context_api_scan_configuration)
 
-    debt_context_tab = debt_context_Tab(get_object_or_404(debt_context, id=pid), title=_("Delete Tool Configuration"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(get_object_or_404(Debt_Context, id=pid), title=_("Delete Tool Configuration"), tab="settings")
     return render(request,
                   'dojo/delete_debt_context_api_scan_configuration.html',
                   {
@@ -1841,17 +1840,17 @@ def delete_api_scan_configuration(request, pid, pascid):
                   })
 
 
-@user_is_authorized(debt_context_Group, Permissions.debt_context_Group_Edit, 'groupid')
+@user_is_authorized(Debt_Context_Group, Permissions.Debt_Context_Group_Edit, 'groupid')
 def edit_debt_context_group(request, groupid):
     logger.exception(groupid)
-    group = get_object_or_404(debt_context_Group, pk=groupid)
-    groupform = Edit_debt_context_Group_Form(instance=group)
+    group = get_object_or_404(Debt_Context_Group, pk=groupid)
+    groupform = Edit_Debt_Context_Group_Form(instance=group)
 
     if request.method == 'POST':
-        groupform = Edit_debt_context_Group_Form(request.POST, instance=group)
+        groupform = Edit_Debt_Context_Group_Form(request.POST, instance=group)
         if groupform.is_valid():
             if group.role.is_owner and not user_has_permission(request.user, group.debt_context,
-                                                               Permissions.debt_context_Group_Add_Owner):
+                                                               Permissions.Debt_Context_Group_Add_Owner):
                 messages.add_message(request,
                                      messages.WARNING,
                                      _('You are not permitted to make groups owners.'),
@@ -1867,7 +1866,7 @@ def edit_debt_context_group(request, groupid):
                 else:
                     return HttpResponseRedirect(reverse('view_debt_context', args=(group.debt_context.id,)))
 
-    debt_context_tab = debt_context_Tab(group.debt_context, title=_("Edit debt_context Group"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(group.debt_context, title=_("Edit debt_context Group"), tab="settings")
     return render(request, 'dojo/edit_debt_context_group.html', {
         'groupid': groupid,
         'form': groupform,
@@ -1875,13 +1874,13 @@ def edit_debt_context_group(request, groupid):
     })
 
 
-@user_is_authorized(debt_context_Group, Permissions.debt_context_Group_Delete, 'groupid')
+@user_is_authorized(Debt_Context_Group, Permissions.Debt_Context_Group_Delete, 'groupid')
 def delete_debt_context_group(request, groupid):
-    group = get_object_or_404(debt_context_Group, pk=groupid)
-    groupform = Delete_debt_context_GroupForm(instance=group)
+    group = get_object_or_404(Debt_Context_Group, pk=groupid)
+    groupform = Delete_Debt_Context_GroupForm(instance=group)
 
     if request.method == 'POST':
-        groupform = Delete_debt_context_GroupForm(request.POST, instance=group)
+        groupform = Delete_Debt_Context_GroupForm(request.POST, instance=group)
         group = groupform.instance
         group.delete()
         messages.add_message(request,
@@ -1895,7 +1894,7 @@ def delete_debt_context_group(request, groupid):
             #  page
             return HttpResponseRedirect(reverse('view_debt_context', args=(group.debt_context.id,)))
 
-    debt_context_tab = debt_context_Tab(group.debt_context, title=_("Delete debt_context Group"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(group.debt_context, title=_("Delete debt_context Group"), tab="settings")
     return render(request, 'dojo/delete_debt_context_group.html', {
         'groupid': groupid,
         'form': groupform,
@@ -1903,16 +1902,16 @@ def delete_debt_context_group(request, groupid):
     })
 
 
-@user_is_authorized(debt_context, Permissions.debt_context_Group_Add, 'pid')
+@user_is_authorized(Debt_Context, Permissions.Debt_Context_Group_Add, 'pid')
 def add_debt_context_group(request, pid):
-    debt_context = get_object_or_404(debt_context, pk=pid)
-    group_form = Add_debt_context_GroupForm(initial={'debt_context': debt_context.id})
+    debt_context = get_object_or_404(Debt_Context, pk=pid)
+    group_form = Add_Debt_Context_GroupForm(initial={'debt_context': debt_context.id})
 
     if request.method == 'POST':
-        group_form = Add_debt_context_GroupForm(request.POST, initial={'debt_context': debt_context.id})
+        group_form = Add_Debt_Context_GroupForm(request.POST, initial={'debt_context': debt_context.id})
         if group_form.is_valid():
             if group_form.cleaned_data['role'].is_owner and not user_has_permission(request.user, debt_context,
-                                                                                    Permissions.debt_context_Group_Add_Owner):
+                                                                                    Permissions.Debt_Context_Group_Add_Owner):
                 messages.add_message(request,
                                      messages.WARNING,
                                      _('You are not permitted to add groups as owners.'),
@@ -1920,9 +1919,9 @@ def add_debt_context_group(request, pid):
             else:
                 if 'groups' in group_form.cleaned_data and len(group_form.cleaned_data['groups']) > 0:
                     for group in group_form.cleaned_data['groups']:
-                        groups = debt_context_Group.objects.filter(debt_context=debt_context, group=group)
+                        groups = Debt_Context_Group.objects.filter(debt_context=debt_context, group=group)
                         if groups.count() == 0:
-                            debt_context_group = debt_context_Group()
+                            debt_context_group = Debt_Context_Group()
                             debt_context_group.debt_context = debt_context
                             debt_context_group.group = group
                             debt_context_group.role = group_form.cleaned_data['role']
@@ -1932,7 +1931,7 @@ def add_debt_context_group(request, pid):
                                      _('debt_context groups added successfully.'),
                                      extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
-    debt_context_tab = debt_context_Tab(debt_context, title=_("Edit debt_context Group"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Edit debt_context Group"), tab="settings")
     return render(request, 'dojo/new_debt_context_group.html', {
         'debt_context': debt_context,
         'form': group_form,

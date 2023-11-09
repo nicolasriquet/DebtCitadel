@@ -692,6 +692,23 @@ def prefetch_related_findings_for_report(findings):
                                      )
 
 
+def prefetch_related_debt_items_for_report(debt_items):
+    return debt_items.prefetch_related('test',
+                                     'test__engagement__debt_context',
+                                     'test__engagement__debt_context__debt_context_type',
+                                     'risk_acceptance_set',
+                                     'risk_acceptance_set__accepted_debt_items',
+                                     'burprawrequestresponse_set',
+                                     'endpoints',
+                                     'tags',
+                                     'notes',
+                                     'files',
+                                     'reporter',
+                                     'mitigated_by'
+                                     )
+
+
+
 def prefetch_related_endpoints_for_report(endpoints):
     return endpoints.prefetch_related(
                                       'product',

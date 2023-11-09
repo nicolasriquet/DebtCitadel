@@ -19,9 +19,13 @@ from dojo.models import (
     Endpoint,
     Engagement,
     Finding,
+    Debt_Item,
     Finding_Group,
+    Debt_Item_Group,
     Product_Type,
+    Debt_Context_Type,
     Product,
+    Debt_Context,
     Test,
     Dojo_Group,
     Cred_Mapping,
@@ -259,6 +263,22 @@ class UserHasToolProductSettingsPermission(permissions.BasePermission):
         )
 
 
+class UserHasToolDebtContextSettingsPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request, Debt_Context, "debt_context", Permissions.Debt_Context_Edit
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj.debt_context,
+            Permissions.Debt_Context_View,
+            Permissions.Debt_Context_Edit,
+            Permissions.Debt_Context_Edit,
+        )
+
+
 class UserHasEndpointPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return check_post_permission(
@@ -424,6 +444,56 @@ class UserHasFindingPermission(permissions.BasePermission):
             )
 
 
+class UserHasDebtItemPermission(permissions.BasePermission):
+    # Permission checks for related objects (like notes or metadata) can be moved
+    # into a seperate class, when the legacy authorization will be removed.
+    path_debt_item_post = re.compile(r"^/api/v2/debt_items/$")
+    path_debt_item = re.compile(r"^/api/v2/debt_items/\d+/$")
+    path_stub_debt_item_post = re.compile(r"^/api/v2/stub_debt_items/$")
+    path_stub_debt_item = re.compile(r"^/api/v2/stub_debt_items/\d+/$")
+
+    def has_permission(self, request, view):
+        if (
+                UserHasDebtItemPermission.path_debt_item_post.match(request.path)
+                or UserHasDebtItemPermission.path_debt_item.match(request.path)
+                or UserHasDebtItemPermission.path_stub_debt_item_post.match(
+            request.path
+        )
+                or UserHasDebtItemPermission.path_stub_debt_item.match(request.path)
+        ):
+            return check_post_permission(
+                request, Test, "test", Permissions.Debt_Item_Add
+            )
+        else:
+            # related object only need object permission
+            return True
+
+    def has_object_permission(self, request, view, obj):
+        if (
+                UserHasDebtItemPermission.path_debt_item_post.match(request.path)
+                or UserHasDebtItemPermission.path_debt_item.match(request.path)
+                or UserHasDebtItemPermission.path_stub_debt_item_post.match(
+            request.path
+        )
+                or UserHasDebtItemPermission.path_stub_debt_item.match(request.path)
+        ):
+            return check_object_permission(
+                request,
+                obj,
+                Permissions.Debt_Item_View,
+                Permissions.Debt_Item_Edit,
+                Permissions.Debt_Item_Delete,
+            )
+        else:
+            return check_object_permission(
+                request,
+                obj,
+                Permissions.Debt_Item_View,
+                Permissions.Debt_Item_Edit,
+                Permissions.Debt_Item_Edit,
+                Permissions.Debt_Item_Edit,
+            )
+
 class UserHasImportPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         # permission check takes place before validation, so we don't have access to serializer.validated_data()
@@ -542,6 +612,24 @@ class UserHasProductPermission(permissions.BasePermission):
         )
 
 
+class UserHasDebtContextPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request,
+            Debt_Context_Type,
+            "prod_type",
+            Permissions.Debt_Context_Type_Add_Debt_Context,
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_View,
+            Permissions.Debt_Context_Edit,
+            Permissions.Debt_Context_Delete,
+        )
+
 class UserHasProductMemberPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return check_post_permission(
@@ -558,6 +646,21 @@ class UserHasProductMemberPermission(permissions.BasePermission):
         )
 
 
+class UserHasDebtContextMemberPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request, Debt_Context, "debt_context", Permissions.Debt_Context_Manage_Members
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_View,
+            Permissions.Debt_Context_Manage_Members,
+            Permissions.Debt_Context_Member_Delete,
+        )
+
 class UserHasProductGroupPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return check_post_permission(
@@ -571,6 +674,22 @@ class UserHasProductGroupPermission(permissions.BasePermission):
             Permissions.Product_Group_View,
             Permissions.Product_Group_Edit,
             Permissions.Product_Group_Delete,
+        )
+
+
+class UserHasDebtContextGroupPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request, Debt_Context, "debt_context", Permissions.Product_Group_Add
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_Group_View,
+            Permissions.Debt_Context_Group_Edit,
+            Permissions.Debt_Context_Group_Delete,
         )
 
 
@@ -593,6 +712,24 @@ class UserHasProductTypePermission(permissions.BasePermission):
         )
 
 
+class UserHasDebtContextTypePermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method == "POST":
+            return user_has_global_permission(
+                request.user, Permissions.Debt_Context_Type_Add
+            )
+        else:
+            return True
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_Type_View,
+            Permissions.Debt_Context_Type_Edit,
+            Permissions.Debt_Context_Type_Delete,
+        )
+
 class UserHasProductTypeMemberPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return check_post_permission(
@@ -609,6 +746,24 @@ class UserHasProductTypeMemberPermission(permissions.BasePermission):
             Permissions.Product_Type_View,
             Permissions.Product_Type_Manage_Members,
             Permissions.Product_Type_Member_Delete,
+        )
+
+class UserHasDebtContextTypeMemberPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request,
+            Debt_Context_Type,
+            "debt_context_type",
+            Permissions.Debt_Context_Type_Manage_Members,
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_Type_View,
+            Permissions.Debt_Context_Type_Manage_Members,
+            Permissions.Debt_Context_Type_Member_Delete,
         )
 
 
@@ -628,6 +783,25 @@ class UserHasProductTypeGroupPermission(permissions.BasePermission):
             Permissions.Product_Type_Group_View,
             Permissions.Product_Type_Group_Edit,
             Permissions.Product_Type_Group_Delete,
+        )
+
+
+class UserHasDebtContextTypeGroupPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request,
+            Debt_Context_Type,
+            "debt_context_type",
+            Permissions.Debt_Context_Type_Group_Add,
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_Type_Group_View,
+            Permissions.Debt_Context_Type_Group_Edit,
+            Permissions.Debt_Context_Type_Group_Delete,
         )
 
 
@@ -786,6 +960,24 @@ class UserHasProductAPIScanConfigurationPermission(permissions.BasePermission):
         )
 
 
+class UserHasDebtContextAPIScanConfigurationPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request,
+            Debt_Context,
+            "debt_context",
+            Permissions.Debt_Context_API_Scan_Configuration_Add,
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Context_API_Scan_Configuration_View,
+            Permissions.Debt_Context_API_Scan_Configuration_Edit,
+            Permissions.Debt_Context_API_Scan_Configuration_Delete,
+        )
+
 class UserHasJiraProductPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method == "POST":
@@ -840,6 +1032,60 @@ class UserHasJiraProductPermission(permissions.BasePermission):
             )
         return has_permission_result
 
+
+class UserHasJiraDebtContextPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method == "POST":
+            has_permission_result = True
+            engagement_id = request.data.get("engagement", None)
+            if engagement_id:
+                object = get_object_or_404(Engagement, pk=engagement_id)
+                has_permission_result = (
+                        has_permission_result
+                        and user_has_permission(
+                    request.user, object, Permissions.Engagement_Edit
+                )
+                )
+            debt_context_id = request.data.get("debt_context", None)
+            if debt_context_id:
+                object = get_object_or_404(Debt_Context, pk=debt_context_id)
+                has_permission_result = (
+                        has_permission_result
+                        and user_has_permission(
+                    request.user, object, Permissions.Debt_Context_Edit
+                )
+                )
+            return has_permission_result
+        else:
+            return True
+
+    def has_object_permission(self, request, view, obj):
+        has_permission_result = True
+        engagement = obj.engagement
+        if engagement:
+            has_permission_result = (
+                    has_permission_result
+                    and check_object_permission(
+                request,
+                engagement,
+                Permissions.Engagement_View,
+                Permissions.Engagement_Edit,
+                Permissions.Engagement_Edit,
+            )
+            )
+        debt_context = obj.debt_context
+        if debt_context:
+            has_permission_result = (
+                    has_permission_result
+                    and check_object_permission(
+                request,
+                debt_context,
+                Permissions.Debt_Context_View,
+                Permissions.Debt_Context_Edit,
+                Permissions.Debt_Context_Edit,
+            )
+            )
+        return has_permission_result
 
 class UserHasJiraIssuePermission(permissions.BasePermission):
     def has_permission(self, request, view):

@@ -19,12 +19,12 @@ from django_filters.filters import ChoiceFilter, _truncate
 from django.db.models import JSONField
 import pytz
 from django.db.models import Q
-from dojo.models import Dojo_User, Finding_Group, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration, \
-    Product_Type, Debt_Context_Type, Finding, Product, Debt_Context, Test_Import, Test_Type, \
-    Endpoint, Development_Environment, Finding_Template, Note_Type, Risk_Acceptance, Cred_Mapping, \
+from dojo.models import Dojo_User, Finding_Group, Debt_Item_Group, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration, \
+    Product_Type, Debt_Context_Type, Finding, Debt_Item, Product, Debt_Context, Test_Import, Test_Type, \
+    Endpoint, Development_Environment, Finding_Template, Debt_Item_Template, Note_Type, Risk_Acceptance, Cred_Mapping, \
     Engagement_Survey, Question, TextQuestion, ChoiceQuestion, Endpoint_Status, Engagement, \
     ENGAGEMENT_STATUS_CHOICES, Test, App_Analysis, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Dojo_Group, Vulnerability_Id, \
-    Test_Import_Finding_Action, IMPORT_ACTIONS
+    Test_Import_Finding_Action, Test_Import_Debt_Item_Action, IMPORT_ACTIONS
 from dojo.utils import get_system_setting
 from django.contrib.contenttypes.models import ContentType
 import tagulous
@@ -38,11 +38,12 @@ from dojo.debt_context.queries import get_authorized_debt_contexts
 from dojo.engagement.queries import get_authorized_engagements
 from dojo.test.queries import get_authorized_tests
 from dojo.finding.queries import get_authorized_findings
+from dojo.debt_item.queries import get_authorized_debt_items
 from dojo.endpoint.queries import get_authorized_endpoints
-from dojo.finding_group.queries import get_authorized_finding_groups
+from dojo.finding_group.queries import get_authorized_finding_groups, get_authorized_debt_item_groups
 from dojo.user.queries import get_authorized_users
 from django.forms import HiddenInput
-from dojo.utils import is_finding_groups_enabled
+from dojo.utils import is_finding_groups_enabled, is_debt_item_groups_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,66 @@ class FindingStatusFilter(ChoiceFilter):
         return self.options[value][1](self, qs, self.field_name)
 
 
+class DebtItemStatusFilter(ChoiceFilter):
+    def any(self, qs, name):
+        return qs
+
+    def open(self, qs, name):
+        return qs.filter(OPEN_FINDINGS_QUERY)
+
+    def verified(self, qs, name):
+        return qs.filter(VERIFIED_FINDINGS_QUERY)
+
+    def out_of_scope(self, qs, name):
+        return qs.filter(OUT_OF_SCOPE_FINDINGS_QUERY)
+
+    def false_positive(self, qs, name):
+        return qs.filter(FALSE_POSITIVE_FINDINGS_QUERY)
+
+    def inactive(self, qs, name):
+        return qs.filter(INACTIVE_FINDINGS_QUERY)
+
+    def risk_accepted(self, qs, name):
+        return qs.filter(ACCEPTED_FINDINGS_QUERY)
+
+    def closed(self, qs, name):
+        return qs.filter(CLOSED_FINDINGS_QUERY)
+
+    def under_review(self, qs, name):
+        return qs.filter(UNDER_REVIEW_QUERY)
+
+    options = {
+        None: (_('Any'), any),
+        0: (_('Open'), open),
+        1: (_('Verified'), verified),
+        2: (_('Out Of Scope'), out_of_scope),
+        3: (_('False Positive'), false_positive),
+        4: (_('Inactive'), inactive),
+        5: (_('Risk Accepted'), risk_accepted),
+        6: (_('Closed'), closed),
+        7: (_('Under Review'), under_review),
+    }
+
+    def __init__(self, *args, **kwargs):
+        kwargs['choices'] = [
+            (key, value[0]) for key, value in six.iteritems(self.options)]
+        super(DebtItemStatusFilter, self).__init__(*args, **kwargs)
+
+    def filter(self, qs, value):
+        earliest_debt_item = get_earliest_debt_item(qs)
+        if earliest_debt_item is not None:
+            start_date = local_tz.localize(datetime.combine(
+                earliest_debt_item.date, datetime.min.time())
+            )
+            self.start_date = _truncate(start_date - timedelta(days=1))
+            self.end_date = _truncate(now() + timedelta(days=1))
+        try:
+            value = int(value)
+        except (ValueError, TypeError):
+            value = None
+        return self.options[value][1](self, qs, self.field_name)
+
+
 class FindingSLAFilter(ChoiceFilter):
     def any(self, qs, name):
         return qs
@@ -176,6 +237,36 @@ class FindingSLAFilter(ChoiceFilter):
             value = None
         return self.options[value][1](self, qs, self.field_name)
 
+
+class DebtItemSLAFilter(ChoiceFilter):
+    def any(self, qs, name):
+        return qs
+
+    def satisfies_sla(self, qs, name):
+        non_sla_violations = [debt_item.id for debt_item in qs if not debt_item.violates_sla]
+        return Debt_Item.objects.filter(id__in=non_sla_violations)
+
+    def violates_sla(self, qs, name):
+        sla_violations = [debt_item.id for debt_item in qs if debt_item.violates_sla]
+        return Debt_Item.objects.filter(id__in=sla_violations)
+
+    options = {
+        None: (_('Any'), any),
+        0: (_('False'), satisfies_sla),
+        1: (_('True'), violates_sla),
+    }
+
+    def __init__(self, *args, **kwargs):
+        kwargs['choices'] = [
+            (key, value[0]) for key, value in six.iteritems(self.options)]
+        super(DebtItemSLAFilter, self).__init__(*args, **kwargs)
+
+    def filter(self, qs, value):
+        try:
+            value = int(value)
+        except (ValueError, TypeError):
+            value = None
+        return self.options[value][1](self, qs, self.field_name)
 
 class ProductSLAFilter(ChoiceFilter):
     def any(self, qs, name):
@@ -208,6 +299,49 @@ class ProductSLAFilter(ChoiceFilter):
         return self.options[value][1](self, qs, self.field_name)
 
 
+class Debt_ContextSLAFilter(ChoiceFilter):
+    def any(self, qs, name):
+        return qs
+
+    def satisfies_sla(self, qs, name):
+        non_sla_violations = [debt_context.id for debt_context in qs if not debt_context.violates_sla]
+        return Debt_Context.objects.filter(id__in=non_sla_violations)
+
+    def violates_sla(self, qs, name):
+        sla_violations = [debt_context.id for debt_context in qs if debt_context.violates_sla]
+        return Debt_Context.objects.filter(id__in=sla_violations)
+
+    options = {
+        None: (_('Any'), any),
+        0: (_('False'), satisfies_sla),
+        1: (_('True'), violates_sla),
+    }
+
+    def __init__(self, *args, **kwargs):
+        kwargs['choices'] = [
+            (key, value[0]) for key, value in six.iteritems(self.options)]
+        super(Debt_ContextSLAFilter, self).__init__(*args, **kwargs)
+
+    def filter(self, qs, value):
+        try:
+            value = int(value)
+        except (ValueError, TypeError):
+            value = None
+        return self.options[value][1](self, qs, self.field_name)
+
+
+
+def get_earliest_debt_item(queryset=None):
+    if queryset is None:  # don't to 'if not queryset' which will trigger the query
+        queryset = Debt_Item.objects.all()
+
+    try:
+        EARLIEST_DEBT_ITEM = queryset.earliest('date')
+    except (Debt_Item.DoesNotExist, Endpoint_Status.DoesNotExist):
+        EARLIEST_DEBT_ITEM = None
+    return EARLIEST_DEBT_ITEM
+
+
 def get_earliest_finding(queryset=None):
     if queryset is None:  # don't to 'if not queryset' which will trigger the query
         queryset = Finding.objects.all()
@@ -217,7 +351,6 @@ def get_earliest_finding(queryset=None):
     except (Finding.DoesNotExist, Endpoint_Status.DoesNotExist):
         EARLIEST_FINDING = None
     return EARLIEST_FINDING
-
 
 def cwe_options(queryset):
     cwe = dict()
@@ -356,6 +489,88 @@ def get_finding_filterset_fields(metrics=False, similar=False):
     return fields
 
 
+def get_debt_item_filterset_fields(metrics=False, similar=False):
+    fields = []
+
+    if similar:
+        fields.extend([
+            'id',
+            'hash_code'
+        ])
+
+    fields.extend(['title', 'component_name', 'component_version'])
+
+    if metrics:
+        fields.extend([
+            'start_date',
+            'end_date',
+        ])
+
+    fields.extend([
+        'date',
+        'cwe',
+        'severity',
+        'last_reviewed',
+        'last_status_update',
+        'mitigated',
+        'reporter',
+        'reviewers',
+        'test__engagement__product__prod_type',
+        'test__engagement__product',
+        'test__engagement',
+        'test',
+        'test__test_type',
+        'test__engagement__version',
+        'test__version',
+        'endpoints',
+        'status',
+        'active',
+        'verified',
+        'duplicate',
+        'is_mitigated',
+        'out_of_scope',
+        'false_p',
+        'risk_accepted',
+        'has_component',
+        'has_notes',
+        'file_path',
+        'unique_id_from_tool',
+        'vuln_id_from_tool',
+        'service',
+    ])
+
+    if similar:
+        fields.extend([
+            'id',
+        ])
+
+    fields.extend([
+        'param',
+        'payload',
+        'risk_acceptance',
+    ])
+
+    if get_system_setting('enable_jira'):
+        fields.extend([
+            'has_jira_issue',
+            'jira_creation',
+            'jira_change',
+            'jira_issue__jira_key',
+        ])
+
+    if is_debt_item_groups_enabled():
+        fields.extend([
+            'has_debt_item_group',
+            'debt_item_group',
+        ])
+
+        if get_system_setting('enable_jira'):
+            fields.extend([
+                'has_jira_group_issue',
+            ])
+
+    return fields
+
 class FindingFilterWithTags(DojoFilter):
     tags = ModelMultipleChoiceFilter(
         field_name='tags__name',
@@ -427,6 +642,77 @@ class FindingFilterWithTags(DojoFilter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+
+class DebtItemFilterWithTags(DojoFilter):
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Debt_Item.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    test__tags = ModelMultipleChoiceFilter(
+        field_name='test__tags__name',
+        to_field_name='name',
+        queryset=Test.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    test__engagement__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__tags__name',
+        to_field_name='name',
+        queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__debt_context__tags__name',
+        to_field_name='name',
+        queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Item.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__tags = ModelMultipleChoiceFilter(
+        field_name='test__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Test without tags',
+        queryset=Test.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__engagement__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Engagement without tags',
+        queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__debt_context__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Debt_Context without tags',
+        queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 class DateRangeFilter(ChoiceFilter):
     options = {
@@ -701,6 +987,27 @@ class ProductComponentFilter(DojoFilter):
     )
 
 
+class DebtContextComponentFilter(DojoFilter):
+    component_name = CharFilter(lookup_expr='icontains', label="Module Name")
+    component_version = CharFilter(lookup_expr='icontains', label="Module Version")
+
+    o = OrderingFilter(
+        fields=(
+            ('component_name', 'component_name'),
+            ('component_version', 'component_version'),
+            ('active', 'active'),
+            ('duplicate', 'duplicate'),
+            ('total', 'total'),
+        ),
+        field_labels={
+            'component_name': 'Component Name',
+            'component_version': 'Component Version',
+            'active': 'Active',
+            'duplicate': 'Duplicate',
+            'total': 'Total',
+        }
+    )
+
 class ComponentFilter(ProductComponentFilter):
     test__engagement__product__prod_type = ModelMultipleChoiceFilter(
         queryset=Product_Type.objects.none(),
@@ -900,6 +1207,63 @@ class ProductEngagementFilter(DojoFilter):
         fields = ['name']
 
 
+class DebtContextEngagementFilter(DojoFilter):
+    lead = ModelChoiceFilter(queryset=Dojo_User.objects.none(), label="Lead")
+    version = CharFilter(lookup_expr='icontains', label='Engagement version')
+    test__version = CharFilter(field_name='test__version', lookup_expr='icontains', label='Test version')
+
+    name = CharFilter(lookup_expr='icontains')
+    status = MultipleChoiceFilter(choices=ENGAGEMENT_STATUS_CHOICES,
+                                  label="Status")
+
+    target_start = DateRangeFilter()
+    target_end = DateRangeFilter()
+
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('name', 'name'),
+            ('version', 'version'),
+            ('target_start', 'target_start'),
+            ('target_end', 'target_end'),
+            ('status', 'status'),
+            ('lead', 'lead'),
+        ),
+        field_labels={
+            'name': 'Engagement Name',
+        }
+
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(DebtContextEngagementFilter, self).__init__(*args, **kwargs)
+        self.form.fields['lead'].queryset = get_authorized_users(Permissions.Debt_Context_Type_View) \
+            .filter(engagement__lead__isnull=False).distinct()
+
+    class Meta:
+        model = Debt_Context
+        fields = ['name']
+
+
 class ApiEngagementFilter(DojoFilter):
     product__prod_type = NumberInFilter(field_name='product__prod_type', lookup_expr='in')
     tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Tag name contains')
@@ -1089,6 +1453,151 @@ class ProductFilter(DojoFilter):
                   'internet_accessible', 'tags']
 
 
+class DebtContextFilter(DojoFilter):
+    name = CharFilter(lookup_expr='icontains', label="Debt_Context Name")
+    name_exact = CharFilter(field_name='name', lookup_expr='iexact', label="Exact Debt_Context Name")
+    prod_type = ModelMultipleChoiceFilter(
+        queryset=Debt_Context_Type.objects.none(),
+        label="Debt_Context Type")
+    business_criticality = MultipleChoiceFilter(choices=Debt_Context.BUSINESS_CRITICALITY_CHOICES)
+    platform = MultipleChoiceFilter(choices=Debt_Context.PLATFORM_CHOICES)
+    lifecycle = MultipleChoiceFilter(choices=Debt_Context.LIFECYCLE_CHOICES)
+    origin = MultipleChoiceFilter(choices=Debt_Context.ORIGIN_CHOICES)
+    external_audience = BooleanFilter(field_name='external_audience')
+    internet_accessible = BooleanFilter(field_name='internet_accessible')
+
+    # not specifying anything for tags will render a multiselect input functioning as OR
+
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    # tags_and = ModelMultipleChoiceFilter(
+    #     field_name='tags__name',
+    #     to_field_name='name',
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label='tags (AND)',
+    #     conjoined=True,
+    # )
+
+    # tags__name = ModelMultipleChoiceFilter(
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label="tags (AND)"
+    # )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label="Tag contains")
+
+    # tags__name = CharFilter(
+    #     lookup_expr='icontains',
+    #     label="Tag contains",
+    # )
+
+    # tags__all = ModelMultipleChoiceFilter(
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     field_name='tags__name',
+    #     label="tags (AND)"
+    # )
+
+    # not working below
+
+    # tags = ModelMultipleChoiceFilter(
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label="tags_widget", widget=TagWidget, tag_options=tagulous.models.TagOptions(
+    #         force_lowercase=True,)
+    # ,)
+
+    # tags__name = CharFilter(lookup_expr='icontains')
+
+    # tags__and = ModelMultipleChoiceFilter(
+    #     field_name='tags__name',
+    #     to_field_name='name',
+    #     lookup_expr='in',
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label="tags (AND)"
+    # )
+
+    # tags = ModelMultipleChoiceFilter(
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label="tags (OR)"
+    # )
+
+    # tags = ModelMultipleChoiceFilter(
+    #     field_name='tags__name',
+    #     to_field_name='name',
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label="tags (OR2)",
+    # )
+
+    # tags = ModelMultipleChoiceFilter(
+    #     field_name='tags',
+    #     to_field_name='name',
+    #     # lookup_expr='icontains', # nor working
+    #     # without lookup_expr we get an error: ValueError: invalid literal for int() with base 10: 'magento'
+    #     queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+    #     label="tags (OR3)",
+    # )
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    outside_of_sla = Debt_ContextSLAFilter(label="Outside of SLA")
+
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('name', 'name'),
+            ('name_exact', 'name_exact'),
+            ('prod_type__name', 'prod_type__name'),
+            ('business_criticality', 'business_criticality'),
+            ('platform', 'platform'),
+            ('lifecycle', 'lifecycle'),
+            ('origin', 'origin'),
+            ('external_audience', 'external_audience'),
+            ('internet_accessible', 'internet_accessible'),
+        ),
+        field_labels={
+            'name': 'Debt_Context Name',
+            'name_exact': 'Exact Debt_Context Name',
+            'prod_type__name': 'Debt_Context Type',
+            'business_criticality': 'Business Criticality',
+            'platform': 'Platform ',
+            'lifecycle': 'Lifecycle ',
+            'origin': 'Origin ',
+            'external_audience': 'External Audience ',
+            'internet_accessible': 'Internet Accessible ',
+        }
+
+    )
+
+    # tags = CharFilter(lookup_expr='icontains', label="Tags")
+
+    def __init__(self, *args, **kwargs):
+        self.user = None
+        if 'user' in kwargs:
+            self.user = kwargs.pop('user')
+
+        super(DebtContextFilter, self).__init__(*args, **kwargs)
+
+        self.form.fields['prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+
+    class Meta:
+        model = Debt_Context
+        fields = ['name', 'name_exact', 'prod_type', 'business_criticality', 'platform', 'lifecycle', 'origin', 'external_audience',
+                  'internet_accessible', 'tags']
+
+
 class ApiProductFilter(DojoFilter):
     # BooleanFilter
     external_audience = BooleanFilter(field_name='external_audience')
@@ -1146,6 +1655,77 @@ class ApiProductFilter(DojoFilter):
             ('product_manager', 'product_manager'),
             ('product_manager__first_name', 'product_manager__first_name'),
             ('product_manager__last_name', 'product_manager__last_name'),
+            ('technical_contact', 'technical_contact'),
+            ('technical_contact__first_name', 'technical_contact__first_name'),
+            ('technical_contact__last_name', 'technical_contact__last_name'),
+            ('team_manager', 'team_manager'),
+            ('team_manager__first_name', 'team_manager__first_name'),
+            ('team_manager__last_name', 'team_manager__last_name'),
+            ('prod_type', 'prod_type'),
+            ('prod_type__name', 'prod_type__name'),
+            ('updated', 'updated'),
+            ('user_records', 'user_records')
+        )
+    )
+
+
+class ApiDebtContextFilter(DojoFilter):
+    # BooleanFilter
+    external_audience = BooleanFilter(field_name='external_audience')
+    internet_accessible = BooleanFilter(field_name='internet_accessible')
+    # CharFilter
+    name = CharFilter(lookup_expr='icontains')
+    name_exact = CharFilter(field_name='name', lookup_expr='iexact')
+    description = CharFilter(lookup_expr='icontains')
+    business_criticality = CharFilter(method=custom_filter, field_name='business_criticality')
+    platform = CharFilter(method=custom_filter, field_name='platform')
+    lifecycle = CharFilter(method=custom_filter, field_name='lifecycle')
+    origin = CharFilter(method=custom_filter, field_name='origin')
+    # NumberInFilter
+    id = NumberInFilter(field_name='id', lookup_expr='in')
+    debt_context_manager = NumberInFilter(field_name='debt_context_manager', lookup_expr='in')
+    technical_contact = NumberInFilter(field_name='technical_contact', lookup_expr='in')
+    team_manager = NumberInFilter(field_name='team_manager', lookup_expr='in')
+    prod_type = NumberInFilter(field_name='prod_type', lookup_expr='in')
+    tid = NumberInFilter(field_name='tid', lookup_expr='in')
+    prod_numeric_grade = NumberInFilter(field_name='prod_numeric_grade', lookup_expr='in')
+    user_records = NumberInFilter(field_name='user_records', lookup_expr='in')
+    regulations = NumberInFilter(field_name='regulations', lookup_expr='in')
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+    tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                             help_text='Comma separated list of exact tags')
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Not Tag name contains', exclude='True')
+    not_tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                                 help_text='Comma separated list of exact tags not present on debt_context', exclude='True')
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+    outside_of_sla = extend_schema_field(OpenApiTypes.NUMBER)(Debt_ContextSLAFilter())
+
+    # DateRangeFilter
+    created = DateRangeFilter()
+    updated = DateRangeFilter()
+    # NumberFilter
+    revenue = NumberFilter()
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('id', 'id'),
+            ('tid', 'tid'),
+            ('name', 'name'),
+            ('created', 'created'),
+            ('prod_numeric_grade', 'prod_numeric_grade'),
+            ('business_criticality', 'business_criticality'),
+            ('platform', 'platform'),
+            ('lifecycle', 'lifecycle'),
+            ('origin', 'origin'),
+            ('revenue', 'revenue'),
+            ('external_audience', 'external_audience'),
+            ('internet_accessible', 'internet_accessible'),
+            ('debt_context_manager', 'debt_context_manager'),
+            ('debt_context_manager__first_name', 'debt_context_manager__first_name'),
+            ('debt_context_manager__last_name', 'debt_context_manager__last_name'),
             ('technical_contact', 'technical_contact'),
             ('technical_contact__first_name', 'technical_contact__first_name'),
             ('technical_contact__last_name', 'technical_contact__last_name'),
@@ -1284,6 +1864,134 @@ class ApiFindingFilter(DojoFilter):
 
     class Meta:
         model = Finding
+        exclude = ['url', 'thread_id', 'notes', 'files',
+                   'line', 'cve']
+
+
+class ApiDebtItemFilter(DojoFilter):
+    # BooleanFilter
+    active = BooleanFilter(field_name='active')
+    duplicate = BooleanFilter(field_name='duplicate')
+    dynamic_debt_item = BooleanFilter(field_name='dynamic_debt_item')
+    false_p = BooleanFilter(field_name='false_p')
+    is_mitigated = BooleanFilter(field_name='is_mitigated')
+    out_of_scope = BooleanFilter(field_name='out_of_scope')
+    static_debt_item = BooleanFilter(field_name='static_debt_item')
+    under_defect_review = BooleanFilter(field_name='under_defect_review')
+    under_review = BooleanFilter(field_name='under_review')
+    verified = BooleanFilter(field_name='verified')
+    has_jira = BooleanFilter(field_name='jira_issue', lookup_expr='isnull', exclude=True)
+    # CharFilter
+    component_version = CharFilter(lookup_expr='icontains')
+    component_name = CharFilter(lookup_expr='icontains')
+    vulnerability_id = CharFilter(method=custom_vulnerability_id_filter)
+    description = CharFilter(lookup_expr='icontains')
+    file_path = CharFilter(lookup_expr='icontains')
+    hash_code = CharFilter(lookup_expr='icontains')
+    impact = CharFilter(lookup_expr='icontains')
+    mitigation = CharFilter(lookup_expr='icontains')
+    numerical_severity = CharFilter(method=custom_filter, field_name='numerical_severity')
+    param = CharFilter(lookup_expr='icontains')
+    payload = CharFilter(lookup_expr='icontains')
+    references = CharFilter(lookup_expr='icontains')
+    severity = CharFilter(method=custom_filter, field_name='severity')
+    severity_justification = CharFilter(lookup_expr='icontains')
+    steps_to_reproduce = CharFilter(lookup_expr='icontains')
+    unique_id_from_tool = CharFilter(lookup_expr='icontains')
+    title = CharFilter(lookup_expr='icontains')
+    debt_context_name = CharFilter(lookup_expr='engagement__debt_context__name__iexact', field_name='test', label='exact debt_context name')
+    debt_context_name_contains = CharFilter(lookup_expr='engagement__debt_context__name__icontains', field_name='test', label='exact debt_context name')
+    debt_context_lifecycle = CharFilter(method=custom_filter, lookup_expr='engagement__debt_context__lifecycle',
+                                        field_name='test__engagement__debt_context__lifecycle', label='Comma separated list of exact debt_context lifecycles')
+    # DateRangeFilter
+    created = DateRangeFilter()
+    date = DateRangeFilter()
+    jira_creation = DateRangeFilter(field_name='jira_issue__jira_creation')
+    jira_change = DateRangeFilter(field_name='jira_issue__jira_change')
+    last_reviewed = DateRangeFilter()
+    mitigated = DateRangeFilter()
+    # NumberInFilter
+    cwe = NumberInFilter(field_name='cwe', lookup_expr='in')
+    defect_review_requested_by = NumberInFilter(field_name='defect_review_requested_by', lookup_expr='in')
+    endpoints = NumberInFilter(field_name='endpoints', lookup_expr='in')
+    found_by = NumberInFilter(field_name='found_by', lookup_expr='in')
+    id = NumberInFilter(field_name='id', lookup_expr='in')
+    last_reviewed_by = NumberInFilter(field_name='last_reviewed_by', lookup_expr='in')
+    mitigated_by = NumberInFilter(field_name='mitigated_by', lookup_expr='in')
+    nb_occurences = NumberInFilter(field_name='nb_occurences', lookup_expr='in')
+    reporter = NumberInFilter(field_name='reporter', lookup_expr='in')
+    scanner_confidence = NumberInFilter(field_name='scanner_confidence', lookup_expr='in')
+    review_requested_by = NumberInFilter(field_name='review_requested_by', lookup_expr='in')
+    reviewers = NumberInFilter(field_name='reviewers', lookup_expr='in')
+    sast_source_line = NumberInFilter(field_name='sast_source_line', lookup_expr='in')
+    sonarqube_issue = NumberInFilter(field_name='sonarqube_issue', lookup_expr='in')
+    test__test_type = NumberInFilter(field_name='test__test_type', lookup_expr='in', label='Test Type')
+    test__engagement = NumberInFilter(field_name='test__engagement', lookup_expr='in')
+    test__engagement__debt_context = NumberInFilter(field_name='test__engagement__debt_context', lookup_expr='in')
+    test__engagement__debt_context__prod_type = NumberInFilter(field_name='test__engagement__debt_context__prod_type', lookup_expr='in')
+    debt_item_group = NumberInFilter(field_name='debt_item_group', lookup_expr='in')
+
+    # ReportRiskAcceptanceFilter
+    risk_acceptance = extend_schema_field(OpenApiTypes.NUMBER)(ReportRiskAcceptanceFilter())
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Tag name contains')
+    tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                             help_text='Comma separated list of exact tags')
+    test__tags = CharFieldInFilter(field_name='test__tags__name', lookup_expr='in', help_text='Comma separated list of exact tags present on test')
+    test__engagement__tags = CharFieldInFilter(field_name='test__engagement__tags__name', lookup_expr='in',
+                                               help_text='Comma separated list of exact tags present on engagement')
+    test__engagement__debt_context__tags = CharFieldInFilter(
+        field_name='test__engagement__debt_context__tags__name',
+        lookup_expr='in',
+        help_text='Comma separated list of exact tags present on debt_context')
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Not Tag name contains', exclude='True')
+    not_tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                                 help_text='Comma separated list of exact tags not present on model', exclude='True')
+    not_test__tags = CharFieldInFilter(field_name='test__tags__name', lookup_expr='in', help_text='Comma separated list of exact tags present on test')
+    not_test__engagement__tags = CharFieldInFilter(field_name='test__engagement__tags__name', lookup_expr='in',
+                                                   help_text='Comma separated list of exact tags not present on engagement',
+                                                   exclude='True')
+    not_test__engagement__debt_context__tags = CharFieldInFilter(
+        field_name='test__engagement__debt_context__tags__name',
+        lookup_expr='in',
+        help_text='Comma separated list of exact tags not present on debt_context',
+        exclude='True')
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+    outside_of_sla = extend_schema_field(OpenApiTypes.NUMBER)(Debt_ContextSLAFilter())
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('active', 'active'),
+            ('component_name', 'component_name'),
+            ('component_version', 'component_version'),
+            ('created', 'created'),
+            ('last_status_update', 'last_status_update'),
+            ('last_reviewed', 'last_reviewed'),
+            ('cwe', 'cwe'),
+            ('date', 'date'),
+            ('duplicate', 'duplicate'),
+            ('dynamic_debt_item', 'dynamic_debt_item'),
+            ('false_p', 'false_p'),
+            ('found_by', 'found_by'),
+            ('id', 'id'),
+            ('is_mitigated', 'is_mitigated'),
+            ('numerical_severity', 'numerical_severity'),
+            ('out_of_scope', 'out_of_scope'),
+            ('severity', 'severity'),
+            ('reviewers', 'reviewers'),
+            ('static_debt_item', 'static_debt_item'),
+            ('test__engagement__debt_context__name', 'test__engagement__debt_context__name'),
+            ('title', 'title'),
+            ('under_defect_review', 'under_defect_review'),
+            ('under_review', 'under_review'),
+            ('verified', 'verified'),
+        ),
+    )
+
+    class Meta:
+        model = Debt_Item
         exclude = ['url', 'thread_id', 'notes', 'files',
                    'line', 'cve']
 
@@ -1501,6 +2209,219 @@ class FindingFilter(FindingFilterWithTags):
         self.form.fields['reviewers'].queryset = self.form.fields['reporter'].queryset
 
 
+class DebtItemFilter(DebtItemFilterWithTags):
+    # tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    title = CharFilter(lookup_expr='icontains')
+    date = DateRangeFilter()
+    last_reviewed = DateRangeFilter()
+    last_status_update = DateRangeFilter()
+    cwe = MultipleChoiceFilter(choices=[])
+    vulnerability_id = CharFilter(method=vulnerability_id_filter, label='Vulnerability Id')
+    severity = MultipleChoiceFilter(choices=SEVERITY_CHOICES)
+    test__test_type = ModelMultipleChoiceFilter(
+        queryset=Test_Type.objects.all(), label='Test Type')
+
+    duplicate = ReportBooleanFilter()
+    is_mitigated = ReportBooleanFilter()
+    mitigated = DateRangeFilter(label="Mitigated Date")
+
+    planned_remediation_date = DateRangeOmniFilter()
+    planned_remediation_version = CharFilter(lookup_expr='icontains', label=_('Planned remediation version'))
+
+    file_path = CharFilter(lookup_expr='icontains')
+    param = CharFilter(lookup_expr='icontains')
+    payload = CharFilter(lookup_expr='icontains')
+
+    reporter = ModelMultipleChoiceFilter(
+        queryset=Dojo_User.objects.none())
+
+    reviewers = ModelMultipleChoiceFilter(
+        queryset=Dojo_User.objects.none())
+
+    test__engagement__debt_context__prod_type = ModelMultipleChoiceFilter(
+        queryset=Debt_Context_Type.objects.none(),
+        label="Debt_Context Type")
+
+    test__engagement__debt_context__lifecycle = MultipleChoiceFilter(
+        choices=Debt_Context.LIFECYCLE_CHOICES, label='Debt_Context lifecycle')
+
+    test__engagement__debt_context = ModelMultipleChoiceFilter(
+        queryset=Debt_Context.objects.none(),
+        label="Debt_Context")
+    test__engagement = ModelMultipleChoiceFilter(
+        queryset=Engagement.objects.none(),
+        label="Engagement")
+
+    endpoints__host = CharFilter(lookup_expr='icontains', label="Endpoint Host")
+
+    service = CharFilter(lookup_expr='icontains')
+
+    test = ModelMultipleChoiceFilter(
+        queryset=Test.objects.none(),
+        label="Test")
+
+    test__engagement__version = CharFilter(lookup_expr='icontains', label="Engagement Version")
+    test__version = CharFilter(lookup_expr='icontains', label="Test Version")
+
+    status = DebtItemStatusFilter(label='Status')
+
+    if is_debt_item_groups_enabled():
+        debt_item_group = ModelMultipleChoiceFilter(
+            queryset=Debt_Item_Group.objects.none(),
+            label="Debt_Item Group")
+
+        has_debt_item_group = BooleanFilter(field_name='debt_item_group',
+                                            lookup_expr='isnull',
+                                            exclude=True,
+                                            label='Is Grouped')
+
+    risk_acceptance = ReportRiskAcceptanceFilter(
+        label="Risk Accepted")
+
+    effort_for_fixing = MultipleChoiceFilter(choices=EFFORT_FOR_FIXING_CHOICES)
+
+    test_import_debt_item_action__test_import = NumberFilter(widget=HiddenInput())
+    endpoints = NumberFilter(widget=HiddenInput())
+
+    if get_system_setting('enable_jira'):
+        has_jira_issue = BooleanFilter(field_name='jira_issue',
+                                       lookup_expr='isnull',
+                                       exclude=True,
+                                       label='Has JIRA')
+        jira_creation = DateRangeFilter(field_name='jira_issue__jira_creation', label='JIRA Creation')
+        jira_change = DateRangeFilter(field_name='jira_issue__jira_change', label='JIRA Updated')
+        jira_issue__jira_key = CharFilter(field_name='jira_issue__jira_key', lookup_expr='icontains', label="JIRA issue")
+
+        if is_debt_item_groups_enabled():
+            has_jira_group_issue = BooleanFilter(field_name='debt_item_group__jira_issue',
+                                                 lookup_expr='isnull',
+                                                 exclude=True,
+                                                 label='Has Group JIRA')
+
+    has_component = BooleanFilter(field_name='component_name',
+                                  lookup_expr='isnull',
+                                  exclude=True,
+                                  label='Has Component')
+
+    has_notes = BooleanFilter(field_name='notes',
+                              lookup_expr='isnull',
+                              exclude=True,
+                              label='Has notes')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Item.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__tags = ModelMultipleChoiceFilter(
+        field_name='test__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Test without tags',
+        queryset=Test.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__engagement__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Engagement without tags',
+        queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__debt_context__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Debt_Context without tags',
+        queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    outside_of_sla = DebtItemSLAFilter(label="Outside of SLA")
+
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('numerical_severity', 'numerical_severity'),
+            ('date', 'date'),
+            ('mitigated', 'mitigated'),
+            ('risk_acceptance__created__date',
+             'risk_acceptance__created__date'),
+            ('last_reviewed', 'last_reviewed'),
+            ('title', 'title'),
+            ('test__engagement__debt_context__name',
+             'test__engagement__debt_context__name'),
+            ('service', 'service'),
+        ),
+        field_labels={
+            'numerical_severity': 'Severity',
+            'date': 'Date',
+            'risk_acceptance__created__date': 'Acceptance Date',
+            'mitigated': 'Mitigated Date',
+            'title': 'Debt_Item Name',
+            'test__engagement__debt_context__name': 'Debt_Context Name',
+        }
+    )
+
+    class Meta:
+        model = Debt_Item
+        fields = get_debt_item_filterset_fields()
+
+        exclude = ['url', 'description', 'mitigation', 'impact',
+                   'endpoints', 'references',
+                   'thread_id', 'notes', 'scanner_confidence',
+                   'numerical_severity', 'line', 'duplicate_debt_item',
+                   'hash_code',
+                   'reviewers',
+                   'created', 'files', 'sla_start_date', 'cvssv3',
+                   'severity_justification', 'steps_to_reproduce']
+
+    def __init__(self, *args, **kwargs):
+        self.user = None
+        self.pid = None
+        if 'user' in kwargs:
+            self.user = kwargs.pop('user')
+
+        if 'pid' in kwargs:
+            self.pid = kwargs.pop('pid')
+        super().__init__(*args, **kwargs)
+
+        self.form.fields['cwe'].choices = cwe_options(self.queryset)
+
+        # Don't show the debt_context filter on the debt_context debt_item view
+        if self.pid:
+            del self.form.fields['test__engagement__debt_context']
+            del self.form.fields['test__engagement__debt_context__prod_type']
+            # TODO add authorized check to be sure
+            self.form.fields['test__engagement'].queryset = Engagement.objects.filter(
+                debt_context_id=self.pid
+            ).all()
+            self.form.fields['test'].queryset = get_authorized_tests(Permissions.Test_View, debt_context=self.pid).prefetch_related('test_type')
+        else:
+            self.form.fields[
+                'test__engagement__debt_context__prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+            self.form.fields['test__engagement'].queryset = get_authorized_engagements(Permissions.Engagement_View)
+            del self.form.fields['test']
+
+        if self.form.fields.get('test__engagement__debt_context'):
+            self.form.fields['test__engagement__debt_context'].queryset = get_authorized_debt_contexts(Permissions.Debt_Context_View)
+        if self.form.fields.get('debt_item_group', None):
+            self.form.fields['debt_item_group'].queryset = get_authorized_debt_item_groups(Permissions.Debt_Item_Group_View)
+        self.form.fields['reporter'].queryset = get_authorized_users(Permissions.Debt_Item_View)
+        self.form.fields['reviewers'].queryset = self.form.fields['reporter'].queryset
+
+
 class AcceptedFindingFilter(FindingFilter):
     risk_acceptance__created__date = \
         DateRangeFilter(label="Acceptance Date")
@@ -1513,6 +2434,20 @@ class AcceptedFindingFilter(FindingFilter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form.fields['risk_acceptance__owner'].queryset = get_authorized_users(Permissions.Finding_View)
+
+
+class AcceptedDebtItemFilter(DebtItemFilter):
+    risk_acceptance__created__date = \
+        DateRangeFilter(label="Acceptance Date")
+
+    risk_acceptance__owner = \
+        ModelMultipleChoiceFilter(
+            queryset=Dojo_User.objects.none(),
+            label="Risk Acceptance Owner")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form.fields['risk_acceptance__owner'].queryset = get_authorized_users(Permissions.Debt_Item_View)
 
 
 class SimilarFindingFilter(FindingFilter):
@@ -1562,6 +2497,53 @@ class SimilarFindingFilter(FindingFilter):
         queryset = queryset.exclude(pk=self.finding.pk)
         return queryset
 
+
+class SimilarDebtItemFilter(DebtItemFilter):
+    hash_code = MultipleChoiceFilter()
+    vulnerability_ids = CharFilter(method=custom_vulnerability_id_filter, label='Vulnerability Ids')
+
+    class Meta(DebtItemFilter.Meta):
+        model = Debt_Item
+        # slightly different fields from Debt_ItemFilter, but keep the same ordering for UI consistency
+        fields = get_debt_item_filterset_fields(similar=True)
+
+    def __init__(self, data=None, *args, **kwargs):
+        self.user = None
+        if 'user' in kwargs:
+            self.user = kwargs.pop('user')
+
+        self.debt_item = None
+        if 'debt_item' in kwargs:
+            self.debt_item = kwargs.pop('debt_item')
+
+        # if filterset is bound, use initial values as defaults
+        # because of this, we can't rely on the self.form.has_changed
+        self.has_changed = True
+        if not data and self.debt_item:
+            # get a mutable copy of the QueryDict
+            data = data.copy()
+
+            data['vulnerability_ids'] = ','.join(self.debt_item.vulnerability_ids)
+            data['cwe'] = self.debt_item.cwe
+            data['file_path'] = self.debt_item.file_path
+            data['line'] = self.debt_item.line
+            data['unique_id_from_tool'] = self.debt_item.unique_id_from_tool
+            data['test__test_type'] = self.debt_item.test.test_type
+            data['test__engagement__debt_context'] = self.debt_item.test.engagement.debt_context
+            data['test__engagement__debt_context__prod_type'] = self.debt_item.test.engagement.debt_context.prod_type
+
+            self.has_changed = False
+
+        super().__init__(data, *args, **kwargs)
+
+        if self.debt_item and self.debt_item.hash_code:
+            self.form.fields['hash_code'] = forms.MultipleChoiceField(choices=[(self.debt_item.hash_code, self.debt_item.hash_code[:24] + '...')], required=False, initial=[])
+
+    def filter_queryset(self, *args, **kwargs):
+        queryset = super().filter_queryset(*args, **kwargs)
+        queryset = get_authorized_debt_items(Permissions.Debt_Item_View, queryset, self.user)
+        queryset = queryset.exclude(pk=self.debt_item.pk)
+        return queryset
 
 class TemplateFindingFilter(DojoFilter):
     title = CharFilter(lookup_expr='icontains')
@@ -1646,6 +2628,88 @@ class TemplateFindingFilter(DojoFilter):
         self.form.fields['cwe'].choices = cwe_options(self.queryset)
 
 
+class TemplateDebtItemFilter(DojoFilter):
+    title = CharFilter(lookup_expr='icontains')
+    cwe = MultipleChoiceFilter(choices=[])
+    severity = MultipleChoiceFilter(choices=SEVERITY_CHOICES)
+
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Debt_Item.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Item.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('cwe', 'cwe'),
+            ('title', 'title'),
+            ('numerical_severity', 'numerical_severity'),
+        ),
+        field_labels={
+            'numerical_severity': 'Severity',
+        }
+    )
+
+    class Meta:
+        model = Debt_Item_Template
+        exclude = ['description', 'mitigation', 'impact',
+                   'references', 'numerical_severity']
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Item.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__tags = ModelMultipleChoiceFilter(
+        field_name='test__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Test without tags',
+        queryset=Test.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__engagement__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Engagement without tags',
+        queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
+        field_name='test__engagement__debt_context__tags__name',
+        to_field_name='name',
+        exclude=True,
+        label='Debt_Context without tags',
+        queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    def __init__(self, *args, **kwargs):
+        super(TemplateDebtItemFilter, self).__init__(*args, **kwargs)
+        self.form.fields['cwe'].choices = cwe_options(self.queryset)
+
 class ApiTemplateFindingFilter(DojoFilter):
     tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Tag name contains')
     tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
@@ -1667,6 +2731,29 @@ class ApiTemplateFindingFilter(DojoFilter):
         model = Finding_Template
         fields = ['id', 'title', 'cwe', 'severity', 'description',
                      'mitigation']
+
+
+class ApiTemplateDebtItemFilter(DojoFilter):
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Tag name contains')
+    tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                             help_text='Comma separated list of exact tags')
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Not Tag name contains', exclude='True')
+    not_tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                                 help_text='Comma separated list of exact tags not present on model', exclude='True')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('title', 'title'),
+            ('cwe', 'cwe'),
+        ),
+    )
+
+    class Meta:
+        model = Debt_Item_Template
+        fields = ['id', 'title', 'cwe', 'severity', 'description',
+                  'mitigation']
 
 
 class MetricsFindingFilter(FindingFilter):
@@ -1697,6 +2784,36 @@ class MetricsFindingFilter(FindingFilter):
     class Meta(FindingFilter.Meta):
         model = Finding
         fields = get_finding_filterset_fields(metrics=True)
+
+
+class MetricsDebtItemFilter(DebtItemFilter):
+    start_date = DateFilter(field_name='date', label='Start Date', lookup_expr=('gt'))
+    end_date = DateFilter(field_name='date', label='End Date', lookup_expr=('lt'))
+    date = MetricsDateRangeFilter()
+    vulnerability_id = CharFilter(method=vulnerability_id_filter, label='Vulnerability Id')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Endpoint.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    def __init__(self, *args, **kwargs):
+        if args[0]:
+            if args[0].get('start_date', '') != '' or args[0].get('end_date', '') != '':
+                args[0]._mutable = True
+                args[0]['date'] = 8
+                args[0]._mutable = False
+
+        super().__init__(*args, **kwargs)
+
+    class Meta(DebtItemFilter.Meta):
+        model = Debt_Item
+        fields = get_debt_item_filterset_fields(metrics=True)
 
 
 class MetricsEndpointFilter(FilterSet):
@@ -2186,6 +3303,172 @@ class ReportFindingFilter(FindingFilterWithTags):
         return get_authorized_findings(Permissions.Finding_View, parent)
 
 
+class ReportFindingFilter(FindingFilterWithTags):
+    title = CharFilter(lookup_expr='icontains', label='Name')
+    test__engagement__product = ModelMultipleChoiceFilter(
+        queryset=Product.objects.none(), label="Product")
+    test__engagement__product__prod_type = ModelMultipleChoiceFilter(
+        queryset=Product_Type.objects.none(),
+        label="Product Type")
+    severity = MultipleChoiceFilter(choices=SEVERITY_CHOICES)
+    active = ReportBooleanFilter()
+    is_mitigated = ReportBooleanFilter()
+    mitigated = DateRangeFilter(label="Mitigated Date")
+    verified = ReportBooleanFilter()
+    false_p = ReportBooleanFilter(label="False Positive")
+    risk_acceptance = ReportRiskAcceptanceFilter(
+        label="Risk Accepted")
+    # queryset will be restricted in __init__, here we don't have access to the logged in user
+    duplicate = ReportBooleanFilter()
+    duplicate_finding = ModelChoiceFilter(queryset=Finding.objects.filter(original_finding__isnull=False).distinct())
+    out_of_scope = ReportBooleanFilter()
+
+    file_path = CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = Finding
+        # exclude sonarqube issue as by default it will show all without checking permissions
+        exclude = ['date', 'cwe', 'url', 'description', 'mitigation', 'impact',
+                   'references', 'test', 'sonarqube_issue',
+                   'thread_id', 'notes', 'endpoints',
+                   'numerical_severity', 'reporter', 'last_reviewed',
+                   'jira_creation', 'jira_change', 'files']
+
+    def __init__(self, *args, **kwargs):
+        self.prod_type = None
+        self.product = None
+        self.engagement = None
+        self.test = None
+        if 'prod_type' in kwargs:
+            self.prod_type = kwargs.pop('prod_type')
+        if 'product' in kwargs:
+            self.product = kwargs.pop('product')
+        if 'engagement' in kwargs:
+            self.engagement = kwargs.pop('engagement')
+        if 'test' in kwargs:
+            self.test = kwargs.pop('test')
+
+        super().__init__(*args, **kwargs)
+
+        # duplicate_finding queryset needs to restricted in line with permissions
+        # and inline with report scope to avoid a dropdown with 100K entries
+        duplicate_finding_query_set = self.form.fields['duplicate_finding'].queryset
+        duplicate_finding_query_set = get_authorized_findings(Permissions.Finding_View, duplicate_finding_query_set)
+
+        if self.test:
+            duplicate_finding_query_set = duplicate_finding_query_set.filter(test=self.test)
+            del self.form.fields['test__tags']
+            del self.form.fields['test__engagement__tags']
+            del self.form.fields['test__engagement__product__tags']
+        if self.engagement:
+            duplicate_finding_query_set = duplicate_finding_query_set.filter(test__engagement=self.engagement)
+            del self.form.fields['test__engagement__tags']
+            del self.form.fields['test__engagement__product__tags']
+        elif self.product:
+            duplicate_finding_query_set = duplicate_finding_query_set.filter(test__engagement__product=self.product)
+            del self.form.fields['test__engagement__product']
+            del self.form.fields['test__engagement__product__tags']
+        elif self.prod_type:
+            duplicate_finding_query_set = duplicate_finding_query_set.filter(test__engagement__product__prod_type=self.prod_type)
+            del self.form.fields['test__engagement__product__prod_type']
+
+        self.form.fields['duplicate_finding'].queryset = duplicate_finding_query_set
+
+        if 'test__engagement__product__prod_type' in self.form.fields:
+            self.form.fields[
+                'test__engagement__product__prod_type'].queryset = get_authorized_product_types(Permissions.Product_Type_View)
+        if 'test__engagement__product' in self.form.fields:
+            self.form.fields[
+                'test__engagement__product'].queryset = get_authorized_products(Permissions.Product_View)
+
+    @property
+    def qs(self):
+        parent = super().qs
+        return get_authorized_findings(Permissions.Finding_View, parent)
+
+class ReportDebtItemFilter(DebtItemFilterWithTags):
+    title = CharFilter(lookup_expr='icontains', label='Name')
+    test__engagement__debt_context = ModelMultipleChoiceFilter(
+        queryset=Debt_Context.objects.none(), label="Debt_Context")
+    test__engagement__debt_context__prod_type = ModelMultipleChoiceFilter(
+        queryset=Debt_Context_Type.objects.none(),
+        label="Debt_Context Type")
+    severity = MultipleChoiceFilter(choices=SEVERITY_CHOICES)
+    active = ReportBooleanFilter()
+    is_mitigated = ReportBooleanFilter()
+    mitigated = DateRangeFilter(label="Mitigated Date")
+    verified = ReportBooleanFilter()
+    false_p = ReportBooleanFilter(label="False Positive")
+    risk_acceptance = ReportRiskAcceptanceFilter(
+        label="Risk Accepted")
+    # queryset will be restricted in __init__, here we don't have access to the logged in user
+    duplicate = ReportBooleanFilter()
+    duplicate_debt_item = ModelChoiceFilter(queryset=Debt_Item.objects.filter(original_debt_item__isnull=False).distinct())
+    out_of_scope = ReportBooleanFilter()
+
+    file_path = CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = Debt_Item
+        # exclude sonarqube issue as by default it will show all without checking permissions
+        exclude = ['date', 'cwe', 'url', 'description', 'mitigation', 'impact',
+                   'references', 'test', 'sonarqube_issue',
+                   'thread_id', 'notes', 'endpoints',
+                   'numerical_severity', 'reporter', 'last_reviewed',
+                   'jira_creation', 'jira_change', 'files']
+
+    def __init__(self, *args, **kwargs):
+        self.prod_type = None
+        self.debt_context = None
+        self.engagement = None
+        self.test = None
+        if 'prod_type' in kwargs:
+            self.prod_type = kwargs.pop('prod_type')
+        if 'debt_context' in kwargs:
+            self.debt_context = kwargs.pop('debt_context')
+        if 'engagement' in kwargs:
+            self.engagement = kwargs.pop('engagement')
+        if 'test' in kwargs:
+            self.test = kwargs.pop('test')
+
+        super().__init__(*args, **kwargs)
+
+        # duplicate_debt_item queryset needs to restricted in line with permissions
+        # and inline with report scope to avoid a dropdown with 100K entries
+        duplicate_debt_item_query_set = self.form.fields['duplicate_debt_item'].queryset
+        duplicate_debt_item_query_set = get_authorized_debt_items(Permissions.debt_item_View, duplicate_debt_item_query_set)
+
+        if self.test:
+            duplicate_debt_item_query_set = duplicate_debt_item_query_set.filter(test=self.test)
+            del self.form.fields['test__tags']
+            del self.form.fields['test__engagement__tags']
+            del self.form.fields['test__engagement__debt_context__tags']
+        if self.engagement:
+            duplicate_debt_item_query_set = duplicate_debt_item_query_set.filter(test__engagement=self.engagement)
+            del self.form.fields['test__engagement__tags']
+            del self.form.fields['test__engagement__debt_context__tags']
+        elif self.debt_context:
+            duplicate_debt_item_query_set = duplicate_debt_item_query_set.filter(test__engagement__debt_context=self.debt_context)
+            del self.form.fields['test__engagement__debt_context']
+            del self.form.fields['test__engagement__debt_context__tags']
+        elif self.prod_type:
+            duplicate_debt_item_query_set = duplicate_debt_item_query_set.filter(test__engagement__debt_context__prod_type=self.prod_type)
+            del self.form.fields['test__engagement__debt_context__prod_type']
+
+        self.form.fields['duplicate_debt_item'].queryset = duplicate_debt_item_query_set
+
+        if 'test__engagement__debt_context__prod_type' in self.form.fields:
+            self.form.fields[
+                'test__engagement__debt_context__prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+        if 'test__engagement__debt_context' in self.form.fields:
+            self.form.fields[
+                'test__engagement__debt_context'].queryset = get_authorized_debt_contexts(Permissions.Debt_Context_View)
+
+    @property
+    def qs(self):
+        parent = super().qs
+        return get_authorized_debt_items(Permissions.debt_item_View, parent)
+
 class UserFilter(DojoFilter):
     first_name = CharFilter(lookup_expr='icontains')
     last_name = CharFilter(lookup_expr='icontains')
@@ -2264,6 +3547,19 @@ class TestImportFindingActionFilter(DojoFilter):
         model = Test_Import_Finding_Action
         fields = []
 
+
+class TestImportDebtItemActionFilter(DojoFilter):
+    action = MultipleChoiceFilter(choices=IMPORT_ACTIONS)
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('action', 'action'),
+        )
+    )
+
+    class Meta:
+        model = Test_Import_Debt_Item_Action
+        fields = []
 
 class LogEntryFilter(DojoFilter):
     from auditlog.models import LogEntry

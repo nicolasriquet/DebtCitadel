@@ -57,15 +57,23 @@ STATS_FIELDS = ['active', 'verified', 'duplicate', 'false_p', 'out_of_scope', 'i
 DEFAULT_STATS = {sev.lower(): {stat_field: 0 for stat_field in STATS_FIELDS} for sev in SEVERITIES}
 
 IMPORT_CREATED_FINDING = 'N'
+IMPORT_CREATED_DEBT_ITEM = 'N'
 IMPORT_CLOSED_FINDING = 'C'
+IMPORT_CLOSED_DEBT_ITEM = 'C'
 IMPORT_REACTIVATED_FINDING = 'R'
+IMPORT_REACTIVATED_DEBT_ITEM = 'R'
 IMPORT_UNTOUCHED_FINDING = 'U'
+IMPORT_UNTOUCHED_DEBT_ITEM = 'U'
 
 IMPORT_ACTIONS = [
     (IMPORT_CREATED_FINDING, 'created'),
     (IMPORT_CLOSED_FINDING, 'closed'),
     (IMPORT_REACTIVATED_FINDING, 'reactivated'),
     (IMPORT_UNTOUCHED_FINDING, 'left untouched'),
+    (IMPORT_CREATED_DEBT_ITEM, 'created'),
+    (IMPORT_CLOSED_DEBT_ITEM, 'closed'),
+    (IMPORT_REACTIVATED_DEBT_ITEM, 'reactivated'),
+    (IMPORT_UNTOUCHED_DEBT_ITEM, 'left untouched'),
 ]
 
 
@@ -789,7 +797,7 @@ class Product_Type(models.Model):
 
 
 class Debt_Context_Type(models.Model):
-    """Product types represent the top level model, these can be business unit divisions, different offices or locations, development teams, or any other logical way of distinguishing “types” of products.
+    """Debt_Context types represent the top level model, these can be business unit divisions, different offices or locations, development teams, or any other logical way of distinguishing “types” of debt_contexts.
 `
        Examples:
          * IAM Team
@@ -799,7 +807,7 @@ class Debt_Context_Type(models.Model):
     """
     name = models.CharField(max_length=255, unique=True)
     description = models.CharField(max_length=4000, null=True, blank=True)
-    critical_context = models.BooleanField(default=False)
+    critical_debt_context = models.BooleanField(default=False)
     key_debt_context = models.BooleanField(default=False)
     updated = models.DateTimeField(auto_now=True, null=True)
     created = models.DateTimeField(auto_now_add=True, null=True)
@@ -809,23 +817,23 @@ class Debt_Context_Type(models.Model):
     @cached_property
     def critical_present(self):
         c_debt_items = Debt_Item.objects.filter(
-            test__engagement__product__prod_type=self, severity='Critical')
+            test__engagement__debt_context__prod_type=self, severity='Critical')
         if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def high_present(self):
         c_debt_items = Debt_Item.objects.filter(
-            test__engagement__product__prod_type=self, severity='High')
+            test__engagement__debt_context__prod_type=self, severity='High')
         if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def calc_health(self):
         h_debt_items = Debt_Item.objects.filter(
-            test__engagement__product__prod_type=self, severity='High')
+            test__engagement__debt_context__prod_type=self, severity='High')
         c_debt_items = Debt_Item.objects.filter(
-            test__engagement__product__prod_type=self, severity='Critical')
+            test__engagement__debt_context__prod_type=self, severity='Critical')
         health = 100
         if c_debt_items.count() > 0:
             health = 40
@@ -841,7 +849,7 @@ class Debt_Context_Type(models.Model):
 
     # only used by bulk risk acceptance api
     @property
-    def unaccepted_open_findings(self):
+    def unaccepted_open_debt_items(self):
         return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__engagement__debt__context__prod_type=self)
 
     class Meta:
@@ -1240,7 +1248,7 @@ class Debt_Context(models.Model):
     RETIREMENT = 'retirement'
     LIFECYCLE_CHOICES = (
         (CONSTRUCTION, _('Construction')),
-        (PRODUCTION, _('Production')),
+        (PRODUCTION, _('Debt_Contextion')),
         (RETIREMENT, _('Retirement')),
     )
 
@@ -1278,7 +1286,7 @@ class Debt_Context(models.Model):
     description = models.CharField(max_length=4000)
 
     debt_context_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
-                                        related_name='debt_context_manager', on_delete=models.RESTRICT)
+                                             related_name='debt_context_manager', on_delete=models.RESTRICT)
     technical_contact = models.ForeignKey(Dojo_User, null=True, blank=True,
                                           related_name='debt_technical_contact', on_delete=models.RESTRICT)
     team_manager = models.ForeignKey(Dojo_User, null=True, blank=True,
@@ -1286,7 +1294,7 @@ class Debt_Context(models.Model):
 
     created = models.DateTimeField(auto_now_add=True, null=True)
     debt_context_type = models.ForeignKey(Debt_Context_Type, related_name='debt_context_type',
-                                  null=False, blank=False, on_delete=models.CASCADE)
+                                          null=False, blank=False, on_delete=models.CASCADE)
     updated = models.DateTimeField(auto_now=True, null=True)
     sla_configuration = models.ForeignKey(SLA_Configuration,
                                           related_name='debt_sla_config',
@@ -1311,11 +1319,11 @@ class Debt_Context(models.Model):
     regulations = models.ManyToManyField(Regulation, blank=True)
 
     tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this debt context. Choose from the list or add new tags. Press Enter key to add."))
-    enable_product_tag_inheritance = models.BooleanField(
+    enable_debt_context_tag_inheritance = models.BooleanField(
         default=False,
         blank=False,
         verbose_name=_('Enable Debt Context Tag Inheritance'),
-        help_text=_("Enables debt context tag inheritance. Any tags added on a product will automatically be added to all Engagements, Tests, and Findings"))
+        help_text=_("Enables debt context tag inheritance. Any tags added on a Debt_Context will automatically be added to all Engagements, Tests, and Debt_Items"))
     enable_simple_risk_acceptance = models.BooleanField(default=False, help_text=_('Allows simple risk acceptance by checking/unchecking a checkbox.'))
     enable_full_risk_acceptance = models.BooleanField(default=True, help_text=_('Allows full risk acceptance using a risk acceptance form, expiration date, uploaded proof, etc.'))
 
@@ -1339,7 +1347,7 @@ class Debt_Context(models.Model):
         except AttributeError:
             # ideally it's always prefetched and we can remove this code in the future
             self.active_debt_item_count = Debt_Item.objects.filter(active=True,
-                                                               test__engagement__debt__context=self).count()
+                                                                   test__engagement__debt__context=self).count()
             return self.active_debt_item_count
 
     @cached_property
@@ -1350,8 +1358,8 @@ class Debt_Context(models.Model):
         except AttributeError:
             # ideally it's always prefetched and we can remove this code in the future
             self.active_verified_debt_item_count = Debt_Item.objects.filter(active=True,
-                                                                        verified=True,
-                                                                        test__engagement__debt__context=self).count()
+                                                                            verified=True,
+                                                                            test__engagement__debt__context=self).count()
             return self.active_verified_debt_item_count
 
     @cached_property
@@ -1378,41 +1386,41 @@ class Debt_Context(models.Model):
             return {}
         else:
             critical = Debt_Item.objects.filter(test__engagement__debt__context=self,
-                                              mitigated__isnull=True,
-                                              verified=True,
-                                              false_p=False,
-                                              duplicate=False,
-                                              out_of_scope=False,
-                                              severity="Critical",
-                                              date__range=[start_date,
-                                                           end_date]).count()
+                                                mitigated__isnull=True,
+                                                verified=True,
+                                                false_p=False,
+                                                duplicate=False,
+                                                out_of_scope=False,
+                                                severity="Critical",
+                                                date__range=[start_date,
+                                                             end_date]).count()
             high = Debt_Item.objects.filter(test__engagement__debt__context=self,
-                                          mitigated__isnull=True,
-                                          verified=True,
-                                          false_p=False,
-                                          duplicate=False,
-                                          out_of_scope=False,
-                                          severity="High",
-                                          date__range=[start_date,
-                                                       end_date]).count()
-            medium = Debt_Item.objects.filter(test__engagement__debt__context=self,
                                             mitigated__isnull=True,
                                             verified=True,
                                             false_p=False,
                                             duplicate=False,
                                             out_of_scope=False,
-                                            severity="Medium",
+                                            severity="High",
                                             date__range=[start_date,
                                                          end_date]).count()
+            medium = Debt_Item.objects.filter(test__engagement__debt__context=self,
+                                              mitigated__isnull=True,
+                                              verified=True,
+                                              false_p=False,
+                                              duplicate=False,
+                                              out_of_scope=False,
+                                              severity="Medium",
+                                              date__range=[start_date,
+                                                           end_date]).count()
             low = Debt_Item.objects.filter(test__engagement__debt__context=self,
-                                         mitigated__isnull=True,
-                                         verified=True,
-                                         false_p=False,
-                                         duplicate=False,
-                                         out_of_scope=False,
-                                         severity="Low",
-                                         date__range=[start_date,
-                                                      end_date]).count()
+                                           mitigated__isnull=True,
+                                           verified=True,
+                                           false_p=False,
+                                           duplicate=False,
+                                           out_of_scope=False,
+                                           severity="Low",
+                                           date__range=[start_date,
+                                                        end_date]).count()
             return {'Critical': critical,
                     'High': high,
                     'Medium': medium,
@@ -1428,11 +1436,11 @@ class Debt_Context(models.Model):
     def get_debt_context_type(self):
         return self.debt_context_type if self.debt_context_type is not None else 'unknown'
 
-    # only used in APIv2 serializers.py, query should be aligned with findings_count
+    # only used in APIv2 serializers.py, query should be aligned with debt_items_count
     @cached_property
     def open_debt_items_list(self):
         debt_items = Debt_Item.objects.filter(test__engagement__debt__context=self,
-                                          active=True)
+                                              active=True)
         debt_items_list = []
         for i in debt_items:
             debt_items_list.append(i.id)
@@ -1450,7 +1458,7 @@ class Debt_Context(models.Model):
     @property
     def violates_sla(self):
         debt_items = Debt_Item.objects.filter(test__engagement__debt__context=self,
-                                          active=True)
+                                              active=True)
         for f in debt_items:
             if f.violates_sla:
                 return True
@@ -2528,6 +2536,21 @@ class Test_Import_Finding_Action(TimeStampedModel):
         return '%i: %s' % (self.finding.id, self.action)
 
 
+class Test_Import_Debt_Item_Action(TimeStampedModel):
+    test_import = models.ForeignKey(Test_Import, editable=False, null=False, blank=False, on_delete=models.CASCADE)
+    debt_item = models.ForeignKey('Finding', editable=False, null=False, blank=False, on_delete=models.CASCADE)
+    action = models.CharField(max_length=100, null=True, blank=True, choices=IMPORT_ACTIONS)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['debt_item', 'action', 'test_import']),
+        ]
+        unique_together = (('test_import', 'debt_item'))
+        ordering = ('test_import', 'action', 'debt_item')
+
+    def __str__(self):
+        return '%i: %s' % (self.debt_item.id, self.action)
+
 class Finding(models.Model):
 
     title = models.CharField(max_length=511,
@@ -3516,7 +3539,7 @@ class Debt_Item(models.Model):
                            null=True,
                            blank=False,
                            verbose_name=_("Vulnerability Id"),
-                           help_text=_("An id of a vulnerability in a security advisory associated with this finding. Can be a Common Vulnerabilities and Exposures (CVE) or from other sources."))
+                           help_text=_("An id of a vulnerability in a security advisory associated with this debt_item. Can be a Common Vulnerabilities and Exposures (CVE) or from other sources."))
     cvssv3_regex = RegexValidator(regex=r'^AV:[NALP]|AC:[LH]|PR:[UNLH]|UI:[NR]|S:[UC]|[CIA]:[NLH]', message="CVSS must be entered in format: 'AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H'")
     cvssv3 = models.TextField(validators=[cvssv3_regex],
                               max_length=117,
@@ -3526,7 +3549,7 @@ class Debt_Item(models.Model):
     cvssv3_score = models.FloatField(null=True,
                                      blank=True,
                                      verbose_name=_('CVSSv3 score'),
-                                     help_text=_("Numerical CVSSv3 score for the vulnerability. If the vector is given, the score is updated while saving the finding"))
+                                     help_text=_("Numerical CVSSv3 score for the vulnerability. If the vector is given, the score is updated while saving the debt_item"))
 
     url = models.TextField(null=True,
                            blank=True,
@@ -3545,7 +3568,7 @@ class Debt_Item(models.Model):
     impact = models.TextField(verbose_name=_('Impact'),
                               null=True,
                               blank=True,
-                              help_text=_("Text describing the impact this flaw has on systems, products, enterprise, etc."))
+                              help_text=_("Text describing the impact this flaw has on systems, debt_contexts, enterprise, etc."))
     steps_to_reproduce = models.TextField(null=True,
                                           blank=True,
                                           verbose_name=_('Steps to Reproduce'),
@@ -3557,7 +3580,7 @@ class Debt_Item(models.Model):
     endpoints = models.ManyToManyField(Endpoint,
                                        blank=True,
                                        verbose_name=_('Endpoints'),
-                                       help_text=_("The hosts within the product that are susceptible to this flaw. + The status of the endpoint associated with this flaw (Vulnerable, Mitigated, ...)."),
+                                       help_text=_("The hosts within the debt_context that are susceptible to this flaw. + The status of the endpoint associated with this flaw (Vulnerable, Mitigated, ...)."),
                                        through=Debt_Endpoint_Status)
     references = models.TextField(null=True,
                                   blank=True,
@@ -3572,8 +3595,8 @@ class Debt_Item(models.Model):
     active = models.BooleanField(default=True,
                                  verbose_name=_('Active'),
                                  help_text=_("Denotes if this flaw is active or not."))
-    # note that false positive findings cannot be verified
-    # in defectdojo verified means: "we have verified the finding and it turns out that it's not a false positive"
+    # note that false positive debt_items cannot be verified
+    # in defectdojo verified means: "we have verified the debt_item and it turns out that it's not a false positive"
     verified = models.BooleanField(default=False,
                                    verbose_name=_('Verified'),
                                    help_text=_("Denotes if this flaw has been manually verified by the tester."))
@@ -3584,12 +3607,12 @@ class Debt_Item(models.Model):
                                     verbose_name=_('Duplicate'),
                                     help_text=_("Denotes if this flaw is a duplicate of other flaws reported."))
     duplicate_debt_item = models.ForeignKey('self',
-                                          editable=False,
-                                          null=True,
-                                          related_name='original_debt_item',
-                                          blank=True, on_delete=models.DO_NOTHING,
-                                          verbose_name=_('Duplicate Debt Item'),
-                                          help_text=_("Link to the original debt item if this debt item is a duplicate."))
+                                            editable=False,
+                                            null=True,
+                                            related_name='original_debt_item',
+                                            blank=True, on_delete=models.DO_NOTHING,
+                                            verbose_name=_('Duplicate Debt Item'),
+                                            help_text=_("Link to the original debt item if this debt item is a duplicate."))
     out_of_scope = models.BooleanField(default=False,
                                        verbose_name=_('Out Of Scope'),
                                        help_text=_("Denotes if this flaw falls outside the scope of the test and/or engagement."))
@@ -3613,7 +3636,7 @@ class Debt_Item(models.Model):
                                             related_name='debt_review_requested_by',
                                             on_delete=models.RESTRICT,
                                             verbose_name=_('Review Requested By'),
-                                            help_text=_("Documents who requested a review for this finding."))
+                                            help_text=_("Documents who requested a review for this debt_item."))
     reviewers = models.ManyToManyField(Dojo_User,
                                        blank=True,
                                        verbose_name=_('Reviewers'),
@@ -3694,7 +3717,7 @@ class Debt_Item(models.Model):
                                  editable=False,
                                  max_length=64,
                                  verbose_name=_('Hash Code'),
-                                 help_text=_("A hash over a configurable set of fields that is used for findings deduplication."))
+                                 help_text=_("A hash over a configurable set of fields that is used for debt_items deduplication."))
     line = models.IntegerField(null=True,
                                blank=True,
                                verbose_name=_('Line number'),
@@ -3718,16 +3741,16 @@ class Debt_Item(models.Model):
                                       editable=False,
                                       verbose_name=_('Found by'),
                                       help_text=_("The name of the scanner that identified the flaw."))
-    static_finding = models.BooleanField(default=False,
-                                         verbose_name=_("Static finding (SAST)"),
-                                         help_text=_('Flaw has been detected from a Static Application Security Testing tool (SAST).'))
-    dynamic_finding = models.BooleanField(default=True,
-                                          verbose_name=_("Dynamic finding (DAST)"),
-                                          help_text=_('Flaw has been detected from a Dynamic Application Security Testing tool (DAST).'))
+    static_debt_item = models.BooleanField(default=False,
+                                           verbose_name=_("Static debt_item (SAST)"),
+                                           help_text=_('Flaw has been detected from a Static Application Security Testing tool (SAST).'))
+    dynamic_debt_item = models.BooleanField(default=True,
+                                            verbose_name=_("Dynamic debt_item (DAST)"),
+                                            help_text=_('Flaw has been detected from a Dynamic Application Security Testing tool (DAST).'))
     created = models.DateTimeField(auto_now_add=True,
                                    null=True,
                                    verbose_name=_('Created'),
-                                   help_text=_("The date the finding was created inside DefectDojo."))
+                                   help_text=_("The date the debt_item was created inside DefectDojo."))
     scanner_confidence = models.IntegerField(null=True,
                                              blank=True,
                                              default=None,
@@ -3737,7 +3760,7 @@ class Debt_Item(models.Model):
     sonarqube_issue = models.ForeignKey(Sonarqube_Issue,
                                         null=True,
                                         blank=True,
-                                        help_text=_("The SonarQube issue associated with this finding."),
+                                        help_text=_("The SonarQube issue associated with this debt_item."),
                                         verbose_name=_('SonarQube issue'),
                                         on_delete=models.CASCADE)
     unique_id_from_tool = models.CharField(null=True,
@@ -3780,12 +3803,12 @@ class Debt_Item(models.Model):
                                     verbose_name=_('Publish date'),
                                     help_text=_("Date when this vulnerability was made publicly available."))
 
-    # The service is used to generate the hash_code, so that it gets part of the deduplication of findings.
+    # The service is used to generate the hash_code, so that it gets part of the deduplication of debt_items.
     service = models.CharField(null=True,
                                blank=True,
                                max_length=200,
                                verbose_name=_('Service'),
-                               help_text=_('A service is a self-contained piece of functionality within a Product. This is an optional field which is used in deduplication of findings when set.'))
+                               help_text=_('A service is a self-contained piece of functionality within a Debt_Context. This is an optional field which is used in deduplication of debt_items when set.'))
 
     planned_remediation_date = models.DateField(null=True,
                                                 editable=True,
@@ -3805,7 +3828,7 @@ class Debt_Item(models.Model):
                                          help_text=_('Effort for debt item / remediating the vulnerability (Low, Medium, High)'))
 
     tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this debt item. Choose from the list or add new tags. Press Enter key to add."))
-    inherited_tags = TagField(blank=True, force_lowercase=True, help_text=_("Internal use tags sepcifically for maintaining parity with product. This field will be present as a subset in the tags field"))
+    inherited_tags = TagField(blank=True, force_lowercase=True, help_text=_("Internal use tags sepcifically for maintaining parity with debt_context. This field will be present as a subset in the tags field"))
 
     SEVERITIES = {'Info': 4, 'Low': 3, 'Medium': 2,
                   'High': 1, 'Critical': 0}
@@ -3846,7 +3869,7 @@ class Debt_Item(models.Model):
         ]
 
     def __init__(self, *args, **kwargs):
-        super(Finding, self).__init__(*args, **kwargs)
+        super(Debt_Item, self).__init__(*args, **kwargs)
 
         self.unsaved_endpoints = []
         self.unsaved_request = None
@@ -3860,7 +3883,7 @@ class Debt_Item(models.Model):
         # Save the necessary ManyToMany relationships
         old_notes = list(self.notes.all())
         old_files = list(self.files.all())
-        old_status_findings = list(self.status_finding.all())
+        old_status_debt_items = list(self.status_debt_item.all())
         old_reviewers = list(self.reviewers.all())
         old_found_by = list(self.found_by.all())
         old_tags = list(self.tags.all())
@@ -3878,8 +3901,8 @@ class Debt_Item(models.Model):
         for files in old_files:
             copy.files.add(files.copy())
         # Copy the endpoint_status
-        for endpoint_status in old_status_findings:
-            endpoint_status.copy(finding=copy)  # adding or setting is not necessary, link is created by Endpoint_Status.copy()
+        for endpoint_status in old_status_debt_items:
+            endpoint_status.copy(debt_item=copy)  # adding or setting is not necessary, link is created by Endpoint_Status.copy()
         # Assign any reviewers
         copy.reviewers.set(old_reviewers)
         # Assign any found_by
@@ -3895,10 +3918,10 @@ class Debt_Item(models.Model):
 
     def delete(self, *args, **kwargs):
         logger.debug('%d debt item delete', self.id)
-        import dojo.finding.helper as helper
-        helper.finding_delete(self)
+        import dojo.debt_item.helper as helper
+        helper.debt_item_delete(self)
         super().delete(*args, **kwargs)
-        calculate_grade(self.test.engagement.product)
+        calculate_grade(self.test.engagement.debt_context)
 
     # only used by bulk risk acceptance api
     @classmethod
@@ -3925,7 +3948,7 @@ class Debt_Item(models.Model):
         # Check if hash_code fields are found in the settings
         if not hash_code_fields:
             deduplicationLogger.debug(
-                "No configuration for hash_code computation found; using default fields for " + ('dynamic' if self.dynamic_finding else 'static') + ' scanners')
+                "No configuration for hash_code computation found; using default fields for " + ('dynamic' if self.dynamic_debt_item else 'static') + ' scanners')
             return self.compute_hash_code_legacy()
 
         # Check if all elements of HASHCODE_FIELDS_PER_SCANNER are in HASHCODE_ALLOWED_FIELDS
@@ -3938,11 +3961,11 @@ class Debt_Item(models.Model):
         # Make sure that we have a cwe if we need one
         if self.cwe == 0 and not self.test.hash_code_allows_null_cwe:
             deduplicationLogger.warn(
-                "Cannot compute hash_code based on configured fields because cwe is 0 for finding of title '" + self.title + "' found in file '" + str(self.file_path) +
-                "'. Fallback to legacy mode for this finding.")
+                "Cannot compute hash_code based on configured fields because cwe is 0 for debt_item of title '" + self.title + "' found in file '" + str(self.file_path) +
+                "'. Fallback to legacy mode for this debt_item.")
             return self.compute_hash_code_legacy()
 
-        deduplicationLogger.debug("computing hash_code for finding id " + str(self.id) + " based on: " + ', '.join(hash_code_fields))
+        deduplicationLogger.debug("computing hash_code for debt_item id " + str(self.id) + " based on: " + ', '.join(hash_code_fields))
 
         fields_to_hash = ''
         for hashcodeField in hash_code_fields:
@@ -3957,7 +3980,7 @@ class Debt_Item(models.Model):
                 fields_to_hash = fields_to_hash + my_vulnerability_ids
                 deduplicationLogger.debug(hashcodeField + ' : ' + my_vulnerability_ids)
             else:
-                # Generically use the finding attribute having the same name, converts to str in case it's integer
+                # Generically use the debt_item attribute having the same name, converts to str in case it's integer
                 fields_to_hash = fields_to_hash + str(getattr(self, hashcodeField))
                 deduplicationLogger.debug(hashcodeField + ' : ' + str(getattr(self, hashcodeField)))
         deduplicationLogger.debug("compute_hash_code - fields_to_hash = " + fields_to_hash)
@@ -3973,20 +3996,20 @@ class Debt_Item(models.Model):
         vulnerability_id_str = ''
         if self.id is None:
             if self.unsaved_vulnerability_ids:
-                deduplicationLogger.debug("get_vulnerability_ids before the finding was saved")
+                deduplicationLogger.debug("get_vulnerability_ids before the debt_item was saved")
                 # convert list of unsaved vulnerability_ids to the list of their canonical representation
                 vulnerability_id_str_list = list(
                     map(
                         lambda vulnerability_id: str(vulnerability_id),
                         self.unsaved_vulnerability_ids
                     ))
-                # deduplicate (usually done upon saving finding) and sort endpoints
+                # deduplicate (usually done upon saving debt_item) and sort endpoints
                 vulnerability_id_str = ''.join(sorted(list(dict.fromkeys(vulnerability_id_str_list))))
             else:
-                deduplicationLogger.debug("finding has no unsaved vulnerability references")
+                deduplicationLogger.debug("debt_item has no unsaved vulnerability references")
         else:
-            vulnerability_ids = Vulnerability_Id.objects.filter(finding=self)
-            deduplicationLogger.debug("get_vulnerability_ids after the finding was saved. Vulnerability references count: " + str(vulnerability_ids.count()))
+            vulnerability_ids = Vulnerability_Id.objects.filter(debt_item=self)
+            deduplicationLogger.debug("get_vulnerability_ids after the debt_item was saved. Vulnerability references count: " + str(vulnerability_ids.count()))
             # convert list of vulnerability_ids to the list of their canonical representation
             vulnerability_id_str_list = list(
                 map(
@@ -4003,26 +4026,26 @@ class Debt_Item(models.Model):
         endpoint_str = ''
         if (self.id is None):
             if len(self.unsaved_endpoints) > 0:
-                deduplicationLogger.debug("get_endpoints before the finding was saved")
+                deduplicationLogger.debug("get_endpoints before the debt_item was saved")
                 # convert list of unsaved endpoints to the list of their canonical representation
                 endpoint_str_list = list(
                     map(
                         lambda endpoint: str(endpoint),
                         self.unsaved_endpoints
                     ))
-                # deduplicate (usually done upon saving finding) and sort endpoints
+                # deduplicate (usually done upon saving debt_item) and sort endpoints
                 endpoint_str = ''.join(
                     sorted(
                         list(
                             dict.fromkeys(endpoint_str_list)
                         )))
             else:
-                # we can get here when the parser defines static_finding=True but leaves dynamic_finding defaulted
-                # In this case, before saving the finding, both static_finding and dynamic_finding are True
-                # After saving dynamic_finding may be set to False probably during the saving process (observed on Bandit scan before forcing dynamic_finding=False at parser level)
-                deduplicationLogger.debug("trying to get endpoints on a finding before it was saved but no endpoints found (static parser wrongly identified as dynamic?")
+                # we can get here when the parser defines static_debt_item=True but leaves dynamic_debt_item defaulted
+                # In this case, before saving the debt_item, both static_debt_item and dynamic_debt_item are True
+                # After saving dynamic_debt_item may be set to False probably during the saving process (observed on Bandit scan before forcing dynamic_debt_item=False at parser level)
+                deduplicationLogger.debug("trying to get endpoints on a debt_item before it was saved but no endpoints found (static parser wrongly identified as dynamic?")
         else:
-            deduplicationLogger.debug("get_endpoints: after the finding was saved. Endpoints count: " + str(self.endpoints.count()))
+            deduplicationLogger.debug("get_endpoints: after the debt_item was saved. Endpoints count: " + str(self.endpoints.count()))
             # convert list of endpoints to the list of their canonical representation
             endpoint_str_list = list(
                 map(
@@ -4050,7 +4073,7 @@ class Debt_Item(models.Model):
     def duplicate_debt_item_set(self):
         if self.duplicate:
             if self.duplicate_debt_item is not None:
-                originals = Finding.objects.get(
+                originals = Debt_Item.objects.get(
                     id=self.duplicate_debt_item.id).original_debt_item.all().order_by('title')
                 return originals  # we need to add the duplicate_debt_item  here as well
             else:
@@ -4158,7 +4181,7 @@ class Debt_Item(models.Model):
         return self._age(self.date)
 
     def get_sla_periods(self):
-        sla_configuration = SLA_Configuration.objects.filter(id=self.test.engagement.product.sla_configuration_id).first()
+        sla_configuration = SLA_Configuration.objects.filter(id=self.test.engagement.debt_context.sla_configuration_id).first()
         return sla_configuration
 
     def get_sla_start_date(self):
@@ -4202,8 +4225,8 @@ class Debt_Item(models.Model):
 
     def github_conf(self):
         try:
-            github_product_key = GITHUB_PKey.objects.get(product=self.test.engagement.product)
-            github_conf = github_product_key.conf
+            github_debt_context_key = GITHUB_PKey.objects.get(debt_context=self.test.engagement.debt_context)
+            github_conf = github_debt_context_key.conf
         except:
             github_conf = None
             pass
@@ -4212,7 +4235,7 @@ class Debt_Item(models.Model):
     # newer version that can work with prefetching
     def github_conf_new(self):
         try:
-            return self.test.engagement.product.github_pkey_set.all()[0].git_conf
+            return self.test.engagement.debt_context.github_pkey_set.all()[0].git_conf
         except:
             return None
             pass
@@ -4223,18 +4246,18 @@ class Debt_Item(models.Model):
         return jira_helper.has_jira_issue(self)
 
     @cached_property
-    def finding_group(self):
-        group = self.finding_group_set.all().first()
-        # logger.debug('finding.finding_group: %s', group)
+    def debt_item_group(self):
+        group = self.debt_item_group_set.all().first()
+        # logger.debug('debt_item.debt_item_group: %s', group)
         return group
 
     @cached_property
     def has_jira_group_issue(self):
-        if not self.has_finding_group:
+        if not self.has_debt_item_group:
             return False
 
         import dojo.jira_link.helper as jira_helper
-        return jira_helper.has_jira_issue(self.finding_group)
+        return jira_helper.has_jira_issue(self.debt_item_group)
 
     @property
     def has_jira_configured(self):
@@ -4246,10 +4269,10 @@ class Debt_Item(models.Model):
         return self.debt_item_group is not None
 
     def save_no_options(self, *args, **kwargs):
-        return self.save(dedupe_option=False, rules_option=False, product_grading_option=False,
+        return self.save(dedupe_option=False, rules_option=False, debt_context_grading_option=False,
                          issue_updater_option=False, push_to_jira=False, user=None, *args, **kwargs)
 
-    def save(self, dedupe_option=True, rules_option=True, product_grading_option=True,
+    def save(self, dedupe_option=True, rules_option=True, debt_context_grading_option=True,
              issue_updater_option=True, push_to_jira=False, user=None, *args, **kwargs):
 
         from dojo.debt_item import helper as debt_item_helper
@@ -4272,16 +4295,16 @@ class Debt_Item(models.Model):
                 # use the environmental score, which is the most refined score
                 self.cvssv3_score = cvss_object.scores()[2]
             except Exception as ex:
-                logger.error("Can't compute cvssv3 score for finding id %i. Invalid cvssv3 vector found: '%s'. Exception: %s", self.id, self.cvssv3, ex)
+                logger.error("Can't compute cvssv3 score for debt_item id %i. Invalid cvssv3 vector found: '%s'. Exception: %s", self.id, self.cvssv3, ex)
 
-        # Finding.save is called once from serializers.py with dedupe_option=False because the finding is not ready yet, for example the endpoints are not built
+        # Debt_Item.save is called once from serializers.py with dedupe_option=False because the debt_item is not ready yet, for example the endpoints are not built
         # It is then called a second time with dedupe_option defaulted to true; now we can compute the hash_code and run the deduplication
         if dedupe_option:
             if (self.hash_code is not None):
-                deduplicationLogger.debug("Hash_code already computed for finding")
+                deduplicationLogger.debug("Hash_code already computed for debt_item")
             else:
                 self.hash_code = self.compute_hash_code()
-                deduplicationLogger.debug("Hash_code computed for finding: %s", self.hash_code)
+                deduplicationLogger.debug("Hash_code computed for debt_item: %s", self.hash_code)
 
         if self.pk is None:
             # We enter here during the first call from serializers.py
@@ -4289,35 +4312,35 @@ class Debt_Item(models.Model):
             self = apply_cwe_to_template(self)
 
             if (self.file_path is not None) and (len(self.unsaved_endpoints) == 0):
-                self.static_finding = True
-                self.dynamic_finding = False
+                self.static_debt_item = True
+                self.dynamic_debt_item = False
             elif (self.file_path is not None):
-                self.static_finding = True
+                self.static_debt_item = True
 
-            # because we have reduced the number of (super()).save() calls, the helper is no longer called for new findings
+            # because we have reduced the number of (super()).save() calls, the helper is no longer called for new debt_items
             # so we call it manually
-            debt_item_helper.update_finding_status(self, user, changed_fields={'id': (None, None)})
+            debt_item_helper.update_debt_item_status(self, user, changed_fields={'id': (None, None)})
 
         else:
             # logger.debug('setting static / dynamic in save')
             # need to have an id/pk before we can access endpoints
             if (self.file_path is not None) and (self.endpoints.count() == 0):
-                self.static_finding = True
-                self.dynamic_finding = False
+                self.static_debt_item = True
+                self.dynamic_debt_item = False
             elif (self.file_path is not None):
-                self.static_finding = True
+                self.static_debt_item = True
 
-        logger.debug("Saving finding of id " + str(self.id) + " dedupe_option:" + str(dedupe_option) + " (self.pk is %s)", "None" if self.pk is None else "not None")
+        logger.debug("Saving debt_item of id " + str(self.id) + " dedupe_option:" + str(dedupe_option) + " (self.pk is %s)", "None" if self.pk is None else "not None")
         super(Debt_Item, self).save(*args, **kwargs)
 
         self.found_by.add(self.test.test_type)
 
         # only perform post processing (in celery task) if needed. this check avoids submitting 1000s of tasks to celery that will do nothing
-        if dedupe_option or issue_updater_option or product_grading_option or push_to_jira:
-            debt_item_helper.post_process_finding_save(self, dedupe_option=dedupe_option, rules_option=rules_option, product_grading_option=product_grading_option,
-                                                     issue_updater_option=issue_updater_option, push_to_jira=push_to_jira, user=user, *args, **kwargs)
+        if dedupe_option or issue_updater_option or debt_context_grading_option or push_to_jira:
+            debt_item_helper.post_process_debt_item_save(self, dedupe_option=dedupe_option, rules_option=rules_option, debt_context_grading_option=debt_context_grading_option,
+                                                         issue_updater_option=issue_updater_option, push_to_jira=push_to_jira, user=user, *args, **kwargs)
         else:
-            logger.debug('no options selected that require finding post processing')
+            logger.debug('no options selected that require debt_item post processing')
 
     # Check if a mandatory field is empty. If it's the case, fill it with "no <fieldName> given"
     def clean(self):
@@ -4338,7 +4361,7 @@ class Debt_Item(models.Model):
     def get_breadcrumbs(self):
         bc = self.test.get_breadcrumbs()
         bc += [{'title': str(self),
-                'url': reverse('view_finding', args=(self.id,))}]
+                'url': reverse('view_debt_item', args=(self.id,))}]
         return bc
 
     def get_report_requests(self):
@@ -4451,13 +4474,15 @@ class Debt_Item(models.Model):
 
     def inherit_tags(self, potentially_existing_tags):
         # get a copy of the tags to be inherited
-        incoming_inherited_tags = [tag.name for tag in self.test.engagement.product.tags.all()]
+        incoming_inherited_tags = [tag.name for tag in self.test.engagement.debt_context.tags.all()]
         _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
 
     @property
     def violates_sla(self):
         days_remaining = self.sla_days_remaining()
         return days_remaining < 0 if days_remaining else False
+
+
 
 class FindingAdmin(admin.ModelAdmin):
     # For efficiency with large databases, display many-to-many fields with raw
@@ -4506,6 +4531,26 @@ class Stub_Finding(models.Model):
                 'url': reverse('view_potential_finding', args=(self.id,))}]
         return bc
 
+
+class Stub_Debt_Item(models.Model):
+    title = models.TextField(max_length=1000, blank=False, null=False)
+    date = models.DateField(default=get_current_date, blank=False, null=False)
+    severity = models.CharField(max_length=200, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    test = models.ForeignKey(Test, editable=False, on_delete=models.CASCADE)
+    reporter = models.ForeignKey(Dojo_User, editable=False, default=1, on_delete=models.RESTRICT)
+
+    class Meta:
+        ordering = ('-date', 'title')
+
+    def __str__(self):
+        return self.title
+
+    def get_breadcrumbs(self):
+        bc = self.test.get_breadcrumbs()
+        bc += [{'title': "Potential Debt Item: " + str(self),
+                'url': reverse('view_potential_debt_item', args=(self.id,))}]
+        return bc
 
 class Finding_Group(TimeStampedModel):
 
@@ -5424,6 +5469,19 @@ class Tool_Product_Settings(models.Model):
         ordering = ['name']
 
 
+class Tool_Debt_Context_Settings(models.Model):
+    name = models.CharField(max_length=200, null=False)
+    description = models.CharField(max_length=2000, null=True, blank=True)
+    url = models.CharField(max_length=2000, null=True, blank=True)
+    debt_context = models.ForeignKey(Debt_Context, default=1, editable=False, on_delete=models.CASCADE)
+    tool_configuration = models.ForeignKey(Tool_Configuration, null=False,
+                                           related_name='debt_tool_configuration', on_delete=models.CASCADE)
+    tool_project_id = models.CharField(max_length=200, null=True, blank=True)
+    notes = models.ManyToManyField(Notes, blank=True, editable=False)
+
+    class Meta:
+        ordering = ['name']
+
 class Tool_Product_History(models.Model):
     product = models.ForeignKey(Tool_Product_Settings, editable=False, on_delete=models.CASCADE)
     last_scan = models.DateTimeField(null=False, editable=False, default=now)
@@ -5431,6 +5489,13 @@ class Tool_Product_History(models.Model):
     configuration_details = models.CharField(max_length=2000, null=True,
                                              blank=True)
 
+
+class Tool_Debt_Context_History(models.Model):
+    debt_context = models.ForeignKey(Tool_Debt_Context_Settings, editable=False, on_delete=models.CASCADE)
+    last_scan = models.DateTimeField(null=False, editable=False, default=now)
+    succesfull = models.BooleanField(default=True, verbose_name=_('Succesfully'))
+    configuration_details = models.CharField(max_length=2000, null=True,
+                                             blank=True)
 
 class Alerts(models.Model):
     title = models.CharField(max_length=250, default='', null=False)
@@ -5570,6 +5635,31 @@ class Objects_Product(models.Model):
         return name
 
 
+class Objects_Debt_Context(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, null=True, blank=True)
+    path = models.CharField(max_length=600, verbose_name=_('Full file path'),
+                            null=True, blank=True)
+    folder = models.CharField(max_length=400, verbose_name=_('Folder'),
+                              null=True, blank=True)
+    artifact = models.CharField(max_length=400, verbose_name=_('Artifact'),
+                                null=True, blank=True)
+    review_status = models.ForeignKey(Objects_Review, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, null=False)
+
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this object. Choose from the list or add new tags. Press Enter key to add."))
+
+    def __str__(self):
+        name = None
+        if self.path is not None:
+            name = self.path
+        elif self.folder is not None:
+            name = self.folder
+        elif self.artifact is not None:
+            name = self.artifact
+
+        return name
+
 class Testing_Guide_Category(models.Model):
     name = models.CharField(max_length=300)
     created = models.DateTimeField(auto_now_add=True, null=False)
@@ -5666,6 +5756,24 @@ class Benchmark_Product(models.Model):
         unique_together = [('product', 'control')]
 
 
+class Benchmark_Debt_Context(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    control = models.ForeignKey(Benchmark_Requirement, on_delete=models.CASCADE)
+    pass_fail = models.BooleanField(default=False, verbose_name=_('Pass'),
+                                    help_text=_('Does the debt_context meet the requirement?'))
+    enabled = models.BooleanField(default=True,
+                                  help_text=_('Applicable for this specific debt_context.'))
+    notes = models.ManyToManyField(Notes, blank=True, editable=False)
+    created = models.DateTimeField(auto_now_add=True, null=False)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.debt_context.name + ': ' + self.control.objective_number + ': ' + self.control.category.name
+
+    class Meta:
+        unique_together = [('debt_context', 'control')]
+
+
 class Benchmark_Product_Summary(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     benchmark_type = models.ForeignKey(Benchmark_Type, on_delete=models.CASCADE)
@@ -5693,6 +5801,35 @@ class Benchmark_Product_Summary(models.Model):
 
     class Meta:
         unique_together = [('product', 'benchmark_type')]
+
+
+class Benchmark_Debt_Context_Summary(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    benchmark_type = models.ForeignKey(Benchmark_Type, on_delete=models.CASCADE)
+    asvs_level = (('Level 1', 'Level 1'),
+                  ('Level 2', 'Level 2'),
+                  ('Level 3', 'Level 3'))
+    desired_level = models.CharField(max_length=15,
+                                     null=False, choices=asvs_level,
+                                     default='Level 1')
+    current_level = models.CharField(max_length=15, blank=True,
+                                     null=True, choices=asvs_level,
+                                     default='None')
+    asvs_level_1_benchmark = models.IntegerField(null=False, default=0, help_text=_("Total number of active benchmarks for this application."))
+    asvs_level_1_score = models.IntegerField(null=False, default=0, help_text=_("ASVS Level 1 Score"))
+    asvs_level_2_benchmark = models.IntegerField(null=False, default=0, help_text=_("Total number of active benchmarks for this application."))
+    asvs_level_2_score = models.IntegerField(null=False, default=0, help_text=_("ASVS Level 2 Score"))
+    asvs_level_3_benchmark = models.IntegerField(null=False, default=0, help_text=_("Total number of active benchmarks for this application."))
+    asvs_level_3_score = models.IntegerField(null=False, default=0, help_text=_("ASVS Level 3 Score"))
+    publish = models.BooleanField(default=False, help_text=_('Publish score to Debt_Context.'))
+    created = models.DateTimeField(auto_now_add=True, null=False)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.debt_context.name + ': ' + self.benchmark_type.name
+
+    class Meta:
+        unique_together = [('debt_context', 'benchmark_type')]
 
 
 # ==========================
@@ -5904,8 +6041,8 @@ tagulous.admin.register(Debt_Context.tags)
 tagulous.admin.register(Test.tags)
 tagulous.admin.register(Test.inherited_tags)
 tagulous.admin.register(Finding.tags)
-tagulous.admin.register(Finding.inherited_tags)
 tagulous.admin.register(Debt_Item.tags)
+tagulous.admin.register(Finding.inherited_tags)
 tagulous.admin.register(Debt_Item.inherited_tags)
 tagulous.admin.register(Engagement.tags)
 tagulous.admin.register(Engagement.inherited_tags)
@@ -5921,7 +6058,9 @@ admin.site.register(Benchmark_Type)
 admin.site.register(Benchmark_Requirement)
 admin.site.register(Benchmark_Category)
 admin.site.register(Benchmark_Product)
+admin.site.register(Benchmark_Debt_Context)
 admin.site.register(Benchmark_Product_Summary)
+admin.site.register(Benchmark_Debt_Context_Summary)
 
 # Testing
 admin.site.register(Testing_Guide_Category)
@@ -5940,6 +6079,7 @@ admin.site.register(Debt_Item, DebtItemAdmin)
 admin.site.register(FileUpload)
 admin.site.register(FileAccessToken)
 admin.site.register(Stub_Finding)
+admin.site.register(Stub_Debt_Item)
 admin.site.register(Engagement)
 admin.site.register(Risk_Acceptance)
 admin.site.register(Check_List)
@@ -5948,8 +6088,8 @@ admin.site.register(Endpoint_Params)
 admin.site.register(Endpoint_Status)
 admin.site.register(Endpoint)
 admin.site.register(Product)
-admin.site.register(Product_Type)
 admin.site.register(Debt_Context)
+admin.site.register(Product_Type)
 admin.site.register(Debt_Context_Type)
 admin.site.register(UserContactInfo)
 admin.site.register(Notes)
@@ -5965,6 +6105,7 @@ admin.site.register(GITHUB_Details_Cache)
 admin.site.register(GITHUB_PKey)
 admin.site.register(Tool_Configuration, Tool_Configuration_Admin)
 admin.site.register(Tool_Product_Settings)
+admin.site.register(Tool_Debt_Context_Settings)
 admin.site.register(Tool_Type)
 admin.site.register(Cred_User)
 admin.site.register(Cred_Mapping)
@@ -5982,12 +6123,12 @@ admin.site.register(Sonarqube_Issue_Transition)
 
 admin.site.register(Dojo_Group_Member)
 admin.site.register(Product_Member)
-admin.site.register(Product_Group)
-admin.site.register(Product_Type_Member)
-admin.site.register(Product_Type_Group)
 admin.site.register(Debt_Context_Member)
+admin.site.register(Product_Group)
 admin.site.register(Debt_Context_Group)
+admin.site.register(Product_Type_Member)
 admin.site.register(Debt_Context_Type_Member)
+admin.site.register(Product_Type_Group)
 admin.site.register(Debt_Context_Type_Group)
 
 admin.site.register(Contact)
@@ -6009,8 +6150,10 @@ admin.site.register(UserAnnouncement)
 admin.site.register(BannerConf)
 admin.site.register(Notifications)
 admin.site.register(Tool_Product_History)
+admin.site.register(Tool_Debt_Context_History)
 admin.site.register(General_Survey)
 admin.site.register(Test_Import)
 admin.site.register(Test_Import_Finding_Action)
+admin.site.register(Test_Import_Debt_Item_Action)
 admin.site.register(Finding_Group)
 admin.site.register(Debt_Item_Group)

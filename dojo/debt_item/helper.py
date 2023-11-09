@@ -18,15 +18,15 @@ from dojo.endpoint.utils import save_endpoints_to_add
 logger = logging.getLogger(__name__)
 deduplicationLogger = logging.getLogger("dojo.specific-loggers.deduplication")
 
-OPEN_FINDINGS_QUERY = Q(active=True)
-VERIFIED_FINDINGS_QUERY = Q(active=True, verified=True)
-OUT_OF_SCOPE_FINDINGS_QUERY = Q(active=False, out_of_scope=True)
-FALSE_POSITIVE_FINDINGS_QUERY = Q(active=False, duplicate=False, false_p=True)
-INACTIVE_FINDINGS_QUERY = Q(active=False, duplicate=False, is_mitigated=False, false_p=False, out_of_scope=False)
-ACCEPTED_FINDINGS_QUERY = Q(risk_accepted=True)
-NOT_ACCEPTED_FINDINGS_QUERY = Q(risk_accepted=False)
-WAS_ACCEPTED_FINDINGS_QUERY = Q(risk_acceptance__isnull=False) & Q(risk_acceptance__expiration_date_handled__isnull=False)
-CLOSED_FINDINGS_QUERY = Q(is_mitigated=True)
+OPEN_DEBT_ITEMS_QUERY = Q(active=True)
+VERIFIED_DEBT_ITEMS_QUERY = Q(active=True, verified=True)
+OUT_OF_SCOPE_DEBT_ITEMS_QUERY = Q(active=False, out_of_scope=True)
+FALSE_POSITIVE_DEBT_ITEMS_QUERY = Q(active=False, duplicate=False, false_p=True)
+INACTIVE_DEBT_ITEMS_QUERY = Q(active=False, duplicate=False, is_mitigated=False, false_p=False, out_of_scope=False)
+ACCEPTED_DEBT_ITEMS_QUERY = Q(risk_accepted=True)
+NOT_ACCEPTED_DEBT_ITEMS_QUERY = Q(risk_accepted=False)
+WAS_ACCEPTED_DEBT_ITEMS_QUERY = Q(risk_acceptance__isnull=False) & Q(risk_acceptance__expiration_date_handled__isnull=False)
+CLOSED_DEBT_ITEMS_QUERY = Q(is_mitigated=True)
 UNDER_REVIEW_QUERY = Q(under_review=True)
 
 
@@ -189,6 +189,21 @@ def add_to_finding_group(finding_group, finds):
     return finding_group, added, skipped
 
 
+def add_to_debt_item_group(debt_item_group, finds):
+    added = 0
+    skipped = 0
+    available_debt_items = [find for find in finds if not find.debt_item_group_set.all()]
+    debt_item_group.debt_items.add(*available_debt_items)
+
+    # Now update the JIRA to add the debt_item to the debt_item group
+    if debt_item_group.has_jira_issue and jira_helper.get_jira_instance(debt_item_group).debt_item_jira_sync:
+        logger.debug('pushing to jira from debt_item.debt_item_bulk_update_all()')
+        jira_helper.push_to_jira(debt_item_group)
+
+    added = len(available_debt_items)
+    skipped = len(finds) - added
+    return debt_item_group, added, skipped
+
 def remove_from_finding_group(finds):
     removed = 0
     skipped = 0
@@ -214,6 +229,30 @@ def remove_from_finding_group(finds):
     return affected_groups, removed, skipped
 
 
+def remove_from_debt_item_group(finds):
+    removed = 0
+    skipped = 0
+    affected_groups = set()
+    for find in finds:
+        groups = find.debt_item_group_set.all()
+        if not groups:
+            skipped += 1
+            continue
+
+        for group in find.debt_item_group_set.all():
+            group.debt_items.remove(find)
+            affected_groups.add(group)
+
+        removed += 1
+
+    # Now update the JIRA to remove the debt_item from the debt_item group
+    for group in affected_groups:
+        if group.has_jira_issue and jira_helper.get_jira_instance(group).debt_item_jira_sync:
+            logger.debug('pushing to jira from debt_item.debt_item_bulk_update_all()')
+            jira_helper.push_to_jira(group)
+
+    return affected_groups, removed, skipped
+
 def update_finding_group(finding, finding_group):
     # finding_group = Finding_Group.objects.get(id=group)
     if finding_group is not None:
@@ -227,6 +266,21 @@ def update_finding_group(finding, finding_group):
         if finding.finding_group:
             logger.debug('removing finding %d from finding_group %s', finding.id, finding.finding_group)
             finding.finding_group.findings.remove(finding)
+
+
+def update_debt_item_group(debt_item, debt_item_group):
+    # debt_item_group = Debt_Item_Group.objects.get(id=group)
+    if debt_item_group is not None:
+        if debt_item_group != debt_item.debt_item_group:
+            if debt_item.debt_item_group:
+                logger.debug('removing debt_item %d from debt_item_group %s', debt_item.id, debt_item.debt_item_group)
+                debt_item.debt_item_group.debt_items.remove(debt_item)
+            logger.debug('adding debt_item %d to debt_item_group %s', debt_item.id, debt_item_group)
+            debt_item_group.debt_items.add(debt_item)
+    else:
+        if debt_item.debt_item_group:
+            logger.debug('removing debt_item %d from debt_item_group %s', debt_item.id, debt_item.debt_item_group)
+            debt_item.debt_item_group.debt_items.remove(debt_item)
 
 
 def get_group_by_group_name(finding, finding_group_by_option):

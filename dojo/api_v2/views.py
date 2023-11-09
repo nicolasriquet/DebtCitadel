@@ -31,19 +31,25 @@ from dojo.models import (
     Languages,
     Notifications,
     Product,
+    Debt_Context,
     Product_Type,
+    Debt_Context_Type,
     Engagement,
     SLA_Configuration,
     Test,
     Test_Import,
     Test_Type,
     Finding,
+    Debt_Item,
     User,
     Stub_Finding,
+    Stub_Debt_Item,
     Finding_Template,
+    Debt_Item_Template,
     Notes,
     JIRA_Issue,
     Tool_Product_Settings,
+    Tool_Debt_Context_Settings,
     Tool_Configuration,
     Tool_Type,
     Endpoint,
@@ -63,10 +69,14 @@ from dojo.models import (
     BurpRawRequestResponse,
     FileUpload,
     Product_Type_Member,
+    Debt_Context_Type_Member,
     Product_Member,
+    Debt_Context_Member,
     Dojo_Group,
     Product_Group,
+    Debt_Context_Group,
     Product_Type_Group,
+    Debt_Context_Type_Group,
     Role,
     Global_Role,
     Dojo_Group_Member,
@@ -74,6 +84,7 @@ from dojo.models import (
     Network_Locations,
     UserContactInfo,
     Product_API_Scan_Configuration,
+    Debt_Context_API_Scan_Configuration,
     Cred_Mapping,
     Cred_User,
     Question,
@@ -87,22 +98,32 @@ from dojo.endpoint.views import get_endpoint_ids
 from dojo.reports.views import (
     report_url_resolver,
     prefetch_related_findings_for_report,
+    prefetch_related_debt_items_for_report,
 )
 from dojo.finding.views import (
     set_finding_as_original_internal,
     reset_finding_duplicate_status_internal,
     duplicate_cluster,
 )
+from dojo.debt_item.views import (
+    set_debt_item_as_original_internal,
+    reset_debt_item_duplicate_status_internal,
+    duplicate_cluster,
+)
 from dojo.filters import (
     ReportFindingFilter,
+    ReportDebtItemFilter,
     ApiCredentialsFilter,
     ApiFindingFilter,
+    ApiDebtItemFilter,
     ApiProductFilter,
+    ApiDebtContextFilter,
     ApiEngagementFilter,
     ApiEndpointFilter,
     ApiAppAnalysisFilter,
     ApiTestFilter,
     ApiTemplateFindingFilter,
+    ApiTemplateDebtItemFilter,
     ApiRiskAcceptanceFilter,
 )
 from dojo.risk_acceptance import api as ra_api
@@ -130,6 +151,11 @@ from dojo.product_type.queries import (
     get_authorized_product_type_members,
     get_authorized_product_type_groups,
 )
+from dojo.debt_context_type.queries import (
+    get_authorized_debt_context_types,
+    get_authorized_debt_context_type_members,
+    get_authorized_debt_context_type_groups,
+)
 from dojo.product.queries import (
     get_authorized_products,
     get_authorized_app_analysis,
@@ -140,12 +166,26 @@ from dojo.product.queries import (
     get_authorized_engagement_presets,
     get_authorized_product_api_scan_configurations,
 )
+from dojo.debt_context.queries import (
+    get_authorized_debt_contexts,
+    get_authorized_app_analysis,
+    get_authorized_dojo_meta,
+    get_authorized_debt_context_members,
+    get_authorized_debt_context_groups,
+    get_authorized_languages,
+    get_authorized_engagement_presets,
+    get_authorized_debt_context_api_scan_configurations,
+)
 from dojo.engagement.queries import get_authorized_engagements
 from dojo.risk_acceptance.queries import get_authorized_risk_acceptances
 from dojo.test.queries import get_authorized_tests, get_authorized_test_imports
 from dojo.finding.queries import (
     get_authorized_findings,
     get_authorized_stub_findings,
+)
+from dojo.debt_item.queries import (
+    get_authorized_debt_items,
+    get_authorized_stub_debt_items,
 )
 from dojo.endpoint.queries import (
     get_authorized_endpoints,
@@ -160,6 +200,7 @@ from dojo.jira_link.queries import (
     get_authorized_jira_issues,
 )
 from dojo.tool_product.queries import get_authorized_tool_product_settings
+from dojo.tool_debt_context.queries import get_authorized_tool_debt_context_settings
 from dojo.cred.queries import get_authorized_cred_mappings
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -971,6 +1012,66 @@ class FindingTemplatesViewSet(
         ],
     ),
 )
+
+class DebtItemTemplatesViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.FindingTemplateSerializer
+    queryset = Debt_Item_Template.objects.all()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = ApiTemplateDebtItemFilter
+    permission_classes = (permissions.UserHasConfigurationPermissionStaff,)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "related_fields",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Expand debt item external relations (engagement, environment, product, \
+                                            product_type, test, test_type)",
+            ),
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "related_fields",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Expand debt item external relations (engagement, environment, product, \
+                                            product_type, test, test_type)",
+            ),
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
+
 class FindingViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -1791,6 +1892,826 @@ class FindingViewSet(
             {"error", "unsupported method"}, status=status.HTTP_400_BAD_REQUEST
         )
 
+class DebtItemViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.CreateModelMixin,
+    ra_api.AcceptedDebtItemsMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtItemSerializer
+    queryset = Debt_Item.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = ApiDebtItemFilter
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtItemPermission,
+    )
+
+    _related_field_parameters = [
+        openapi.Parameter(
+            name="related_fields",
+            in_=openapi.IN_QUERY,
+            description="Expand debt_item external relations (engagement, environment, product, product_type, test, test_type)",
+            type=openapi.TYPE_BOOLEAN,
+        )
+    ]
+    swagger_schema = (
+        prefetch.get_prefetch_schema(
+            ["debt_items_list", "debt_items_read"], serializers.DebtItemSerializer
+        )
+        .composeWith(
+            schema.ExtraParameters("debt_items_list", _related_field_parameters)
+        )
+        .composeWith(
+            schema.ExtraParameters("debt_items_read", _related_field_parameters)
+        )
+        .to_schema()
+    )
+
+    # Overriding mixins.UpdateModeMixin perform_update() method to grab push_to_jira
+    # data and add that as a parameter to .save()
+    def perform_update(self, serializer):
+        # IF JIRA is enabled and this product has a JIRA configuration
+        push_to_jira = serializer.validated_data.get("push_to_jira")
+        jira_project = jira_helper.get_jira_project(serializer.instance)
+        if get_system_setting("enable_jira") and jira_project:
+            push_to_jira = push_to_jira or jira_project.push_all_issues
+
+        serializer.save(push_to_jira=push_to_jira)
+
+    def get_queryset(self):
+        debt_items = get_authorized_debt_items(
+            Permissions.Debt_Item_View
+        ).prefetch_related(
+            "endpoints",
+            "reviewers",
+            "found_by",
+            "notes",
+            "risk_acceptance_set",
+            "test",
+            "tags",
+            "jira_issue",
+            "debt_item_group_set",
+            "files",
+            "burprawrequestresponse_set",
+            "status_debt_item",
+            "debt_item_meta",
+            "test__test_type",
+            "test__engagement",
+            "test__environment",
+            "test__engagement__product",
+            "test__engagement__product__prod_type",
+        )
+
+        return debt_items.distinct()
+
+    def get_serializer_class(self):
+        if self.request and self.request.method == "POST":
+            return serializers.DebtItemCreateSerializer
+        else:
+            return serializers.DebtItemSerializer
+
+    @extend_schema(
+        methods=["POST"],
+        request=serializers.DebtItemCloseSerializer,
+        responses={status.HTTP_200_OK: serializers.DebtItemCloseSerializer},
+    )
+    @swagger_auto_schema(
+        method="post",
+        request_body=serializers.DebtItemCloseSerializer,
+        responses={status.HTTP_200_OK: serializers.DebtItemCloseSerializer},
+    )
+    @action(detail=True, methods=["post"])
+    def close(self, request, pk=None):
+        debt_item = self.get_object()
+
+        if request.method == "POST":
+            debt_item_close = serializers.DebtItemCloseSerializer(
+                data=request.data
+            )
+            if debt_item_close.is_valid():
+                debt_item.is_mitigated = debt_item_close.validated_data[
+                    "is_mitigated"
+                ]
+                if settings.EDITABLE_MITIGATED_DATA:
+                    debt_item.mitigated = (
+                            debt_item_close.validated_data["mitigated"]
+                            or timezone.now()
+                    )
+                else:
+                    debt_item.mitigated = timezone.now()
+                debt_item.mitigated_by = request.user
+                debt_item.active = False
+                debt_item.false_p = debt_item_close.validated_data.get(
+                    "false_p", False
+                )
+                debt_item.duplicate = debt_item_close.validated_data.get(
+                    "duplicate", False
+                )
+                debt_item.out_of_scope = debt_item_close.validated_data.get(
+                    "out_of_scope", False
+                )
+
+                endpoints_status = debt_item.status_debt_item.all()
+                for e_status in endpoints_status:
+                    e_status.mitigated_by = request.user
+                    if settings.EDITABLE_MITIGATED_DATA:
+                        e_status.mitigated_time = (
+                                debt_item_close.validated_data["mitigated"]
+                                or timezone.now()
+                        )
+                    else:
+                        e_status.mitigated_time = timezone.now()
+                    e_status.mitigated = True
+                    e_status.last_modified = timezone.now()
+                    e_status.save()
+                debt_item.save()
+            else:
+                return Response(
+                    debt_item_close.errors, status=status.HTTP_400_BAD_REQUEST
+                )
+        serialized_debt_item = serializers.DebtItemCloseSerializer(debt_item)
+        return Response(serialized_debt_item.data)
+
+    @extend_schema(
+        methods=["GET"],
+        responses={status.HTTP_200_OK: serializers.TagSerializer},
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=serializers.TagSerializer,
+        responses={status.HTTP_201_CREATED: serializers.TagSerializer},
+    )
+    @swagger_auto_schema(
+        method="get", responses={status.HTTP_200_OK: serializers.TagSerializer}
+    )
+    @swagger_auto_schema(
+        method="post",
+        request_body=serializers.TagSerializer,
+        responses={status.HTTP_200_OK: serializers.TagSerializer},
+    )
+    @action(detail=True, methods=["get", "post"])
+    def tags(self, request, pk=None):
+        debt_item = self.get_object()
+
+        if request.method == "POST":
+            new_tags = serializers.TagSerializer(data=request.data)
+            if new_tags.is_valid():
+                all_tags = debt_item.tags
+                all_tags = serializers.TagSerializer({"tags": all_tags}).data[
+                    "tags"
+                ]
+
+                for tag in tagulous.utils.parse_tags(
+                        new_tags.validated_data["tags"]
+                ):
+                    if tag not in all_tags:
+                        all_tags.append(tag)
+                new_tags = tagulous.utils.render_tags(all_tags)
+                debt_item.tags = new_tags
+                debt_item.save()
+            else:
+                return Response(
+                    new_tags.errors, status=status.HTTP_400_BAD_REQUEST
+                )
+        tags = debt_item.tags
+        serialized_tags = serializers.TagSerializer({"tags": tags})
+        return Response(serialized_tags.data)
+
+    @extend_schema(
+        methods=["GET"],
+        responses={
+            status.HTTP_200_OK: serializers.BurpRawRequestResponseSerializer
+        },
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=serializers.BurpRawRequestResponseSerializer,
+        responses={
+            status.HTTP_201_CREATED: serializers.BurpRawRequestResponseSerializer
+        },
+    )
+    @swagger_auto_schema(
+        method="get",
+        responses={
+            status.HTTP_200_OK: serializers.BurpRawRequestResponseSerializer
+        },
+    )
+    @swagger_auto_schema(
+        method="post",
+        request_body=serializers.BurpRawRequestResponseSerializer,
+        responses={
+            status.HTTP_200_OK: serializers.BurpRawRequestResponseSerializer
+        },
+    )
+    @action(detail=True, methods=["get", "post"])
+    def request_response(self, request, pk=None):
+        debt_item = self.get_object()
+
+        if request.method == "POST":
+            burps = serializers.BurpRawRequestResponseSerializer(
+                data=request.data, many=isinstance(request.data, list)
+            )
+            if burps.is_valid():
+                for pair in burps.validated_data["req_resp"]:
+                    burp_rr = BurpRawRequestResponse(
+                        debt_item=debt_item,
+                        burpRequestBase64=base64.b64encode(
+                            pair["request"].encode("utf-8")
+                        ),
+                        burpResponseBase64=base64.b64encode(
+                            pair["response"].encode("utf-8")
+                        ),
+                    )
+                    burp_rr.clean()
+                    burp_rr.save()
+            else:
+                return Response(
+                    burps.errors, status=status.HTTP_400_BAD_REQUEST
+                )
+
+        burp_req_resp = BurpRawRequestResponse.objects.filter(debt_item=debt_item)
+        burp_list = []
+        for burp in burp_req_resp:
+            request = burp.get_request()
+            response = burp.get_response()
+            burp_list.append({"request": request, "response": response})
+        serialized_burps = serializers.BurpRawRequestResponseSerializer(
+            {"req_resp": burp_list}
+        )
+        return Response(serialized_burps.data)
+
+    @extend_schema(
+        methods=["GET"],
+        responses={status.HTTP_200_OK: serializers.DebtItemToNotesSerializer},
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=serializers.AddNewNoteOptionSerializer,
+        responses={status.HTTP_201_CREATED: serializers.NoteSerializer},
+    )
+    @swagger_auto_schema(
+        method="get",
+        responses={status.HTTP_200_OK: serializers.DebtItemToNotesSerializer},
+    )
+    @swagger_auto_schema(
+        methods=["post"],
+        request_body=serializers.AddNewNoteOptionSerializer,
+        responses={status.HTTP_201_CREATED: serializers.NoteSerializer},
+    )
+    @action(detail=True, methods=["get", "post"])
+    def notes(self, request, pk=None):
+        debt_item = self.get_object()
+        if request.method == "POST":
+            new_note = serializers.AddNewNoteOptionSerializer(
+                data=request.data
+            )
+            if new_note.is_valid():
+                entry = new_note.validated_data["entry"]
+                private = new_note.validated_data.get("private", False)
+                note_type = new_note.validated_data.get("note_type", None)
+            else:
+                return Response(
+                    new_note.errors, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            author = request.user
+            note = Notes(
+                entry=entry,
+                author=author,
+                private=private,
+                note_type=note_type,
+            )
+            note.save()
+            debt_item.notes.add(note)
+
+            if debt_item.has_jira_issue:
+                jira_helper.add_comment(debt_item, note)
+            elif debt_item.has_jira_group_issue:
+                jira_helper.add_comment(debt_item.debt_item_group, note)
+
+            serialized_note = serializers.NoteSerializer(
+                {"author": author, "entry": entry, "private": private}
+            )
+            result = serializers.DebtItemToNotesSerializer(
+                {"debt_item_id": debt_item, "notes": [serialized_note.data]}
+            )
+            return Response(
+                serialized_note.data, status=status.HTTP_201_CREATED
+            )
+        notes = debt_item.notes.all()
+
+        serialized_notes = serializers.DebtItemToNotesSerializer(
+            {"debt_item_id": debt_item, "notes": notes}
+        )
+        return Response(serialized_notes.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        methods=["GET"],
+        responses={status.HTTP_200_OK: serializers.DebtItemToFilesSerializer},
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=serializers.AddNewFileOptionSerializer,
+        responses={status.HTTP_201_CREATED: serializers.FileSerializer},
+    )
+    @swagger_auto_schema(
+        method="get",
+        responses={status.HTTP_200_OK: serializers.DebtItemToFilesSerializer},
+    )
+    @swagger_auto_schema(
+        method="post",
+        request_body=serializers.AddNewFileOptionSerializer,
+        responses={status.HTTP_201_CREATED: serializers.FileSerializer},
+    )
+    @action(
+        detail=True, methods=["get", "post"], parser_classes=(MultiPartParser,)
+    )
+    def files(self, request, pk=None):
+        debt_item = self.get_object()
+        if request.method == "POST":
+            new_file = serializers.FileSerializer(data=request.data)
+            if new_file.is_valid():
+                title = new_file.validated_data["title"]
+                file = new_file.validated_data["file"]
+            else:
+                return Response(
+                    new_file.errors, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            file = FileUpload(title=title, file=file)
+            file.save()
+            debt_item.files.add(file)
+
+            serialized_file = serializers.FileSerializer(file)
+            return Response(
+                serialized_file.data, status=status.HTTP_201_CREATED
+            )
+
+        files = debt_item.files.all()
+        serialized_files = serializers.DebtItemToFilesSerializer(
+            {"debt_item_id": debt_item, "files": files}
+        )
+        return Response(serialized_files.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        methods=["GET"],
+        responses={
+            status.HTTP_200_OK: serializers.RawFileSerializer,
+        },
+    )
+    @swagger_auto_schema(
+        method="get",
+        responses={
+            status.HTTP_200_OK: serializers.RawFileSerializer,
+        },
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"files/download/(?P<file_id>\d+)",
+    )
+    def download_file(self, request, file_id, pk=None):
+        debt_item = self.get_object()
+        # Get the file object
+        file_object_qs = debt_item.files.filter(id=file_id)
+        file_object = (
+            file_object_qs.first() if len(file_object_qs) > 0 else None
+        )
+        if file_object is None:
+            return Response(
+                {"error": "File ID not associated with Debt_Item"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Get the path of the file in media root
+        file_path = f"{settings.MEDIA_ROOT}/{file_object.file.url.lstrip(settings.MEDIA_URL)}"
+        file_handle = open(file_path, "rb")
+        # send file
+        response = FileResponse(
+            file_handle,
+            content_type=f"{mimetypes.guess_type(file_path)}",
+            status=status.HTTP_200_OK,
+        )
+        response["Content-Length"] = file_object.file.size
+        response[
+            "Content-Disposition"
+        ] = f'attachment; filename="{file_object.file.name}"'
+
+        return response
+
+    @extend_schema(
+        request=serializers.DebtItemNoteSerializer,
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @swagger_auto_schema(
+        request_body=serializers.DebtItemNoteSerializer,
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @action(detail=True, methods=["patch"])
+    def remove_note(self, request, pk=None):
+        """Remove Note From Debt_Item Note"""
+        debt_item = self.get_object()
+        notes = debt_item.notes.all()
+        if request.data["note_id"]:
+            note = get_object_or_404(Notes.objects, id=request.data["note_id"])
+            if note not in notes:
+                return Response(
+                    {"error": "Selected Note is not assigned to this Debt_Item"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            return Response(
+                {"error": "('note_id') parameter missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if (
+                note.author.username == request.user.username
+                or request.user.is_superuser
+        ):
+            debt_item.notes.remove(note)
+            note.delete()
+        else:
+            return Response(
+                {"error": "Delete Failed, You are not the Note's author"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"Success": "Selected Note has been Removed successfully"},
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+    @extend_schema(
+        methods=["PUT", "PATCH"],
+        request=serializers.TagSerializer,
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @swagger_auto_schema(
+        methods=["put", "patch"],
+        request_body=serializers.TagSerializer,
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @action(detail=True, methods=["put", "patch"])
+    def remove_tags(self, request, pk=None):
+        """Remove Tag(s) from debt_item list of tags"""
+        debt_item = self.get_object()
+        delete_tags = serializers.TagSerializer(data=request.data)
+        if delete_tags.is_valid():
+            all_tags = debt_item.tags
+            all_tags = serializers.TagSerializer({"tags": all_tags}).data[
+                "tags"
+            ]
+
+            # serializer turns it into a string, but we need a list
+            del_tags = tagulous.utils.parse_tags(
+                delete_tags.validated_data["tags"]
+            )
+            if len(del_tags) < 1:
+                return Response(
+                    {"error": "Empty Tag List Not Allowed"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            for tag in del_tags:
+                if tag not in all_tags:
+                    return Response(
+                        {
+                            "error": "'{}' is not a valid tag in list".format(
+                                tag
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                all_tags.remove(tag)
+            new_tags = tagulous.utils.render_tags(all_tags)
+            debt_item.tags = new_tags
+            debt_item.save()
+            return Response(
+                {"success": "Tag(s) Removed"},
+                status=status.HTTP_204_NO_CONTENT,
+            )
+        else:
+            return Response(
+                delete_tags.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @extend_schema(
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemSerializer(many=True)
+        }
+    )
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemSerializer(many=True)
+        }
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"duplicate",
+        filter_backends=[],
+        pagination_class=None,
+    )
+    def get_duplicate_cluster(self, request, pk):
+        debt_item = self.get_object()
+        result = duplicate_cluster(request, debt_item)
+        serializer = serializers.DebtItemSerializer(
+            instance=result, many=True, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @swagger_auto_schema(
+        request_body=no_body,
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @action(detail=True, methods=["post"], url_path=r"duplicate/reset")
+    def reset_debt_item_duplicate_status(self, request, pk):
+        checked_duplicate_id = reset_debt_item_duplicate_status_internal(
+            request.user, pk
+        )
+        if checked_duplicate_id is None:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        parameters=[
+            OpenApiParameter(
+                "new_fid", OpenApiTypes.INT, OpenApiParameter.PATH
+            )
+        ],
+        responses={status.HTTP_204_NO_CONTENT: ""},
+    )
+    @swagger_auto_schema(
+        responses={status.HTTP_204_NO_CONTENT: ""}, request_body=no_body
+    )
+    @action(
+        detail=True, methods=["post"], url_path=r"original/(?P<new_fid>\d+)"
+    )
+    def set_debt_item_as_original(self, request, pk, new_fid):
+        success = set_debt_item_as_original_internal(request.user, pk, new_fid)
+        if not success:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=serializers.ReportGenerateOptionSerializer,
+        responses={status.HTTP_200_OK: serializers.ReportGenerateSerializer},
+    )
+    @swagger_auto_schema(
+        request_body=serializers.ReportGenerateOptionSerializer,
+        responses={status.HTTP_200_OK: serializers.ReportGenerateSerializer},
+    )
+    @action(
+        detail=False, methods=["post"], permission_classes=[IsAuthenticated]
+    )
+    def generate_report(self, request):
+        debt_items = self.get_queryset()
+        options = {}
+        # prepare post data
+        report_options = serializers.ReportGenerateOptionSerializer(
+            data=request.data
+        )
+        if report_options.is_valid():
+            options["include_debt_item_notes"] = report_options.validated_data[
+                "include_debt_item_notes"
+            ]
+            options["include_debt_item_images"] = report_options.validated_data[
+                "include_debt_item_images"
+            ]
+            options[
+                "include_executive_summary"
+            ] = report_options.validated_data["include_executive_summary"]
+            options[
+                "include_table_of_contents"
+            ] = report_options.validated_data["include_table_of_contents"]
+        else:
+            return Response(
+                report_options.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = report_generate(request, debt_items, options)
+        report = serializers.ReportGenerateSerializer(data)
+        return Response(report.data)
+
+    def _get_metadata(self, request, debt_item):
+        metadata = DojoMeta.objects.filter(debt_item=debt_item)
+        serializer = serializers.DebtItemMetaSerializer(
+            instance=metadata, many=True
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def _edit_metadata(self, request, debt_item):
+        metadata_name = request.query_params.get("name", None)
+        if metadata_name is None:
+            return Response(
+                "Metadata name is required", status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            DojoMeta.objects.update_or_create(
+                name=metadata_name,
+                debt_item=debt_item,
+                defaults={
+                    "name": request.data.get("name"),
+                    "value": request.data.get("value"),
+                },
+            )
+
+            return Response(data=request.data, status=status.HTTP_200_OK)
+        except IntegrityError:
+            return Response(
+                "Update failed because the new name already exists",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def _add_metadata(self, request, debt_item):
+        metadata_data = serializers.DebtIItemMetaSerializer(data=request.data)
+
+        if metadata_data.is_valid():
+            name = metadata_data.validated_data["name"]
+            value = metadata_data.validated_data["value"]
+
+            metadata = DojoMeta(debt_item=debt_item, name=name, value=value)
+            try:
+                metadata.validate_unique()
+                metadata.save()
+            except ValidationError:
+                return Response(
+                    "Create failed probably because the name of the metadata already exists",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return Response(data=metadata_data.data, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                metadata_data.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def _remove_metadata(self, request, debt_item):
+        name = request.query_params.get("name", None)
+        if name is None:
+            return Response(
+                "A metadata name must be provided",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        metadata = get_object_or_404(
+            DojoMeta.objects, debt_item=debt_item, name=name
+        )
+        metadata.delete()
+
+        return Response("Metadata deleted", status=status.HTTP_200_OK)
+
+    @extend_schema(
+        methods=["GET"],
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemMetaSerializer(many=True),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(
+                description="Returned if debt_item does not exist"
+            ),
+        },
+    )
+    @extend_schema(
+        methods=["DELETE"],
+        parameters=[
+            OpenApiParameter(
+                "name",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                required=True,
+                description="name of the metadata to retrieve. If name is empty, return all the \
+                                    metadata associated with the debt_item",
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                description="Returned if the metadata was correctly deleted"
+            ),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(
+                description="Returned if debt_item does not exist"
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                description="Returned if there was a problem with the metadata information"
+            ),
+        },
+        # manual_parameters=[openapi.Parameter(
+        #     name="name", in_=openapi.IN_QUERY,  type=openapi.TYPE_STRING,
+        #     description="name of the metadata to retrieve. If name is empty, return all the \
+        #                     metadata associated with the debt_item")]
+    )
+    @extend_schema(
+        methods=["PUT"],
+        request=serializers.DebtItemMetaSerializer,
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemMetaSerializer,
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(
+                description="Returned if debt_item does not exist"
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                description="Returned if there was a problem with the metadata information"
+            ),
+        },
+        # manual_parameters=[openapi.Parameter(
+        #     name="name", in_=openapi.IN_QUERY, required=True, type=openapi.TYPE_STRING,
+        #     description="name of the metadata to edit")],
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=serializers.DebtItemMetaSerializer,
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemMetaSerializer,
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(
+                description="Returned if debt_item does not exist"
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                description="Returned if there was a problem with the metadata information"
+            ),
+        },
+    )
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemMetaSerializer(many=True),
+            status.HTTP_404_NOT_FOUND: "Returned if debt_item does not exist",
+        },
+        methods=["get"],
+    )
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: "Returned if the metadata was correctly deleted",
+            status.HTTP_404_NOT_FOUND: "Returned if debt_item does not exist",
+            status.HTTP_400_BAD_REQUEST: "Returned if there was a problem with the metadata information",
+        },
+        methods=["delete"],
+        manual_parameters=[
+            openapi.Parameter(
+                name="name",
+                in_=openapi.IN_QUERY,
+                required=True,
+                type=openapi.TYPE_STRING,
+                description="name of the metadata to retrieve. If name is empty, return all the \
+                            metadata associated with the debt_item",
+            )
+        ],
+    )
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemMetaSerializer,
+            status.HTTP_404_NOT_FOUND: "Returned if debt_item does not exist",
+            status.HTTP_400_BAD_REQUEST: "Returned if there was a problem with the metadata information",
+        },
+        methods=["put"],
+        manual_parameters=[
+            openapi.Parameter(
+                name="name",
+                in_=openapi.IN_QUERY,
+                required=True,
+                type=openapi.TYPE_STRING,
+                description="name of the metadata to edit",
+            )
+        ],
+        request_body=serializers.DebtItemMetaSerializer,
+    )
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: serializers.DebtItemMetaSerializer,
+            status.HTTP_404_NOT_FOUND: "Returned if debt_item does not exist",
+            status.HTTP_400_BAD_REQUEST: "Returned if there was a problem with the metadata information",
+        },
+        methods=["post"],
+        request_body=serializers.DebtItemMetaSerializer,
+    )
+    @action(
+        detail=True,
+        methods=["post", "put", "delete", "get"],
+        filter_backends=[],
+        pagination_class=None,
+    )
+    def metadata(self, request, pk=None):
+        debt_item = self.get_object()
+
+        if request.method == "GET":
+            return self._get_metadata(request, debt_item)
+        elif request.method == "POST":
+            return self._add_metadata(request, debt_item)
+        elif request.method == "PUT":
+            return self._edit_metadata(request, debt_item)
+        elif request.method == "PATCH":
+            return self._edit_metadata(request, debt_item)
+        elif request.method == "DELETE":
+            return self._remove_metadata(request, debt_item)
+
+        return Response(
+            {"error", "unsupported method"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
 
 # Authorization: configuration
 class JiraInstanceViewSet(
@@ -1990,6 +2911,74 @@ class ProductAPIScanConfigurationViewSet(
         ],
     ),
 )
+
+# Authorization: object-based
+class DebtContextAPIScanConfigurationViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextAPIScanConfigurationSerializer
+    queryset = Debt_Context_API_Scan_Configuration.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = [
+        "id",
+        "debt_context",
+        "tool_configuration",
+        "service_key_1",
+        "service_key_2",
+        "service_key_3",
+    ]
+    swagger_schema = prefetch.get_prefetch_schema(
+        [
+            "debt_context_api_scan_configurations_list",
+            "debt_context_api_scan_configurations_read",
+        ],
+        serializers.DebtContextAPIScanConfigurationSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextAPIScanConfigurationPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_api_scan_configurations(
+            Permissions.Debt_Context_API_Scan_Configuration_View
+        )
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
 class DojoMetaViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -2183,6 +3172,117 @@ class ProductViewSet(
         ],
     ),
 )
+
+class DebtContextViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextSerializer
+    # TODO: prefetch
+    queryset = Debt_Context.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+
+    filterset_class = ApiDebtContextFilter
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_contexts_list", "debt_contexts_read"], serializers.DebtContextSerializer
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_contexts(Permissions.Debt_Context_View).distinct()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if get_setting("ASYNC_OBJECT_DELETE"):
+            async_del = async_delete()
+            async_del.delete(instance)
+        else:
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # def list(self, request):
+    #     print(vars(request))
+    #     # Note the use of `get_queryset()` instead of `self.queryset`
+    #     queryset = self.get_queryset()
+    #     serializer = self.serializer_class(queryset, many=True)
+    #     return Response(serializer.data)
+
+    @extend_schema(
+        request=serializers.ReportGenerateOptionSerializer,
+        responses={status.HTTP_200_OK: serializers.ReportGenerateSerializer},
+    )
+    @swagger_auto_schema(
+        request_body=serializers.ReportGenerateOptionSerializer,
+        responses={status.HTTP_200_OK: serializers.ReportGenerateSerializer},
+    )
+    @action(
+        detail=True, methods=["post"], permission_classes=[IsAuthenticated]
+    )
+    def generate_report(self, request, pk=None):
+        debt_context = self.get_object()
+
+        options = {}
+        # prepare post data
+        report_options = serializers.ReportGenerateOptionSerializer(
+            data=request.data
+        )
+        if report_options.is_valid():
+            options["include_debt_item_notes"] = report_options.validated_data[
+                "include_debt_item_notes"
+            ]
+            options["include_debt_item_images"] = report_options.validated_data[
+                "include_debt_item_images"
+            ]
+            options[
+                "include_executive_summary"
+            ] = report_options.validated_data["include_executive_summary"]
+            options[
+                "include_table_of_contents"
+            ] = report_options.validated_data["include_table_of_contents"]
+        else:
+            return Response(
+                report_options.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = report_generate(request, debt_context, options)
+        report = serializers.ReportGenerateSerializer(data)
+        return Response(report.data)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
 class ProductMemberViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -2251,6 +3351,76 @@ class ProductMemberViewSet(
         ],
     ),
 )
+
+class DebtContextMemberViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextMemberSerializer
+    queryset = Debt_Context_Member.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ["id", "debt_context_id", "user_id"]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_context_members_list", "debt_context_members_read"],
+        serializers.DebtContextMemberSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextMemberPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_members(
+            Permissions.Debt_Context_View
+        ).distinct()
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    @swagger_auto_schema(
+        request_body=no_body,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    def partial_update(self, request, pk=None):
+        # Object authorization won't work if not all data is provided
+        response = {"message": "Patch function is not offered in this path."}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
 class ProductGroupViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -2319,6 +3489,145 @@ class ProductGroupViewSet(
         ],
     ),
 )
+
+class DebtContextGroupViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextGroupSerializer
+    queryset = Debt_Context_Group.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ["id", "debt_context_id", "group_id"]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_context_groups_list", "debt_context_groups_read"],
+        serializers.DebtContextGroupSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextGroupPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_groups(
+            Permissions.Debt_Context_Group_View
+        ).distinct()
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    @swagger_auto_schema(
+        request_body=no_body,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    def partial_update(self, request, pk=None):
+        # Object authorization won't work if not all data is provided
+        response = {"message": "Patch function is not offered in this path."}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
+class DebtContextGroupViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextGroupSerializer
+    queryset = Debt_Context_Group.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ["id", "debt_context_id", "group_id"]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_context_groups_list", "debt_context_groups_read"],
+        serializers.DebtContextGroupSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextGroupPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_groups(
+            Permissions.Debt_Context_Group_View
+        ).distinct()
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    @swagger_auto_schema(
+        request_body=no_body,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    def partial_update(self, request, pk=None):
+        # Object authorization won't work if not all data is provided
+        response = {"message": "Patch function is not offered in this path."}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
 class ProductTypeViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -2337,7 +3646,9 @@ class ProductTypeViewSet(
         "id",
         "name",
         "critical_product",
+        "critical_debt_context",
         "key_product",
+        "key_debt_context",
         "created",
         "updated",
     ]
@@ -2443,6 +3754,132 @@ class ProductTypeViewSet(
         ],
     ),
 )
+
+class DebtContextTypeViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextTypeSerializer
+    queryset = Debt_Context_Type.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = [
+        "id",
+        "name",
+        "critical_debt_context",
+        "key_debt_context",
+        "created",
+        "updated",
+    ]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_context_types_list", "debt_context_types_read"],
+        serializers.DebtContextTypeSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextTypePermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_types(
+            Permissions.Debt_Context_Type_View
+        ).distinct()
+
+    # Overwrite perfom_create of CreateModelMixin to add current user as owner
+    def perform_create(self, serializer):
+        serializer.save()
+        debt_context_type_data = serializer.data
+        debt_context_type_data.pop("authorization_groups")
+        debt_context_type_data.pop("members")
+        member = Debt_Context_Type_Member()
+        member.user = self.request.user
+        member.debt_context_type = Debt_Context_Type(**debt_context_type_data)
+        member.role = Role.objects.get(is_owner=True)
+        member.save()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if get_setting("ASYNC_OBJECT_DELETE"):
+            async_del = async_delete()
+            async_del.delete(instance)
+        else:
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=serializers.ReportGenerateOptionSerializer,
+        responses={status.HTTP_200_OK: serializers.ReportGenerateSerializer},
+    )
+    @swagger_auto_schema(
+        request_body=serializers.ReportGenerateOptionSerializer,
+        responses={status.HTTP_200_OK: serializers.ReportGenerateSerializer},
+    )
+    @action(
+        detail=True, methods=["post"], permission_classes=[IsAuthenticated]
+    )
+    def generate_report(self, request, pk=None):
+        debt_context_type = self.get_object()
+
+        options = {}
+        # prepare post data
+        report_options = serializers.ReportGenerateOptionSerializer(
+            data=request.data
+        )
+        if report_options.is_valid():
+            options["include_debt_item_notes"] = report_options.validated_data[
+                "include_debt_item_notes"
+            ]
+            options["include_debt_item_images"] = report_options.validated_data[
+                "include_debt_item_images"
+            ]
+            options[
+                "include_executive_summary"
+            ] = report_options.validated_data["include_executive_summary"]
+            options[
+                "include_table_of_contents"
+            ] = report_options.validated_data["include_table_of_contents"]
+        else:
+            return Response(
+                report_options.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = report_generate(request, debt_context_type, options)
+        report = serializers.ReportGenerateSerializer(data)
+        return Response(report.data)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
 class ProductTypeMemberViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -2525,6 +3962,90 @@ class ProductTypeMemberViewSet(
         ],
     ),
 )
+
+class DebtContextTypeMemberViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextTypeMemberSerializer
+    queryset = Debt_Context_Type_Member.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ["id", "debt_context_type_id", "user_id"]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_context_type_members_list", "debt_context_type_members_read"],
+        serializers.DebtContextTypeMemberSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextTypeMemberPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_type_members(
+            Permissions.Debt_Context_Type_View
+        ).distinct()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.role.is_owner:
+            owners = Debt_Context_Type_Member.objects.filter(
+                debt_context_type=instance.debt_context_type, role__is_owner=True
+            ).count()
+            if owners <= 1:
+                return Response(
+                    "There must be at least one owner",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    @swagger_auto_schema(
+        request_body=no_body,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    def partial_update(self, request, pk=None):
+        # Object authorization won't work if not all data is provided
+        response = {"message": "Patch function is not offered in this path."}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# Authorization: object-based
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+
 class ProductTypeGroupViewSet(
     prefetch.PrefetchListMixin,
     prefetch.PrefetchRetrieveMixin,
@@ -2568,6 +4089,50 @@ class ProductTypeGroupViewSet(
         return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+class DebtContextTypeGroupViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.DebtContextTypeGroupSerializer
+    queryset = Debt_Context_Type_Group.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ["id", "debt_context_type_id", "group_id"]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["debt_context_type_groups_list", "debt_context_type_groups_read"],
+        serializers.DebtContextTypeGroupSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtContextTypeGroupPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_debt_context_type_groups(
+            Permissions.Debt_Context_Type_Group_View
+        ).distinct()
+
+    @extend_schema(
+        request=OpenApiTypes.NONE,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    @swagger_auto_schema(
+        request_body=no_body,
+        responses={status.HTTP_405_METHOD_NOT_ALLOWED: ""},
+    )
+    def partial_update(self, request, pk=None):
+        # Object authorization won't work if not all data is provided
+        response = {"message": "Patch function is not offered in this path."}
+        return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+
 # Authorization: object-based
 class StubFindingsViewSet(
     prefetch.PrefetchListMixin,
@@ -2604,6 +4169,41 @@ class StubFindingsViewSet(
         else:
             return serializers.StubFindingSerializer
 
+
+class StubDebtItemsViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.StubDebtItemSerializer
+    queryset = Stub_Debt_Item.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ["id", "title", "date", "severity", "description"]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["stub_debt_items_list", "stub_debt_items_read"],
+        serializers.StubDebtItemSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasDebtItemPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_stub_debt_items(
+            Permissions.Debt_Item_View
+        ).distinct()
+
+    def get_serializer_class(self):
+        if self.request and self.request.method == "POST":
+            return serializers.StubDebtItemCreateSerializer
+        else:
+            return serializers.StubDebtItemSerializer
 
 # Authorization: authenticated, configuration
 class DevelopmentEnvironmentViewSet(
@@ -3040,6 +4640,41 @@ class ToolProductSettingsViewSet(
     def get_queryset(self):
         return get_authorized_tool_product_settings(Permissions.Product_View)
 
+
+# Authorization: object-based
+class ToolDebtContextSettingsViewSet(
+    prefetch.PrefetchListMixin,
+    prefetch.PrefetchRetrieveMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+    dojo_mixins.DeletePreviewModelMixin,
+):
+    serializer_class = serializers.ToolDebtContextSettingsSerializer
+    queryset = Tool_Debt_Context_Settings.objects.none()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = [
+        "id",
+        "name",
+        "debt_context",
+        "tool_configuration",
+        "tool_project_id",
+        "url",
+    ]
+    swagger_schema = prefetch.get_prefetch_schema(
+        ["tool_configurations_list", "tool_configurations_read"],
+        serializers.ToolConfigurationSerializer,
+    ).to_schema()
+    permission_classes = (
+        IsAuthenticated,
+        permissions.UserHasToolDebtContextSettingsPermission,
+    )
+
+    def get_queryset(self):
+        return get_authorized_tool_debt_context_settings(Permissions.Debt_Context_View)
 
 # Authorization: configuration
 class ToolTypesViewSet(

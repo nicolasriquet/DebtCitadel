@@ -37,47 +37,47 @@ from dojo.utils import (
 )
 import copy
 from dojo.filters import (
-    Templatedebt_itemFilter,
-    Similardebt_itemFilter,
-    debt_itemFilter,
-    Accepteddebt_itemFilter,
-    TestImportdebt_itemActionFilter,
+    TemplateDebtItemFilter,
+    SimilarDebtItemFilter,
+    DebtItemFilter,
+    AcceptedDebtItemFilter,
+    TestImportDebtItemActionFilter,
     TestImportFilter,
 )
 from dojo.forms import (
-    EditPlannedRemediationDatedebt_itemForm,
+    EditPlannedRemediationDateDebtItemForm,
     NoteForm,
     TypedNoteForm,
-    Closedebt_itemForm,
-    debt_itemForm,
-    Promotedebt_itemForm,
-    debt_itemTemplateForm,
-    Deletedebt_itemTemplateForm,
-    JIRAdebt_itemForm,
-    GITHUBdebt_itemForm,
-    Reviewdebt_itemForm,
-    Cleardebt_itemReviewForm,
-    Defectdebt_itemForm,
-    Stubdebt_itemForm,
-    Deletedebt_itemForm,
-    DeleteStubdebt_itemForm,
-    Applydebt_itemTemplateForm,
-    debt_itemFormID,
-    debt_itemBulkUpdateForm,
-    Mergedebt_items,
-    Copydebt_itemForm,
+    CloseDebtItemForm,
+    DebtItemForm,
+    PromoteDebtItemForm,
+    DebtItemTemplateForm,
+    DeleteDebtItemTemplateForm,
+    JIRADebtItemForm,
+    GITHUBDebtItemForm,
+    ReviewDebtItemForm,
+    ClearDebtItemReviewForm,
+    DefectDebtItemForm,
+    StubDebtItemForm,
+    DeleteDebtItemForm,
+    DeleteStubDebtItemForm,
+    ApplyDebtItemTemplateForm,
+    DebtItemFormID,
+    DebtItemBulkUpdateForm,
+    MergeDebtItems,
+    CopyDebtItemForm,
 )
 from dojo.models import (
-    IMPORT_UNTOUCHED_debt_item,
-    debt_item,
-    debt_item_Group,
+    IMPORT_UNTOUCHED_DEBT_ITEM,
+    Debt_Item,
+    Debt_Item_Group,
     Notes,
     NoteHistory,
     Note_Type,
     BurpRawRequestResponse,
-    Stub_debt_item,
+    Stub_Debt_Item,
     Endpoint,
-    debt_item_Template,
+    Debt_Item_Template,
     Endpoint_Status,
     FileAccessToken,
     GITHUB_PKey,
@@ -87,7 +87,7 @@ from dojo.models import (
     Test,
     Product,
     Test_Import,
-    Test_Import_debt_item_Action,
+    Test_Import_Debt_Item_Action,
     User,
     Engagement,
     Vulnerability_Id_Template,
@@ -168,8 +168,8 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
             prefetched_debt_items = prefetched_debt_items.prefetch_related(
                 Prefetch(
                     "test_import_debt_item_action_set",
-                    queryset=Test_Import_debt_item_Action.objects.exclude(
-                        action=IMPORT_UNTOUCHED_debt_item
+                    queryset=Test_Import_Debt_Item_Action.objects.exclude(
+                        action=IMPORT_UNTOUCHED_DEBT_ITEM
                     ),
                 )
             )
@@ -240,8 +240,8 @@ def prefetch_for_similar_debt_items(debt_items):
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             Prefetch(
                 "test_import_debt_item_action_set",
-                queryset=Test_Import_debt_item_Action.objects.exclude(
-                    action=IMPORT_UNTOUCHED_debt_item
+                queryset=Test_Import_Debt_Item_Action.objects.exclude(
+                    action=IMPORT_UNTOUCHED_DEBT_ITEM
                 ),
             )
         )
@@ -307,7 +307,7 @@ class BaseListdebt_items:
             self.test_id = None
         return self.test_id
 
-    def filter_debt_items_by_object(self, debt_items: QuerySet[debt_item]):
+    def filter_debt_items_by_object(self, debt_items: QuerySet[Debt_Item]):
         if product_id := self.get_product_id():
             return debt_items.filter(test__engagement__product__id=product_id)
         elif engagement_id := self.get_engagement_id():
@@ -317,26 +317,26 @@ class BaseListdebt_items:
         else:
             return debt_items
 
-    def filter_debt_items_by_filter_name(self, debt_items: QuerySet[debt_item]):
+    def filter_debt_items_by_filter_name(self, debt_items: QuerySet[Debt_Item]):
         filter_name = self.get_filter_name()
         if filter_name == "Open":
-            return debt_items.filter(debt_item_helper.OPEN_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.OPEN_DEBT_ITEMS_QUERY)
         elif filter_name == "Verified":
-            return debt_items.filter(debt_item_helper.VERIFIED_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.VERIFIED_DEBT_ITEMS_QUERY)
         elif filter_name == "Out of Scope":
-            return debt_items.filter(debt_item_helper.OUT_OF_SCOPE_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.OUT_OF_SCOPE_DEBT_ITEMS_QUERY)
         elif filter_name == "False Positive":
-            return debt_items.filter(debt_item_helper.FALSE_POSITIVE_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.FALSE_POSITIVE_DEBT_ITEMS_QUERY)
         elif filter_name == "Inactive":
-            return debt_items.filter(debt_item_helper.INACTIVE_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.INACTIVE_DEBT_ITEMS_QUERY)
         elif filter_name == "Accepted":
-            return debt_items.filter(debt_item_helper.ACCEPTED_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.ACCEPTED_DEBT_ITEMS_QUERY)
         elif filter_name == "Closed":
-            return debt_items.filter(debt_item_helper.CLOSED_debt_itemS_QUERY)
+            return debt_items.filter(debt_item_helper.CLOSED_DEBT_ITEMS_QUERY)
         else:
             return debt_items
 
-    def filter_debt_items_by_form(self, request: HttpRequest, debt_items: QuerySet[debt_item]):
+    def filter_debt_items_by_form(self, request: HttpRequest, debt_items: QuerySet[Debt_Item]):
         # Set up the args for the form
         args = [request.GET, debt_items]
         # Set the initial form args
@@ -346,13 +346,13 @@ class BaseListdebt_items:
         }
 
         return (
-            Accepteddebt_itemFilter(*args, **kwargs)
+            AcceptedDebtItemFilter(*args, **kwargs)
             if self.get_filter_name() == "Accepted"
-            else debt_itemFilter(*args, **kwargs)
+            else DebtItemFilter(*args, **kwargs)
         )
 
     def get_filtered_debt_items(self):
-        debt_items = get_authorized_debt_items(Permissions.debt_item_View).order_by(self.get_order_by())
+        debt_items = get_authorized_debt_items(Permissions.Debt_Item_View).order_by(self.get_order_by())
         debt_items = self.filter_debt_items_by_object(debt_items)
         debt_items = self.filter_debt_items_by_filter_name(debt_items)
 
@@ -372,9 +372,9 @@ class Listdebt_items(View, BaseListdebt_items):
             "product_tab": None,
             "jira_project": None,
             "github_config": None,
-            "bulk_edit_form": debt_itemBulkUpdateForm(request.GET),
-            "title_words": get_words_for_field(debt_item, "title"),
-            "component_words": get_words_for_field(debt_item, "component_name"),
+            "bulk_edit_form": DebtItemBulkUpdateForm(request.GET),
+            "title_words": get_words_for_field(Debt_Item, "title"),
+            "component_words": get_words_for_field(Debt_Item, "component_name"),
         }
         # Look to see if the product was used
         if product_id := self.get_product_id():
@@ -489,14 +489,14 @@ class ListCloseddebt_items(Listdebt_items):
 
 class Viewdebt_item(View):
     def get_debt_item(self, debt_item_id: int):
-        debt_item_qs = prefetch_for_debt_items(debt_item.objects.all(), exclude_untouched=False)
+        debt_item_qs = prefetch_for_debt_items(Debt_Item.objects.all(), exclude_untouched=False)
         return get_object_or_404(debt_item_qs, id=debt_item_id)
 
     def get_dojo_user(self, request: HttpRequest):
         user = request.user
         return get_object_or_404(Dojo_User, id=user.id)
 
-    def get_previous_and_next_debt_items(self, debt_item: debt_item):
+    def get_previous_and_next_debt_items(self, debt_item: Debt_Item):
         # Get the whole list of debt_items in the current test
         debt_items = (
             debt_item.objects.filter(test=debt_item.test)
@@ -524,7 +524,7 @@ class Viewdebt_item(View):
             "debt_items_list_lastElement": debt_items[last_pos],
         }
 
-    def get_credential_objects(self, debt_item: debt_item):
+    def get_credential_objects(self, debt_item: Debt_Item):
         cred = (
             Cred_Mapping.objects.filter(test=debt_item.test.id)
             .select_related("cred_id")
@@ -547,16 +547,16 @@ class Viewdebt_item(View):
             "cred_engagement": cred_engagement,
         }
 
-    def get_cwe_template(self, debt_item: debt_item):
+    def get_cwe_template(self, debt_item: Debt_Item):
         cwe_template = None
-        with contextlib.suppress(debt_item_Template.DoesNotExist):
-            cwe_template = debt_item_Template.objects.filter(cwe=debt_item.cwe).first()
+        with contextlib.suppress(Debt_Item_Template.DoesNotExist):
+            cwe_template = Debt_Item_Template.objects.filter(cwe=debt_item.cwe).first()
 
         return {
             "cwe_template": cwe_template
         }
 
-    def get_request_response(self, debt_item: debt_item):
+    def get_request_response(self, debt_item: Debt_Item):
         request_response = None
         burp_request = None
         burp_response = None
@@ -573,14 +573,14 @@ class Viewdebt_item(View):
             "burp_response": burp_response,
         }
 
-    def get_test_import_data(self, request: HttpRequest, debt_item: debt_item):
+    def get_test_import_data(self, request: HttpRequest, debt_item: Debt_Item):
         test_imports = Test_Import.objects.filter(debt_items_affected=debt_item)
         test_import_filter = TestImportFilter(request.GET, test_imports)
 
         test_import_debt_item_actions = debt_item.test_import_debt_item_action_set
         test_import_debt_item_actions_count = test_import_debt_item_actions.all().count()
         test_import_debt_item_actions = test_import_debt_item_actions.filter(test_import__in=test_import_filter.qs)
-        test_import_debt_item_action_filter = TestImportdebt_itemActionFilter(request.GET, test_import_debt_item_actions)
+        test_import_debt_item_action_filter = TestImportDebtItemActionFilter(request.GET, test_import_debt_item_actions)
 
         paged_test_import_debt_item_actions = get_page_items_and_count(request, test_import_debt_item_action_filter.qs, 5, prefix='test_import_debt_item_actions')
         paged_test_import_debt_item_actions.object_list = paged_test_import_debt_item_actions.object_list.prefetch_related('test_import')
@@ -595,7 +595,7 @@ class Viewdebt_item(View):
             "test_import_debt_item_actions_count": test_import_debt_item_actions_count,
         }
 
-    def get_similar_debt_items(self, request: HttpRequest, debt_item: debt_item):
+    def get_similar_debt_items(self, request: HttpRequest, debt_item: Debt_Item):
         # add related actions for non-similar and non-duplicate cluster members
         debt_item.related_actions = calculate_possible_related_actions_for_similar_debt_item(
             request, debt_item, debt_item
@@ -606,9 +606,9 @@ class Viewdebt_item(View):
                     request, debt_item, debt_item.duplicate_debt_item
                 )
             )
-        similar_debt_items_filter = Similardebt_itemFilter(
+        similar_debt_items_filter = SimilarDebtItemFilter(
             request.GET,
-            queryset=get_authorized_debt_items(Permissions.debt_item_View),
+            queryset=get_authorized_debt_items(Permissions.Debt_Item_View),
             user=request.user,
             debt_item=debt_item,
         )
@@ -635,7 +635,7 @@ class Viewdebt_item(View):
             "similar_debt_items_filter": similar_debt_items_filter,
         }
 
-    def get_jira_data(self, debt_item: debt_item):
+    def get_jira_data(self, debt_item: Debt_Item):
         (
             can_be_pushed_to_jira,
             can_be_pushed_to_jira_error,
@@ -675,7 +675,7 @@ class Viewdebt_item(View):
             else self.get_note_form(request)
         )
 
-    def process_form(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def process_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         if context["form"].is_valid():
             # Create the note object
             new_note = context["form"].save(commit=False)
@@ -713,7 +713,7 @@ class Viewdebt_item(View):
 
         return request, False
 
-    def get_initial_context(self, request: HttpRequest, debt_item: debt_item, user: Dojo_User):
+    def get_initial_context(self, request: HttpRequest, debt_item: Debt_Item, user: Dojo_User):
         notes = debt_item.notes.all()
         note_type_activation = Note_Type.objects.filter(is_active=True).count()
         available_note_types = None
@@ -746,7 +746,7 @@ class Viewdebt_item(View):
         debt_item = self.get_debt_item(debt_item_id)
         user = self.get_dojo_user(request)
         # Make sure the user is authorized
-        user_has_permission_or_403(user, debt_item, Permissions.debt_item_View)
+        user_has_permission_or_403(user, debt_item, Permissions.Debt_Item_View)
         # Set up the initial context
         context = self.get_initial_context(request, debt_item, user)
         # Add in the other extras
@@ -766,7 +766,7 @@ class Viewdebt_item(View):
         debt_item = self.get_debt_item(debt_item_id)
         user = self.get_dojo_user(request)
         # Make sure the user is authorized
-        user_has_permission_or_403(user, debt_item, Permissions.debt_item_View)
+        user_has_permission_or_403(user, debt_item, Permissions.Debt_Item_View)
         # Quick perms check to determine if the user has access to add a note to the debt_item
         user_has_permission_or_403(user, debt_item, Permissions.Note_Add)
         # Set up the initial context
@@ -787,16 +787,16 @@ class Viewdebt_item(View):
 
 class Editdebt_item(View):
     def get_debt_item(self, debt_item_id: int):
-        return get_object_or_404(debt_item, id=debt_item_id)
+        return get_object_or_404(Debt_Item, id=debt_item_id)
 
-    def get_request_response(self, debt_item: debt_item):
+    def get_request_response(self, debt_item: Debt_Item):
         req_resp = None
         if burp_rr := BurpRawRequestResponse.objects.filter(debt_item=debt_item).first():
             req_resp = (burp_rr.get_request(), burp_rr.get_response())
 
         return req_resp
 
-    def get_debt_item_form(self, request: HttpRequest, debt_item: debt_item):
+    def get_debt_item_form(self, request: HttpRequest, debt_item: Debt_Item):
         # Get the burp request if available
         req_resp = self.get_request_response(debt_item)
         # Set up the args for the form
@@ -809,9 +809,9 @@ class Editdebt_item(View):
             "initial": {"vulnerability_ids": "\n".join(debt_item.vulnerability_ids)},
         }
 
-        return debt_itemForm(*args, **kwargs)
+        return DebtItemForm(*args, **kwargs)
 
-    def get_jira_form(self, request: HttpRequest, debt_item: debt_item, debt_item_form: debt_itemForm = None):
+    def get_jira_form(self, request: HttpRequest, debt_item: Debt_Item, debt_item_form: DebtItemForm = None):
         # Determine if jira should be used
         if (jira_project := jira_helper.get_jira_project(debt_item)) is not None:
             # Determine if push all debt_items is enabled
@@ -827,10 +827,10 @@ class Editdebt_item(View):
                 "debt_item_form": debt_item_form,
             }
 
-            return JIRAdebt_itemForm(*args, **kwargs)
+            return JIRADebtItemForm(*args, **kwargs)
         return None
 
-    def get_github_form(self, request: HttpRequest, debt_item: debt_item):
+    def get_github_form(self, request: HttpRequest, debt_item: Debt_Item):
         # Determine if github should be used
         if get_system_setting("enable_github"):
             # Ensure there is a github conf correctly configured for the product
@@ -844,10 +844,10 @@ class Editdebt_item(View):
                     "prefix": "githubform"
                 }
 
-                return GITHUBdebt_itemForm(*args, **kwargs)
+                return GITHUBDebtItemForm(*args, **kwargs)
         return None
 
-    def get_initial_context(self, request: HttpRequest, debt_item: debt_item):
+    def get_initial_context(self, request: HttpRequest, debt_item: Debt_Item):
         # Get the debt_item form first since it is used in another place
         debt_item_form = self.get_debt_item_form(request, debt_item)
         return {
@@ -861,7 +861,7 @@ class Editdebt_item(View):
             )
         }
 
-    def validate_status_change(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def validate_status_change(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         # If the debt_item is already not active, skip this extra validation
         if not debt_item.active:
             return request
@@ -900,7 +900,7 @@ class Editdebt_item(View):
 
         return request
 
-    def process_mitigated_data(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def process_mitigated_data(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         # If active is not checked and CAN_EDIT_MITIGATED_DATA,
         # mitigate the debt_item and the associated endpoints status
         if debt_item_helper.can_edit_mitigated_data(request.user) and ((
@@ -922,7 +922,7 @@ class Editdebt_item(View):
                 status.last_modified = timezone.now()
                 status.save()
 
-    def process_false_positive_history(self, debt_item: debt_item):
+    def process_false_positive_history(self, debt_item: Debt_Item):
         if get_system_setting("false_positive_history", False):
             # If the debt_item is being marked as a false positive we dont need to call the
             # fp history function because it will be called by the save function
@@ -943,7 +943,7 @@ class Editdebt_item(View):
                     fp.is_mitigated = debt_item.is_mitigated
                     fp.save_no_options()
 
-    def process_burp_request_response(self, debt_item: debt_item, context: dict):
+    def process_burp_request_response(self, debt_item: Debt_Item, context: dict):
         if "request" in context["form"].cleaned_data or "response" in context["form"].cleaned_data:
             try:
                 burp_rr, _ = BurpRawRequestResponse.objects.get_or_create(debt_item=debt_item)
@@ -958,7 +958,7 @@ class Editdebt_item(View):
             burp_rr.clean()
             burp_rr.save()
 
-    def process_debt_item_form(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def process_debt_item_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         if context["form"].is_valid():
             # process some of the easy stuff first
             new_debt_item = context["form"].save(commit=False)
@@ -1006,7 +1006,7 @@ class Editdebt_item(View):
 
         return debt_item, request, False
 
-    def process_jira_form(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def process_jira_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         # Capture case if the jira not being enabled
         if context["jform"] is None:
             return request, True, False
@@ -1062,7 +1062,7 @@ class Editdebt_item(View):
 
         return request, False, False
 
-    def process_github_form(self, request: HttpRequest, debt_item: debt_item, context: dict, old_status: str):
+    def process_github_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict, old_status: str):
         if "githubform-push_to_github" not in request.POST:
             return request, True
 
@@ -1078,7 +1078,7 @@ class Editdebt_item(View):
 
         return request, False
 
-    def process_forms(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def process_forms(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         form_success_list = []
         # Set vars for the completed forms
         old_status = debt_item.status()
@@ -1117,7 +1117,7 @@ class Editdebt_item(View):
         # Get the initial objects
         debt_item = self.get_debt_item(debt_item_id)
         # Make sure the user is authorized
-        user_has_permission_or_403(request.user, debt_item, Permissions.debt_item_Edit)
+        user_has_permission_or_403(request.user, debt_item, Permissions.Debt_Item_Edit)
         # Set up the initial context
         context = self.get_initial_context(request, debt_item)
         # Render the form
@@ -1127,7 +1127,7 @@ class Editdebt_item(View):
         # Get the initial objects
         debt_item = self.get_debt_item(debt_item_id)
         # Make sure the user is authorized
-        user_has_permission_or_403(request.user, debt_item, Permissions.debt_item_Edit)
+        user_has_permission_or_403(request.user, debt_item, Permissions.Debt_Item_Edit)
         # Set up the initial context
         context = self.get_initial_context(request, debt_item)
         # Process the form
@@ -1141,9 +1141,9 @@ class Editdebt_item(View):
 
 class Deletedebt_item(View):
     def get_debt_item(self, debt_item_id: int):
-        return get_object_or_404(debt_item, id=debt_item_id)
+        return get_object_or_404(Debt_Item, id=debt_item_id)
 
-    def process_form(self, request: HttpRequest, debt_item: debt_item, context: dict):
+    def process_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         if context["form"].is_valid():
             product = debt_item.test.engagement.product
             debt_item.delete()
@@ -1183,10 +1183,10 @@ class Deletedebt_item(View):
         # Get the initial objects
         debt_item = self.get_debt_item(debt_item_id)
         # Make sure the user is authorized
-        user_has_permission_or_403(request.user, debt_item, Permissions.debt_item_Delete)
+        user_has_permission_or_403(request.user, debt_item, Permissions.Debt_Item_Delete)
         # Get the debt_item form
         context = {
-            "form": Deletedebt_itemForm(request.POST, instance=debt_item),
+            "form": DeleteDebtItemForm(request.POST, instance=debt_item),
         }
         # Process the form
         request, success = self.process_form(request, debt_item, context)
@@ -1196,9 +1196,9 @@ class Deletedebt_item(View):
         raise PermissionDenied()
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def close_debt_item(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     # in order to close a debt_item, we need to capture why it was closed
     # we can do this with a Note
     note_type_activation = Note_Type.objects.filter(is_active=True)
@@ -1206,9 +1206,9 @@ def close_debt_item(request, fid):
         missing_note_types = get_missing_mandatory_notetypes(debt_item)
     else:
         missing_note_types = note_type_activation
-    form = Closedebt_itemForm(missing_note_types=missing_note_types)
+    form = CloseDebtItemForm(missing_note_types=missing_note_types)
     if request.method == "POST":
-        form = Closedebt_itemForm(request.POST, missing_note_types=missing_note_types)
+        form = CloseDebtItemForm(request.POST, missing_note_types=missing_note_types)
 
         close_external_issue(debt_item, "Closed by defectdojo", "github")
 
@@ -1309,13 +1309,13 @@ def close_debt_item(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def defect_debt_item_review(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     # in order to close a debt_item, we need to capture why it was closed
     # we can do this with a Note
     if request.method == "POST":
-        form = Defectdebt_itemForm(request.POST)
+        form = DefectDebtItemForm(request.POST)
         if form.is_valid():
             now = timezone.now()
             new_note = form.save(commit=False)
@@ -1376,7 +1376,7 @@ def defect_debt_item_review(request, fid):
             return HttpResponseRedirect(reverse("view_test", args=(debt_item.test.id,)))
 
     else:
-        form = Defectdebt_itemForm()
+        form = DefectDebtItemForm()
 
     product_tab = Product_Tab(
         debt_item.test.engagement.product, title="Jira Status Review", tab="debt_items"
@@ -1395,12 +1395,12 @@ def defect_debt_item_review(request, fid):
 
 
 @user_is_authorized(
-    debt_item,
-    Permissions.debt_item_Edit,
+    Debt_Item,
+    Permissions.Debt_Item_Edit,
     "fid",
 )
 def reopen_debt_item(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     debt_item.active = True
     debt_item.mitigated = None
     debt_item.mitigated_by = request.user
@@ -1450,11 +1450,11 @@ def reopen_debt_item(request, fid):
     return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def apply_template_cwe(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     if request.method == "POST":
-        form = debt_itemFormID(request.POST, instance=debt_item)
+        form = DebtItemFormID(request.POST, instance=debt_item)
         if form.is_valid():
             debt_item = apply_cwe_to_template(debt_item)
             debt_item.save()
@@ -1476,17 +1476,17 @@ def apply_template_cwe(request, fid):
         raise PermissionDenied()
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def copy_debt_item(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     product = debt_item.test.engagement.product
     tests = get_authorized_tests(Permissions.Test_Edit).filter(
         engagement=debt_item.test.engagement
     )
-    form = Copydebt_itemForm(tests=tests)
+    form = CopyDebtItemForm(tests=tests)
 
     if request.method == "POST":
-        form = Copydebt_itemForm(request.POST, tests=tests)
+        form = CopyDebtItemForm(request.POST, tests=tests)
         if form.is_valid():
             test = form.cleaned_data.get("test")
             product = debt_item.test.engagement.product
@@ -1535,13 +1535,13 @@ def copy_debt_item(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def remediation_date(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     user = get_object_or_404(Dojo_User, id=request.user.id)
 
     if request.method == "POST":
-        form = EditPlannedRemediationDatedebt_itemForm(request.POST)
+        form = EditPlannedRemediationDateDebtItemForm(request.POST)
 
         if form.is_valid():
             debt_item.planned_remediation_date = request.POST.get(
@@ -1557,7 +1557,7 @@ def remediation_date(request, fid):
             return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
     else:
-        form = EditPlannedRemediationDatedebt_itemForm(debt_item=debt_item)
+        form = EditPlannedRemediationDateDebtItemForm(debt_item=debt_item)
 
     product_tab = Product_Tab(
         debt_item.test.engagement.product,
@@ -1572,9 +1572,9 @@ def remediation_date(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def touch_debt_item(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     debt_item.last_reviewed = timezone.now()
     debt_item.last_reviewed_by = request.user
     debt_item.save()
@@ -1583,9 +1583,9 @@ def touch_debt_item(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.Risk_Acceptance, "fid")
+@user_is_authorized(Debt_Item, Permissions.Risk_Acceptance, "fid")
 def simple_risk_accept(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
 
     if not debt_item.test.engagement.product.enable_simple_risk_acceptance:
         raise PermissionDenied()
@@ -1601,9 +1601,9 @@ def simple_risk_accept(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.Risk_Acceptance, "fid")
+@user_is_authorized(Debt_Item, Permissions.Risk_Acceptance, "fid")
 def risk_unaccept(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     ra_helper.risk_unaccept(debt_item)
 
     messages.add_message(
@@ -1618,15 +1618,15 @@ def risk_unaccept(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_View, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_View, "fid")
 def request_debt_item_review(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     user = get_object_or_404(Dojo_User, id=request.user.id)
-    form = Reviewdebt_itemForm(debt_item=debt_item, user=user)
+    form = ReviewDebtItemForm(debt_item=debt_item, user=user)
     # in order to review a debt_item, we need to capture why a review is needed
     # we can do this with a Note
     if request.method == "POST":
-        form = Reviewdebt_itemForm(request.POST, debt_item=debt_item, user=user)
+        form = ReviewDebtItemForm(request.POST, debt_item=debt_item, user=user)
 
         if form.is_valid():
             now = timezone.now()
@@ -1711,9 +1711,9 @@ def request_debt_item_review(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def clear_debt_item_review(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     user = get_object_or_404(Dojo_User, id=request.user.id)
     # If the user wanting to clear the review is not the user who requested
     # the review or one of the users requested to provide the review, then
@@ -1724,7 +1724,7 @@ def clear_debt_item_review(request, fid):
     # in order to clear a review for a debt_item, we need to capture why and how it was reviewed
     # we can do this with a Note
     if request.method == "POST":
-        form = Cleardebt_itemReviewForm(request.POST, instance=debt_item)
+        form = ClearDebtItemReviewForm(request.POST, instance=debt_item)
 
         if form.is_valid():
             now = timezone.now()
@@ -1774,7 +1774,7 @@ def clear_debt_item_review(request, fid):
             return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
     else:
-        form = Cleardebt_itemReviewForm(instance=debt_item)
+        form = ClearDebtItemReviewForm(instance=debt_item)
 
     product_tab = Product_Tab(
         debt_item.test.engagement.product, title="Clear debt_item Review", tab="debt_items"
@@ -1787,10 +1787,10 @@ def clear_debt_item_review(request, fid):
     )
 
 
-@user_has_global_permission(Permissions.debt_item_Add)
+@user_has_global_permission(Permissions.Debt_Item_Add)
 def mktemplate(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
-    templates = debt_item_Template.objects.filter(title=debt_item.title)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
+    templates = Debt_Item_Template.objects.filter(title=debt_item.title)
     if len(templates) > 0:
         messages.add_message(
             request,
@@ -1799,7 +1799,7 @@ def mktemplate(request, fid):
             extra_tags="alert-danger",
         )
     else:
-        template = debt_item_Template(
+        template = Debt_Item_Template(
             title=debt_item.title,
             cwe=debt_item.cwe,
             cvssv3=debt_item.cvssv3,
@@ -1831,12 +1831,12 @@ def mktemplate(request, fid):
     return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def find_template_to_apply(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     test = get_object_or_404(Test, id=debt_item.test.id)
     templates_by_cve = (
-        debt_item_Template.objects.annotate(
+        Debt_Item_Template.objects.annotate(
             cve_len=Length("cve"), order=models.Value(1, models.IntegerField())
         )
         .filter(cve=debt_item.cve, cve_len__gt=0)
@@ -1844,7 +1844,7 @@ def find_template_to_apply(request, fid):
     )
     if templates_by_cve.count() == 0:
         templates_by_last_used = (
-            debt_item_Template.objects.all()
+            Debt_Item_Template.objects.all()
             .order_by("-last_used")
             .annotate(
                 cve_len=Length("cve"), order=models.Value(2, models.IntegerField())
@@ -1853,7 +1853,7 @@ def find_template_to_apply(request, fid):
         templates = templates_by_last_used
     else:
         templates_by_last_used = (
-            debt_item_Template.objects.all()
+            Debt_Item_Template.objects.all()
             .exclude(cve=debt_item.cve)
             .order_by("-last_used")
             .annotate(
@@ -1864,11 +1864,11 @@ def find_template_to_apply(request, fid):
             "order", "-last_used"
         )
 
-    templates = Templatedebt_itemFilter(request.GET, queryset=templates)
+    templates = TemplateDebtItemFilter(request.GET, queryset=templates)
     paged_templates = get_page_items(request, templates.qs, 25)
 
     # just query all templates as this weird ordering above otherwise breaks Django ORM
-    title_words = get_words_for_field(debt_item_Template, "title")
+    title_words = get_words_for_field(Debt_Item_Template, "title")
     product_tab = Product_Tab(
         test.engagement.product, title="Apply Template to debt_item", tab="debt_items"
     )
@@ -1888,16 +1888,16 @@ def find_template_to_apply(request, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def choose_debt_item_template_options(request, tid, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
-    template = get_object_or_404(debt_item_Template, id=tid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
+    template = get_object_or_404(Debt_Item_Template, id=tid)
     data = debt_item.__dict__
     # Not sure what's going on here, just leave same as with django-tagging
     data["tags"] = [tag.name for tag in template.tags.all()]
     data["vulnerability_ids"] = "\n".join(debt_item.vulnerability_ids)
 
-    form = Applydebt_itemTemplateForm(data=data, template=template)
+    form = ApplyDebtItemTemplateForm(data=data, template=template)
     product_tab = Product_Tab(
         debt_item.test.engagement.product,
         title="debt_item Template Options",
@@ -1916,13 +1916,13 @@ def choose_debt_item_template_options(request, tid, fid):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def apply_template_to_debt_item(request, fid, tid):
-    debt_item = get_object_or_404(debt_item, id=fid)
-    template = get_object_or_404(debt_item_Template, id=tid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
+    template = get_object_or_404(Debt_Item_Template, id=tid)
 
     if request.method == "POST":
-        form = Applydebt_itemTemplateForm(data=request.POST)
+        form = ApplyDebtItemTemplateForm(data=request.POST)
 
         if form.is_valid():
             template.last_used = timezone.now()
@@ -1972,11 +1972,11 @@ def apply_template_to_debt_item(request, fid, tid):
         return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
 
-@user_is_authorized(Test, Permissions.debt_item_Add, "tid")
+@user_is_authorized(Test, Permissions.Debt_Item_Add, "tid")
 def add_stub_debt_item(request, tid):
     test = get_object_or_404(Test, id=tid)
     if request.method == "POST":
-        form = Stubdebt_itemForm(request.POST)
+        form = StubDebtItemForm(request.POST)
         if form.is_valid():
             stub_debt_item = form.save(commit=False)
             stub_debt_item.test = test
@@ -2013,12 +2013,12 @@ def add_stub_debt_item(request, tid):
     return HttpResponseRedirect(reverse("view_test", args=(tid,)))
 
 
-@user_is_authorized(Stub_debt_item, Permissions.debt_item_Delete, "fid")
+@user_is_authorized(Stub_Debt_Item, Permissions.Debt_Item_Delete, "fid")
 def delete_stub_debt_item(request, fid):
-    debt_item = get_object_or_404(Stub_debt_item, id=fid)
+    debt_item = get_object_or_404(Stub_Debt_Item, id=fid)
 
     if request.method == "POST":
-        form = DeleteStubdebt_itemForm(request.POST, instance=debt_item)
+        form = DeleteStubDebtItemForm(request.POST, instance=debt_item)
         if form.is_valid():
             tid = debt_item.test.id
             debt_item.delete()
@@ -2040,9 +2040,9 @@ def delete_stub_debt_item(request, fid):
         raise PermissionDenied()
 
 
-@user_is_authorized(Stub_debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Stub_Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def promote_to_debt_item(request, fid):
-    debt_item = get_object_or_404(Stub_debt_item, id=fid)
+    debt_item = get_object_or_404(Stub_Debt_Item, id=fid)
     test = debt_item.test
     form_error = False
     push_all_jira_issues = jira_helper.is_push_all_issues(debt_item)
@@ -2053,9 +2053,9 @@ def promote_to_debt_item(request, fid):
     )
 
     if request.method == "POST":
-        form = Promotedebt_itemForm(request.POST, product=test.engagement.product)
+        form = PromoteDebtItemForm(request.POST, product=test.engagement.product)
         if use_jira:
-            jform = JIRAdebt_itemForm(
+            jform = JIRADebtItemForm(
                 request.POST,
                 instance=debt_item,
                 prefix="jiraform",
@@ -2136,7 +2136,7 @@ def promote_to_debt_item(request, fid):
 
             debt_item.delete()
             if "githubform" in request.POST:
-                gform = GITHUBdebt_itemForm(
+                gform = GITHUBDebtItemForm(
                     request.POST,
                     prefix="githubform",
                     enabled=GITHUB_PKey.objects.get(
@@ -2162,7 +2162,7 @@ def promote_to_debt_item(request, fid):
             add_field_errors_to_response(jform)
             add_field_errors_to_response(form)
     else:
-        form = Promotedebt_itemForm(
+        form = PromoteDebtItemForm(
             initial={
                 "title": debt_item.title,
                 "product_tab": product_tab,
@@ -2176,7 +2176,7 @@ def promote_to_debt_item(request, fid):
         )
 
         if use_jira:
-            jform = JIRAdebt_itemForm(
+            jform = JIRADebtItemForm(
                 prefix="jiraform",
                 push_all=jira_helper.is_push_all_issues(test),
                 jira_project=jira_helper.get_jira_project(test),
@@ -2196,10 +2196,10 @@ def promote_to_debt_item(request, fid):
     )
 
 
-@user_has_global_permission(Permissions.debt_item_Edit)
+@user_has_global_permission(Permissions.Debt_Item_Edit)
 def templates(request):
-    templates = debt_item_Template.objects.all().order_by("cwe")
-    templates = Templatedebt_itemFilter(request.GET, queryset=templates)
+    templates = Debt_Item_Template.objects.all().order_by("cwe")
+    templates = TemplateDebtItemFilter(request.GET, queryset=templates)
     paged_templates = get_page_items(request, templates.qs, 25)
 
     title_words = get_words_for_field(templates.qs, "title")
@@ -2216,9 +2216,9 @@ def templates(request):
     )
 
 
-@user_has_global_permission(Permissions.debt_item_Edit)
+@user_has_global_permission(Permissions.Debt_Item_Edit)
 def export_templates_to_json(request):
-    leads_as_json = serializers.serialize("json", debt_item_Template.objects.all())
+    leads_as_json = serializers.serialize("json", Debt_Item_Template.objects.all())
     return HttpResponse(leads_as_json, content_type="json")
 
 
@@ -2228,7 +2228,7 @@ def apply_cwe_mitigation(apply_to_debt_items, template, update=True):
         # Update active, verified debt_items with the CWE template
         # If CWE only match only update issues where there isn't a CWE + Title match
         if template.template_match_title:
-            count = debt_item.objects.filter(
+            count = Debt_Item.objects.filter(
                 active=True,
                 verified=True,
                 cwe=template.cwe,
@@ -2239,7 +2239,7 @@ def apply_cwe_mitigation(apply_to_debt_items, template, update=True):
                 references=template.references,
             )
         else:
-            debt_item_templates = debt_item_Template.objects.filter(
+            debt_item_templates = Debt_Item_Template.objects.filter(
                 cwe=template.cwe, template_match=True, template_match_title=True
             )
 
@@ -2247,7 +2247,7 @@ def apply_cwe_mitigation(apply_to_debt_items, template, update=True):
             result_list = None
             # Exclusion list
             for title_template in debt_item_templates:
-                debt_item_ids = debt_item.objects.filter(
+                debt_item_ids = Debt_Item.objects.filter(
                     active=True,
                     verified=True,
                     cwe=title_template.cwe,
@@ -2260,11 +2260,11 @@ def apply_cwe_mitigation(apply_to_debt_items, template, update=True):
 
             # If result_list is None the filter exclude won't work
             if result_list:
-                count = debt_item.objects.filter(
+                count = Debt_Item.objects.filter(
                     active=True, verified=True, cwe=template.cwe
                 ).exclude(id__in=result_list)
             else:
-                count = debt_item.objects.filter(
+                count = Debt_Item.objects.filter(
                     active=True, verified=True, cwe=template.cwe
                 )
 
@@ -2292,15 +2292,15 @@ def apply_cwe_mitigation(apply_to_debt_items, template, update=True):
     return count
 
 
-@user_has_global_permission(Permissions.debt_item_Add)
+@user_has_global_permission(Permissions.Debt_Item_Add)
 def add_template(request):
-    form = debt_itemTemplateForm()
+    form = DebtItemTemplateForm()
     if request.method == "POST":
-        form = debt_itemTemplateForm(request.POST)
+        form = DebtItemTemplateForm(request.POST)
         if form.is_valid():
             apply_message = ""
             template = form.save(commit=False)
-            template.numerical_severity = debt_item.get_numerical_severity(
+            template.numerical_severity = Debt_Item.get_numerical_severity(
                 template.severity
             )
             debt_item_helper.save_vulnerability_ids_template(
@@ -2336,19 +2336,19 @@ def add_template(request):
     )
 
 
-@user_has_global_permission(Permissions.debt_item_Edit)
+@user_has_global_permission(Permissions.Debt_Item_Edit)
 def edit_template(request, tid):
-    template = get_object_or_404(debt_item_Template, id=tid)
-    form = debt_itemTemplateForm(
+    template = get_object_or_404(Debt_Item_Template, id=tid)
+    form = DebtItemTemplateForm(
         instance=template,
         initial={"vulnerability_ids": "\n".join(template.vulnerability_ids)},
     )
 
     if request.method == "POST":
-        form = debt_itemTemplateForm(request.POST, instance=template)
+        form = DebtItemTemplateForm(request.POST, instance=template)
         if form.is_valid():
             template = form.save(commit=False)
-            template.numerical_severity = debt_item.get_numerical_severity(
+            template.numerical_severity = Debt_Item.get_numerical_severity(
                 template.severity
             )
             debt_item_helper.save_vulnerability_ids_template(
@@ -2400,11 +2400,11 @@ def edit_template(request, tid):
     )
 
 
-@user_has_global_permission(Permissions.debt_item_Delete)
+@user_has_global_permission(Permissions.Debt_Item_Delete)
 def delete_template(request, tid):
-    template = get_object_or_404(debt_item_Template, id=tid)
+    template = get_object_or_404(Debt_Item_Template, id=tid)
     if request.method == "POST":
-        form = Deletedebt_itemTemplateForm(request.POST, instance=template)
+        form = DeleteDebtItemTemplateForm(request.POST, instance=template)
         if form.is_valid():
             template.delete()
             messages.add_message(
@@ -2486,7 +2486,7 @@ def download_debt_item_pic(request, token):
         return response
 
 
-@user_is_authorized(Product, Permissions.debt_item_Edit, "pid")
+@user_is_authorized(Product, Permissions.Debt_Item_Edit, "pid")
 def merge_debt_item_product(request, pid):
     product = get_object_or_404(Product, pk=pid)
     debt_item_to_update = request.GET.getlist("debt_item_to_update")
@@ -2495,20 +2495,20 @@ def merge_debt_item_product(request, pid):
     if (
         request.GET.get("merge_debt_items") or request.method == "POST"
     ) and debt_item_to_update:
-        debt_item = debt_item.objects.get(
+        debt_item = Debt_Item.objects.get(
             id=debt_item_to_update[0], test__engagement__product=product
         )
         debt_items = debt_item.objects.filter(
             id__in=debt_item_to_update, test__engagement__product=product
         )
-        form = Mergedebt_items(
+        form = MergeDebtItems(
             debt_item=debt_item,
             debt_items=debt_items,
             initial={"debt_item_to_merge_into": debt_item_to_update[0]},
         )
 
         if request.method == "POST":
-            form = Mergedebt_items(request.POST, debt_item=debt_item, debt_items=debt_items)
+            form = MergeDebtItems(request.POST, debt_item=debt_item, debt_items=debt_items)
             if form.is_valid():
                 debt_item_to_merge_into = form.cleaned_data["debt_item_to_merge_into"]
                 debt_items_to_merge = form.cleaned_data["debt_items_to_merge"]
@@ -2689,7 +2689,7 @@ def debt_item_bulk_update_all(request, pid=None):
     system_settings = System_Settings.objects.get()
 
     logger.debug("bulk 10")
-    form = debt_itemBulkUpdateForm(request.POST)
+    form = DebtItemBulkUpdateForm(request.POST)
     now = timezone.now()
     return_url = None
 
@@ -2697,7 +2697,7 @@ def debt_item_bulk_update_all(request, pid=None):
         logger.debug("bulk 20")
 
         debt_item_to_update = request.POST.getlist("debt_item_to_update")
-        finds = debt_item.objects.filter(id__in=debt_item_to_update).order_by("id")
+        finds = Debt_Item.objects.filter(id__in=debt_item_to_update).order_by("id")
         total_find_count = finds.count()
         prods = set([find.test.engagement.product for find in finds])
         if request.POST.get("delete_bulk_debt_items"):
@@ -2705,11 +2705,11 @@ def debt_item_bulk_update_all(request, pid=None):
                 if pid is not None:
                     product = get_object_or_404(Product, id=pid)
                     user_has_permission_or_403(
-                        request.user, product, Permissions.debt_item_Delete
+                        request.user, product, Permissions.Debt_Item_Delete
                     )
 
                 finds = get_authorized_debt_items(
-                    Permissions.debt_item_Delete, finds
+                    Permissions.Debt_Item_Delete, finds
                 ).distinct()
 
                 skipped_find_count = total_find_count - finds.count()
@@ -2739,12 +2739,12 @@ def debt_item_bulk_update_all(request, pid=None):
                 if pid is not None:
                     product = get_object_or_404(Product, id=pid)
                     user_has_permission_or_403(
-                        request.user, product, Permissions.debt_item_Edit
+                        request.user, product, Permissions.Debt_Item_Edit
                     )
 
                 # make sure users are not editing stuff they are not authorized for
                 finds = get_authorized_debt_items(
-                    Permissions.debt_item_Edit, finds
+                    Permissions.Debt_Item_Edit, finds
                 ).distinct()
 
                 skipped_find_count = total_find_count - finds.count()
@@ -2764,7 +2764,7 @@ def debt_item_bulk_update_all(request, pid=None):
 
                         if form.cleaned_data["severity"]:
                             find.severity = form.cleaned_data["severity"]
-                            find.numerical_severity = debt_item.get_numerical_severity(
+                            find.numerical_severity = Debt_Item.get_numerical_severity(
                                 form.cleaned_data["severity"]
                             )
                             find.last_reviewed = now
@@ -2884,7 +2884,7 @@ def debt_item_bulk_update_all(request, pid=None):
                 if form.cleaned_data["debt_item_group_add"]:
                     logger.debug("debt_item_group_add checked!")
                     fgid = form.cleaned_data["add_to_debt_item_group_id"]
-                    debt_item_group = debt_item_Group.objects.get(id=fgid)
+                    debt_item_group = Debt_Item_Group.objects.get(id=fgid)
                     debt_item_group, added, skipped = debt_item_helper.add_to_debt_item_group(
                         debt_item_group, finds
                     )
@@ -3163,12 +3163,12 @@ def get_missing_mandatory_notetypes(debt_item):
     return queryset
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "original_id")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "original_id")
 @require_POST
 def mark_debt_item_duplicate(request, original_id, duplicate_id):
 
-    original = get_object_or_404(debt_item, id=original_id)
-    duplicate = get_object_or_404(debt_item, id=duplicate_id)
+    original = get_object_or_404(Debt_Item, id=original_id)
+    duplicate = get_object_or_404(Debt_Item, id=duplicate_id)
 
     if original.test.engagement != duplicate.test.engagement:
         if (original.test.engagement.deduplication_on_engagement
@@ -3211,7 +3211,7 @@ def mark_debt_item_duplicate(request, original_id, duplicate_id):
 
 
 def reset_debt_item_duplicate_status_internal(user, duplicate_id):
-    duplicate = get_object_or_404(debt_item, id=duplicate_id)
+    duplicate = get_object_or_404(Debt_Item, id=duplicate_id)
 
     if not duplicate.duplicate:
         return None
@@ -3229,7 +3229,7 @@ def reset_debt_item_duplicate_status_internal(user, duplicate_id):
     return duplicate.id
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "duplicate_id")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "duplicate_id")
 @require_POST
 def reset_debt_item_duplicate_status(request, duplicate_id):
     checked_duplicate_id = reset_debt_item_duplicate_status_internal(
@@ -3252,7 +3252,7 @@ def reset_debt_item_duplicate_status(request, duplicate_id):
 
 
 def set_debt_item_as_original_internal(user, debt_item_id, new_original_id):
-    debt_item = get_object_or_404(debt_item, id=debt_item_id)
+    debt_item = get_object_or_404(Debt_Item, id=debt_item_id)
     new_original = get_object_or_404(debt_item, id=new_original_id)
 
     if debt_item.test.engagement != new_original.test.engagement:
@@ -3308,7 +3308,7 @@ def set_debt_item_as_original_internal(user, debt_item_id, new_original_id):
     return True
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "debt_item_id")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "debt_item_id")
 @require_POST
 def set_debt_item_as_original(request, debt_item_id, new_original_id):
     success = set_debt_item_as_original_internal(
@@ -3328,10 +3328,10 @@ def set_debt_item_as_original(request, debt_item_id, new_original_id):
     )
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 @require_POST
 def unlink_jira(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     logger.info(
         "trying to unlink a linked jira issue from %d:%s", debt_item.id, debt_item.title
     )
@@ -3364,10 +3364,10 @@ def unlink_jira(request, fid):
         return HttpResponse(status=400)
 
 
-@user_is_authorized(debt_item, Permissions.debt_item_Edit, "fid")
+@user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 @require_POST
 def push_to_jira(request, fid):
-    debt_item = get_object_or_404(debt_item, id=fid)
+    debt_item = get_object_or_404(Debt_Item, id=fid)
     try:
         logger.info(
             "trying to push %d:%s to JIRA to create or update JIRA issue",

@@ -26,7 +26,8 @@ from django.db.models.signals import post_save
 from django.db.models.query import QuerySet
 import calendar as tcalendar
 from dojo.dojo_github import add_external_issue_github, update_external_issue_github, close_external_issue_github, reopen_external_issue_github
-from dojo.models import Finding, Engagement, Finding_Group, Finding_Template, Product, \
+from dojo.models import Finding, Debt_Item, Engagement, Finding_Group, Debt_Item_Group, \
+    Finding_Template, Debt_Item_Template, Product, Debt_Context, \
     Test, User, Dojo_User, System_Settings, Notifications, Endpoint, Benchmark_Type, \
     Language_Type, Languages, Dojo_Group_Member, NOTIFICATION_CHOICES
 from asteval import Interpreter
@@ -189,6 +190,93 @@ def match_finding_to_existing_findings(finding, product=None, engagement=None, t
                 title=finding.title,
                 severity=finding.severity,
                 numerical_severity=Finding.get_numerical_severity(finding.severity)
+            ).order_by('id')
+        )
+
+    else:
+        logger.error("Internal error: unexpected deduplication_algorithm: '%s' ", deduplication_algorithm)
+        return None
+
+
+def match_debt_item_to_existing_debt_items(debt_item, debt_context=None, engagement=None, test=None):
+    """Customizable lookup that returns all existing debt_items for a given debt_item.
+
+    Takes one debt_item as an argument and returns all debt_items that are equal to it
+    on the same debt_context, engagement or test. For now, only one custom filter can
+    be used, so you should choose between debt_context, engagement or test.
+    The lookup is done based on the deduplication_algorithm of the given debt_item test.
+
+    Args:
+        debt_item (:model:`dojo.Debt_Item`): Debt_Item to be matched
+        debt_context (:model:`dojo.Debt_Context`, optional): Debt_Context to filter debt_items by
+        engagement (:model:`dojo.Engagement`, optional): Engagement to filter debt_items by
+        test (:model:`dojo.Test`, optional): Test to filter debt_items by
+    """
+    if debt_context:
+        custom_filter_type = 'debt_context'
+        custom_filter = {'test__engagement__debt_context': debt_context}
+
+    elif engagement:
+        custom_filter_type = 'engagement'
+        custom_filter = {'test__engagement': engagement}
+
+    elif test:
+        custom_filter_type = 'test'
+        custom_filter = {'test': test}
+
+    else:
+        raise ValueError('No debt_context, engagement or test provided as argument.')
+
+    deduplication_algorithm = debt_item.test.deduplication_algorithm
+
+    deduplicationLogger.debug(
+        'Matching debt_item %i:%s to existing debt_items in %s %s using %s as deduplication algorithm.',
+        debt_item.id, debt_item.title, custom_filter_type, list(custom_filter.values())[0], deduplication_algorithm
+    )
+
+    if deduplication_algorithm == 'hash_code':
+        return (
+            Debt_Item.objects.filter(
+                **custom_filter,
+                hash_code=debt_item.hash_code
+            ).exclude(hash_code=None)
+            .exclude(id=debt_item.id)
+            .order_by('id')
+        )
+
+    elif deduplication_algorithm == 'unique_id_from_tool':
+        return (
+            Debt_Item.objects.filter(
+                **custom_filter,
+                unique_id_from_tool=debt_item.unique_id_from_tool
+            ).exclude(unique_id_from_tool=None)
+            .exclude(id=debt_item.id)
+            .order_by('id')
+        )
+
+    elif deduplication_algorithm == 'unique_id_from_tool_or_hash_code':
+        query = Debt_Item.objects.filter(
+            Q(**custom_filter),
+            (
+                    (Q(hash_code__isnull=False) & Q(hash_code=debt_item.hash_code)) |
+                    (Q(unique_id_from_tool__isnull=False) & Q(unique_id_from_tool=debt_item.unique_id_from_tool))
+            )
+        ).exclude(id=debt_item.id).order_by('id')
+        deduplicationLogger.debug(query.query)
+        return query
+
+    elif deduplication_algorithm == 'legacy':
+        # This is the legacy reimport behavior. Although it's pretty flawed and
+        # doesn't match the legacy algorithm for deduplication, this is left as is for simplicity.
+        # Re-writing the legacy deduplication here would be complicated and counter-debt_contextive.
+        # If you have use cases going through this section, you're advised to create a deduplication configuration for your parser
+        logger.debug("Legacy dedupe. In case of issue, you're advised to create a deduplication configuration in order not to go through this section")
+        return (
+            Debt_Item.objects.filter(
+                **custom_filter,
+                title=debt_item.title,
+                severity=debt_item.severity,
+                numerical_severity=Debt_Item.get_numerical_severity(debt_item.severity)
             ).order_by('id')
         )
 
@@ -1655,6 +1743,65 @@ class Product_Tab():
         return self.benchmark_type
 
 
+# Used to display the counts and enabled tabs in the debt_context view
+class Debt_Context_Tab():
+    def __init__(self, debt_context, title=None, tab=None):
+        self.debt_context = debt_context
+        self.title = title
+        self.tab = tab
+        self.engagement_count = Engagement.objects.filter(
+            debt_context=self.debt_context, active=True).count()
+        self.open_findings_count = Finding.objects.filter(test__engagement__debt_context=self.debt_context,
+                                                          false_p=False,
+                                                          duplicate=False,
+                                                          out_of_scope=False,
+                                                          active=True,
+                                                          mitigated__isnull=True).count()
+        active_endpoints = Endpoint.objects.filter(
+            debt_context=self.debt_context, finding__active=True, finding__mitigated__isnull=True)
+        self.endpoints_count = active_endpoints.distinct().count()
+        self.endpoint_hosts_count = active_endpoints.values('host').distinct().count()
+        self.benchmark_type = Benchmark_Type.objects.filter(
+            enabled=True).order_by('name')
+        self.engagement = None
+
+    def setTab(self, tab):
+        self.tab = tab
+
+    def setEngagement(self, engagement):
+        self.engagement = engagement
+
+    def engagement(self):
+        return self.engagement
+
+    def tab(self):
+        return self.tab
+
+    def setTitle(self, title):
+        self.title = title
+
+    def title(self):
+        return self.title
+
+    def debt_context(self):
+        return self.debt_context
+
+    def engagements(self):
+        return self.engagement_count
+
+    def findings(self):
+        return self.open_findings_count
+
+    def endpoints(self):
+        return self.endpoints_count
+
+    def endpoint_hosts(self):
+        return self.endpoint_hosts_count
+
+    def benchmark_type(self):
+        return self.benchmark_type
+
+
 # Used to display the counts and enabled tabs in the product view
 def tab_view_count(product_id):
     product = Product.objects.get(id=product_id)
@@ -2205,11 +2352,35 @@ def get_product(obj):
         return obj
 
 
+def get_debt_context(obj):
+    logger.debug('getting debt context for %s:%s', type(obj), obj)
+    if not obj:
+        return None
+
+    if isinstance(obj, Debt_Item) or isinstance(obj, Debt_Item_Group):
+        return obj.test.engagement.debt_context
+
+    if isinstance(obj, Test):
+        return obj.engagement.debt_context
+
+    if isinstance(obj, Engagement):
+        return obj.debt_context
+
+    if isinstance(obj, Debt_Context):
+        return obj
+
 def prod_name(obj):
     if not obj:
         return 'Unknown'
 
     return get_product(obj).name
+
+
+def debt_context_name(obj):
+    if not obj:
+        return 'Unknown'
+
+    return get_debt_context(obj).name
 
 
 # Returns image locations by default (i.e. uploaded_files/09577eb1-6ccb-430b-bc82-0742d4c97a09.png)
@@ -2245,6 +2416,11 @@ def get_enabled_notifications_list():
 def is_finding_groups_enabled():
     """Returns true is feature is enabled otherwise false"""
     return get_system_setting("enable_finding_groups")
+
+
+def is_debt_item_groups_enabled():
+    """Returns true is feature is enabled otherwise false"""
+    return get_system_setting("enable_debt_item_groups")
 
 
 class async_delete():

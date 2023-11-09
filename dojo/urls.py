@@ -11,6 +11,9 @@ from django.http import HttpResponse
 from dojo import views
 from dojo.api_v2.views import EndPointViewSet, EngagementViewSet, \
     FindingTemplatesViewSet, FindingViewSet, JiraInstanceViewSet, \
+    DebtItemTemplatesViewSet, DebtItemViewSet, DebtContextViewSet, ToolDebtContextSettingsViewSet, \
+    StubDebtItemsViewSet, DebtContextTypeViewSet, DebtContextTypeMemberViewSet, \
+    DebtContextMemberViewSet, DebtContextTypeGroupViewSet, DebtContextGroupViewSet, DebtContextAPIScanConfigurationViewSet, \
     JiraIssuesViewSet, JiraProjectViewSet, ProductViewSet, CredentialsViewSet, CredentialsMappingViewSet, \
     SLAConfigurationViewset, StubFindingsViewSet, TestImportViewSet, TestsViewSet, TestTypesViewSet, \
     ToolConfigurationsViewSet, ToolProductSettingsViewSet, ToolTypesViewSet, \
@@ -82,32 +85,45 @@ v2_api.register(r'endpoint_status', EndpointStatusViewSet)
 v2_api.register(r'engagements', EngagementViewSet)
 v2_api.register(r'development_environments', DevelopmentEnvironmentViewSet)
 v2_api.register(r'finding_templates', FindingTemplatesViewSet)
+v2_api.register(r'debt_item_templates', DebtItemTemplatesViewSet)
 v2_api.register(r'findings', FindingViewSet)
+v2_api.register(r'debt_items', DebtItemViewSet)
 v2_api.register(r'jira_configurations', JiraInstanceViewSet)  # backwards compatibility
 v2_api.register(r'jira_instances', JiraInstanceViewSet)
 v2_api.register(r'jira_finding_mappings', JiraIssuesViewSet)
+v2_api.register(r'jira_debt_item_mappings', JiraIssuesViewSet)
 v2_api.register(r'jira_product_configurations', JiraProjectViewSet)  # backwards compatibility
+v2_api.register(r'jira_debt_item_configurations', JiraProjectViewSet)  # backwards compatibility
 v2_api.register(r'jira_projects', JiraProjectViewSet)
 v2_api.register(r'products', ProductViewSet)
+v2_api.register(r'debt_contexts', DebtContextViewSet)
 v2_api.register(r'product_types', ProductTypeViewSet)
+v2_api.register(r'debt_context_types', DebtContextTypeViewSet)
 v2_api.register(r'dojo_groups', DojoGroupViewSet)
 v2_api.register(r'dojo_group_members', DojoGroupMemberViewSet)
 v2_api.register(r'product_type_members', ProductTypeMemberViewSet)
+v2_api.register(r'debt_context_type_members', DebtContextTypeMemberViewSet)
 v2_api.register(r'product_members', ProductMemberViewSet)
+v2_api.register(r'debt_context_members', DebtContextMemberViewSet)
 v2_api.register(r'product_type_groups', ProductTypeGroupViewSet)
+v2_api.register(r'debt_context_type_groups', DebtContextTypeGroupViewSet)
 v2_api.register(r'product_groups', ProductGroupViewSet)
+v2_api.register(r'debt_context_groups', DebtContextGroupViewSet)
 v2_api.register(r'roles', RoleViewSet)
 v2_api.register(r'global_roles', GlobalRoleViewSet)
 v2_api.register(r'sla_configurations', SLAConfigurationViewset)
 v2_api.register(r'sonarqube_issues', SonarqubeIssueViewSet)
 v2_api.register(r'sonarqube_transitions', SonarqubeIssueTransitionViewSet)
 v2_api.register(r'product_api_scan_configurations', ProductAPIScanConfigurationViewSet)
+v2_api.register(r'debt_context_api_scan_configurations', DebtContextAPIScanConfigurationViewSet)
 v2_api.register(r'stub_findings', StubFindingsViewSet)
+v2_api.register(r'stub_debt_items', StubDebtItemsViewSet)
 v2_api.register(r'tests', TestsViewSet)
 v2_api.register(r'test_types', TestTypesViewSet)
 v2_api.register(r'test_imports', TestImportViewSet)
 v2_api.register(r'tool_configurations', ToolConfigurationsViewSet)
 v2_api.register(r'tool_product_settings', ToolProductSettingsViewSet)
+v2_api.register(r'tool_debt_context_settings', ToolDebtContextSettingsViewSet)
 v2_api.register(r'tool_types', ToolTypesViewSet)
 v2_api.register(r'users', UsersViewSet)
 v2_api.register(r'user_contact_infos', UserContactInfoViewSet)

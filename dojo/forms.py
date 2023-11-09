@@ -22,31 +22,37 @@ import tagulous
 
 from dojo.endpoint.utils import endpoint_get_or_create, endpoint_filter, \
     validate_endpoints_to_add
-from dojo.models import Announcement, Finding, Finding_Group, Product_Type, Product, Note_Type, \
+from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_Item_Group, \
+    Product_Type, Debt_Context_Type, Product, Debt_Context, Note_Type, \
     Check_List, SLA_Configuration, User, Engagement, Test, Test_Type, Notes, Risk_Acceptance, \
-    Development_Environment, Dojo_User, Endpoint, Stub_Finding, Finding_Template, \
+    Development_Environment, Dojo_User, Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
     JIRA_Issue, JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
-    Tool_Configuration, Tool_Product_Settings, Cred_User, Cred_Mapping, System_Settings, Notifications, \
-    App_Analysis, Objects_Product, Benchmark_Product, Benchmark_Requirement, \
-    Benchmark_Product_Summary, Engagement_Presets, DojoMeta, \
+    Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
+    Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
+    Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, DojoMeta, \
     Engagement_Survey, Answered_Survey, TextAnswer, ChoiceAnswer, Choice, Question, TextQuestion, \
-    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Product_Type_Member, \
-    Product_Member, Global_Role, Dojo_Group, Product_Group, Product_Type_Group, Dojo_Group_Member, \
-    Product_API_Scan_Configuration
+    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Product_Member, \
+    Debt_Context_Member, Product_Type_Member, Debt_Context_Type_Member, Global_Role, Dojo_Group, Product_Group, \
+    Debt_Context_Group, Product_Type_Group, Debt_Context_Type_Group, Dojo_Group_Member, Product_API_Scan_Configuration, \
+    Debt_Context_API_Scan_Configuration
 
 from dojo.tools.factory import requires_file, get_choices_sorted, requires_tool_type
 from django.urls import reverse
 from tagulous.forms import TagField
 import logging
 from crum import get_current_user
-from dojo.utils import get_system_setting, get_product, is_finding_groups_enabled, \
-    get_password_requirements_string
+from dojo.utils import get_system_setting, get_product, get_debt_context, is_finding_groups_enabled, \
+    is_debt_item_groups_enabled, get_password_requirements_string
 from django.conf import settings
 from dojo.authorization.roles_permissions import Permissions
 from dojo.product_type.queries import get_authorized_product_types
+from dojo.debt_context_type.queries import get_authorized_debt_context_types
 from dojo.product.queries import get_authorized_products
+from dojo.debt_context.queries import get_authorized_debt_contexts
 from dojo.finding.queries import get_authorized_findings
-from dojo.user.queries import get_authorized_users_for_product_and_product_type, get_authorized_users
+from dojo.debt_item.queries import get_authorized_debt_items
+from dojo.user.queries import get_authorized_users_for_product_and_product_type, \
+    get_authorized_users_for_debt_context_and_debt_context_type, get_authorized_users
 from dojo.user.utils import get_configuration_permissions_fields
 from dojo.group.queries import get_authorized_groups, get_group_member_roles
 
@@ -164,12 +170,30 @@ class Product_TypeForm(forms.ModelForm):
         fields = ['name', 'description', 'critical_product', 'key_product']
 
 
+class Debt_Context_TypeForm(forms.ModelForm):
+    description = forms.CharField(widget=forms.Textarea(attrs={}),
+                                  required=False)
+
+    class Meta:
+        model = Debt_Context_Type
+        fields = ['name', 'description', 'critical_debt_context', 'key_debt_context']
+
+
 class Delete_Product_TypeForm(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
 
     class Meta:
         model = Product_Type
+        fields = ['id']
+
+
+class Delete_Debt_Context_TypeForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Context_Type
         fields = ['id']
 
 
@@ -185,6 +209,18 @@ class Edit_Product_Type_MemberForm(forms.ModelForm):
         model = Product_Type_Member
         fields = ['product_type', 'user', 'role']
 
+
+class Edit_Debt_Context_Type_MemberForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(Edit_Debt_Context_Type_MemberForm, self).__init__(*args, **kwargs)
+        self.fields['debt_context_type'].disabled = True
+        self.fields['user'].queryset = Dojo_User.objects.order_by('first_name', 'last_name')
+        self.fields['user'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Type_Member
+        fields = ['debt_context_type', 'user', 'role']
 
 class Add_Product_Type_MemberForm(forms.ModelForm):
     users = forms.ModelMultipleChoiceField(queryset=Dojo_User.objects.none(), required=True, label='Users')
@@ -202,6 +238,21 @@ class Add_Product_Type_MemberForm(forms.ModelForm):
         fields = ['product_type', 'users', 'role']
 
 
+class Add_Debt_Context_Type_MemberForm(forms.ModelForm):
+    users = forms.ModelMultipleChoiceField(queryset=Dojo_User.objects.none(), required=True, label='Users')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_Type_MemberForm, self).__init__(*args, **kwargs)
+        current_members = Debt_Context_Type_Member.objects.filter(debt_context_type=self.initial["debt_context_type"]).values_list('user', flat=True)
+        self.fields['users'].queryset = Dojo_User.objects.exclude(
+            Q(is_superuser=True) |
+            Q(id__in=current_members)).exclude(is_active=False).order_by('first_name', 'last_name')
+        self.fields['debt_context_type'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Type_Member
+        fields = ['debt_context_type', 'users', 'role']
+
 class Add_Product_Type_Member_UserForm(forms.ModelForm):
     product_types = forms.ModelMultipleChoiceField(queryset=Product_Type.objects.none(), required=True, label='Product Types')
 
@@ -217,9 +268,30 @@ class Add_Product_Type_Member_UserForm(forms.ModelForm):
         fields = ['product_types', 'user', 'role']
 
 
+class Add_Debt_Context_Type_Member_UserForm(forms.ModelForm):
+    debt_context_types = forms.ModelMultipleChoiceField(queryset=Debt_Context_Type.objects.none(), required=True, label='Debt_Context Types')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_Type_Member_UserForm, self).__init__(*args, **kwargs)
+        current_members = Debt_Context_Type_Member.objects.filter(user=self.initial['user']).values_list('debt_context_type', flat=True)
+        self.fields['debt_context_types'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_Member_Add_Owner) \
+            .exclude(id__in=current_members)
+        self.fields['user'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Type_Member
+        fields = ['debt_context_types', 'user', 'role']
+
+
 class Delete_Product_Type_MemberForm(Edit_Product_Type_MemberForm):
     def __init__(self, *args, **kwargs):
         super(Delete_Product_Type_MemberForm, self).__init__(*args, **kwargs)
+        self.fields['role'].disabled = True
+
+
+class Delete_Debt_Context_Type_MemberForm(Edit_Debt_Context_Type_MemberForm):
+    def __init__(self, *args, **kwargs):
+        super(Delete_Debt_Context_Type_MemberForm, self).__init__(*args, **kwargs)
         self.fields['role'].disabled = True
 
 
@@ -270,6 +342,36 @@ class ProductForm(forms.ModelForm):
                 'internet_accessible', 'enable_simple_risk_acceptance', 'enable_full_risk_acceptance', 'disable_sla_breach_notifications']
 
 
+class DebtContextForm(forms.ModelForm):
+    name = forms.CharField(max_length=255, required=True)
+    description = forms.CharField(widget=forms.Textarea(attrs={}),
+                                  required=True)
+
+    prod_type = forms.ModelChoiceField(label='Debt_Context Type',
+                                       queryset=Debt_Context_Type.objects.none(),
+                                       required=True)
+
+    sla_configuration = forms.ModelChoiceField(label='SLA Configuration',
+                                               queryset=SLA_Configuration.objects.all(),
+                                               required=True,
+                                               initial='Default')
+
+    debt_context_manager = forms.ModelChoiceField(queryset=Dojo_User.objects.exclude(is_active=False).order_by('first_name', 'last_name'), required=False)
+    technical_contact = forms.ModelChoiceField(queryset=Dojo_User.objects.exclude(is_active=False).order_by('first_name', 'last_name'), required=False)
+    team_manager = forms.ModelChoiceField(queryset=Dojo_User.objects.exclude(is_active=False).order_by('first_name', 'last_name'), required=False)
+
+    def __init__(self, *args, **kwargs):
+        super(DebtContextForm, self).__init__(*args, **kwargs)
+        self.fields['prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_Add_Debt_Context)
+
+    class Meta:
+        model = Debt_Context
+        fields = ['name', 'description', 'tags', 'debt_context_manager', 'technical_contact', 'team_manager', 'prod_type', 'sla_configuration', 'regulations',
+                  'business_criticality', 'platform', 'lifecycle', 'origin', 'user_records', 'revenue', 'external_audience', 'enable_debt_context_tag_inheritance',
+                  'internet_accessible', 'enable_simple_risk_acceptance', 'enable_full_risk_acceptance', 'disable_sla_breach_notifications']
+
+
+
 class DeleteProductForm(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
@@ -278,6 +380,14 @@ class DeleteProductForm(forms.ModelForm):
         model = Product
         fields = ['id']
 
+
+class DeleteDebtContextForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Context
+        fields = ['id']
 
 class EditFindingGroupForm(forms.ModelForm):
     name = forms.CharField(max_length=255, required=True, label='Finding Group Name')
@@ -304,6 +414,31 @@ class EditFindingGroupForm(forms.ModelForm):
         fields = ['name']
 
 
+class EditDebtItemGroupForm(forms.ModelForm):
+    name = forms.CharField(max_length=255, required=True, label='Debt_Item Group Name')
+    jira_issue = forms.CharField(max_length=255, required=False, label='Linked JIRA Issue',
+                                 help_text='Leave empty and check push to jira to create a new JIRA issue for this debt_item group.')
+
+    def __init__(self, *args, **kwargs):
+        super(EditDebtItemGroupForm, self).__init__(*args, **kwargs)
+        import dojo.jira_link.helper as jira_helper
+
+        self.fields['push_to_jira'] = forms.BooleanField()
+        self.fields['push_to_jira'].required = False
+        self.fields['push_to_jira'].help_text = "Checking this will overwrite content of your JIRA issue, or create one."
+
+        self.fields['push_to_jira'].label = "Push to JIRA"
+
+        if hasattr(self.instance, 'has_jira_issue') and self.instance.has_jira_issue:
+            jira_url = jira_helper.get_jira_url(self.instance)
+            self.fields['jira_issue'].initial = jira_url
+            self.fields['push_to_jira'].widget.attrs['checked'] = 'checked'
+
+    class Meta:
+        model = Debt_Item_Group
+        fields = ['name']
+
+
 class DeleteFindingGroupForm(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
@@ -312,6 +447,14 @@ class DeleteFindingGroupForm(forms.ModelForm):
         model = Finding_Group
         fields = ['id']
 
+
+class DeleteDebtItemGroupForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Item_Group
+        fields = ['id']
 
 class Edit_Product_MemberForm(forms.ModelForm):
 
@@ -324,6 +467,19 @@ class Edit_Product_MemberForm(forms.ModelForm):
     class Meta:
         model = Product_Member
         fields = ['product', 'user', 'role']
+
+
+class Edit_Debt_Context_MemberForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(Edit_Debt_Context_MemberForm, self).__init__(*args, **kwargs)
+        self.fields['debt_context'].disabled = True
+        self.fields['user'].queryset = Dojo_User.objects.order_by('first_name', 'last_name')
+        self.fields['user'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Member
+        fields = ['debt_context', 'user', 'role']
 
 
 class Add_Product_MemberForm(forms.ModelForm):
@@ -342,6 +498,22 @@ class Add_Product_MemberForm(forms.ModelForm):
         fields = ['product', 'users', 'role']
 
 
+class Add_Debt_Context_MemberForm(forms.ModelForm):
+    users = forms.ModelMultipleChoiceField(queryset=Dojo_User.objects.none(), required=True, label='Users')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_MemberForm, self).__init__(*args, **kwargs)
+        self.fields['debt_item'].disabled = True
+        current_members = Debt_Context_Member.objects.filter(debt_context=self.initial["debt_context"]).values_list('user', flat=True)
+        self.fields['users'].queryset = Dojo_User.objects.exclude(
+            Q(is_superuser=True) |
+            Q(id__in=current_members)).exclude(is_active=False).order_by('first_name', 'last_name')
+
+    class Meta:
+        model = Debt_Context_Member
+        fields = ['debt_context', 'users', 'role']
+
+
 class Add_Product_Member_UserForm(forms.ModelForm):
     products = forms.ModelMultipleChoiceField(queryset=Product.objects.none(), required=True, label='Products')
 
@@ -357,9 +529,30 @@ class Add_Product_Member_UserForm(forms.ModelForm):
         fields = ['products', 'user', 'role']
 
 
+class Add_Debt_Context_Member_UserForm(forms.ModelForm):
+    debt_contexts = forms.ModelMultipleChoiceField(queryset=Debt_Context.objects.none(), required=True, label='Debt_Items')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_Member_UserForm, self).__init__(*args, **kwargs)
+        current_members = Debt_Context_Member.objects.filter(user=self.initial["user"]).values_list('debt_item', flat=True)
+        self.fields['debt_items'].queryset = get_authorized_debt_items(Permissions.Debt_Context_Member_Add_Owner) \
+            .exclude(id__in=current_members)
+        self.fields['user'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Member
+        fields = ['debt_contexts', 'user', 'role']
+
+
 class Delete_Product_MemberForm(Edit_Product_MemberForm):
     def __init__(self, *args, **kwargs):
         super(Delete_Product_MemberForm, self).__init__(*args, **kwargs)
+        self.fields['role'].disabled = True
+
+
+class Delete_Debt_Context_MemberForm(Edit_Product_MemberForm):
+    def __init__(self, *args, **kwargs):
+        super(Delete_Debt_Context_MemberForm, self).__init__(*args, **kwargs)
         self.fields['role'].disabled = True
 
 
@@ -680,6 +873,53 @@ class MergeFindings(forms.ModelForm):
         fields = ['append_description', 'add_endpoints', 'append_reference']
 
 
+class MergeDebtItems(forms.ModelForm):
+    FINDING_ACTION = (('', 'Select an Action'), ('inactive', 'Inactive'), ('delete', 'Delete'))
+
+    append_description = forms.BooleanField(label="Append Description", initial=True, required=False,
+                                            help_text="Description in all debt_items will be appended into the merged debt_item.")
+
+    add_endpoints = forms.BooleanField(label="Add Endpoints", initial=True, required=False,
+                                       help_text="Endpoints in all debt_items will be merged into the merged debt_item.")
+
+    dynamic_raw = forms.BooleanField(label="Dynamic Scanner Raw Requests", initial=True, required=False,
+                                     help_text="Dynamic scanner raw requests in all debt_items will be merged into the merged debt_item.")
+
+    tag_debt_item = forms.BooleanField(label="Add Tags", initial=True, required=False,
+                                       help_text="Tags in all debt_items will be merged into the merged debt_item.")
+
+    mark_tag_debt_item = forms.BooleanField(label="Tag Merged Debt_Item", initial=True, required=False,
+                                            help_text="Creates a tag titled 'merged' for the debt_item that will be merged. If the 'Debt_Item Action' is set to 'inactive' the inactive debt_items will be tagged with 'merged-inactive'.")
+
+    append_reference = forms.BooleanField(label="Append Reference", initial=True, required=False,
+                                          help_text="Reference in all debt_items will be appended into the merged debt_item.")
+
+    debt_item_action = forms.ChoiceField(
+        required=True,
+        choices=FINDING_ACTION,
+        label="Debt_Item Action",
+        help_text="The action to take on the merged debt_item. Set the debt_items to inactive or delete the debt_items.")
+
+    def __init__(self, *args, **kwargs):
+        debt_item = kwargs.pop('debt_item')
+        debt_items = kwargs.pop('debt_items')
+        super(MergeDebtItems, self).__init__(*args, **kwargs)
+
+        self.fields['debt_item_to_merge_into'] = forms.ModelChoiceField(
+            queryset=debt_items, initial=0, required="False", label="Debt_Item to Merge Into", help_text="Debt_Items selected below will be merged into this debt_item.")
+
+        # Exclude the debt_item to merge into from the debt_items to merge into
+        self.fields['debt_items_to_merge'] = forms.ModelMultipleChoiceField(
+            queryset=debt_items, required=True, label="Debt_Items to Merge",
+            widget=forms.widgets.SelectMultiple(attrs={'size': 10}),
+            help_text=('Select the debt_items to merge.'))
+        self.field_order = ['debt_item_to_merge_into', 'debt_items_to_merge', 'append_description', 'add_endpoints', 'append_reference']
+
+    class Meta:
+        model = Debt_Item
+        fields = ['append_description', 'add_endpoints', 'append_reference']
+
+
 class EditRiskAcceptanceForm(forms.ModelForm):
     # unfortunately django forces us to repeat many things here. choices, default, required etc.
     recommendation = forms.ChoiceField(choices=Risk_Acceptance.TREATMENT_CHOICES, initial=Risk_Acceptance.TREATMENT_ACCEPT, widget=forms.RadioSelect, label="Security Recommendation")
@@ -767,6 +1007,22 @@ class AddFindingsRiskAcceptanceForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['accepted_findings'].queryset = get_authorized_findings(Permissions.Risk_Acceptance)
+
+
+class AddDebtItemsRiskAcceptanceForm(forms.ModelForm):
+    accepted_debt_items = forms.ModelMultipleChoiceField(
+        queryset=Debt_Item.objects.none(), required=True,
+        widget=forms.widgets.SelectMultiple(attrs={'size': 10}),
+        help_text=('Select to add debt_items.'), label="Add debt_items as accepted:")
+
+    class Meta:
+        model = Risk_Acceptance
+        fields = ['accepted_debt_items']
+        # exclude = ('name', 'owner', 'path', 'notes', 'accepted_by', 'expiration_date', 'compensating_control')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['accepted_debt_items'].queryset = get_authorized_debt_items(Permissions.Risk_Acceptance)
 
 
 class CheckForm(forms.ModelForm):
@@ -1026,6 +1282,87 @@ class AddFindingForm(forms.ModelForm):
                    'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoints', 'sla_start_date')
 
 
+class AddDebtItemForm(forms.ModelForm):
+    title = forms.CharField(max_length=1000)
+    date = forms.DateField(required=True,
+                           widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    cwe = forms.IntegerField(required=False)
+    vulnerability_ids = vulnerability_ids_field
+    cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    description = forms.CharField(widget=forms.Textarea)
+    severity = forms.ChoiceField(
+        choices=SEVERITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    mitigation = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=False)
+    request = forms.CharField(widget=forms.Textarea, required=False)
+    response = forms.CharField(widget=forms.Textarea, required=False)
+    endpoints = forms.ModelMultipleChoiceField(Endpoint.objects.none(), required=False, label='Systems / Endpoints')
+    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
+                                       help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
+                                                 "Each must be valid.",
+                                       widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
+    references = forms.CharField(widget=forms.Textarea, required=False)
+    publish_date = forms.DateField(widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}), required=False)
+    planned_remediation_date = forms.DateField(widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}), required=False)
+    planned_remediation_version = forms.CharField(max_length=99, required=False)
+    effort_for_fixing = forms.ChoiceField(
+        required=False,
+        choices=EFFORT_FOR_FIXING_CHOICES,
+        error_messages={
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+
+    # the only reliable way without hacking internal fields to get predicatble ordering is to make it explicit
+    field_order = ('title', 'date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'description', 'mitigation', 'impact', 'request', 'response', 'steps_to_reproduce',
+                   'severity_justification', 'endpoints', 'endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
+                   'risk_accepted', 'under_defect_review')
+
+    def __init__(self, *args, **kwargs):
+        req_resp = kwargs.pop('req_resp')
+
+        debt_context = None
+        if 'debt_context' in kwargs:
+            debt_context = kwargs.pop('debt_context')
+
+        super(AddDebtItemForm, self).__init__(*args, **kwargs)
+
+        if debt_context:
+            self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=debt_context)
+
+        if req_resp:
+            self.fields['request'].initial = req_resp[0]
+            self.fields['response'].initial = req_resp[1]
+
+        self.endpoints_to_add_list = []
+
+    def clean(self):
+        cleaned_data = super(AddDebtItemForm, self).clean()
+        if ((cleaned_data['active'] or cleaned_data['verified']) and cleaned_data['duplicate']):
+            raise forms.ValidationError('Duplicate debt_items cannot be'
+                                        ' verified or active')
+        if cleaned_data['false_p'] and cleaned_data['verified']:
+            raise forms.ValidationError('False positive debt_items cannot '
+                                        'be verified.')
+        if cleaned_data['active'] and 'risk_accepted' in cleaned_data and cleaned_data['risk_accepted']:
+            raise forms.ValidationError('Active debt_items cannot '
+                                        'be risk accepted.')
+
+        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        if errors:
+            raise forms.ValidationError(errors)
+        else:
+            self.endpoints_to_add_list = endpoints_to_add_list
+
+        return cleaned_data
+
+    class Meta:
+        model = Debt_Item
+        exclude = ('reporter', 'url', 'numerical_severity', 'under_review', 'reviewers', 'cve', 'inherited_tags',
+                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoints', 'sla_start_date')
+
+
 class AdHocFindingForm(forms.ModelForm):
     title = forms.CharField(max_length=1000)
     date = forms.DateField(required=True,
@@ -1104,6 +1441,84 @@ class AdHocFindingForm(forms.ModelForm):
                    'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoint_status', 'sla_start_date')
 
 
+class AdHocDebtItemForm(forms.ModelForm):
+    title = forms.CharField(max_length=1000)
+    date = forms.DateField(required=True,
+                           widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    cwe = forms.IntegerField(required=False)
+    vulnerability_ids = vulnerability_ids_field
+    cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    description = forms.CharField(widget=forms.Textarea)
+    severity = forms.ChoiceField(
+        choices=SEVERITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    mitigation = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=False)
+    request = forms.CharField(widget=forms.Textarea, required=False)
+    response = forms.CharField(widget=forms.Textarea, required=False)
+    endpoints = forms.ModelMultipleChoiceField(queryset=Endpoint.objects.none(), required=False, label='Systems / Endpoints')
+    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
+                                       help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
+                                                 "Each must be valid.",
+                                       widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
+    references = forms.CharField(widget=forms.Textarea, required=False)
+    publish_date = forms.DateField(widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}), required=False)
+    planned_remediation_date = forms.DateField(widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}), required=False)
+    planned_remediation_version = forms.CharField(max_length=99, required=False)
+    effort_for_fixing = forms.ChoiceField(
+        required=False,
+        choices=EFFORT_FOR_FIXING_CHOICES,
+        error_messages={
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+
+    # the only reliable way without hacking internal fields to get predicatble ordering is to make it explicit
+    field_order = ('title', 'date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'description', 'mitigation', 'impact', 'request', 'response', 'steps_to_reproduce',
+                   'severity_justification', 'endpoints', 'endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
+                   'risk_accepted', 'under_defect_review', 'sla_start_date')
+
+    def __init__(self, *args, **kwargs):
+        req_resp = kwargs.pop('req_resp')
+
+        debt_context = None
+        if 'debt_context' in kwargs:
+            debt_context = kwargs.pop('debt_context')
+
+        super(AdHocDebtItemForm, self).__init__(*args, **kwargs)
+
+        if debt_context:
+            self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=debt_context)
+
+        if req_resp:
+            self.fields['request'].initial = req_resp[0]
+            self.fields['response'].initial = req_resp[1]
+
+        self.endpoints_to_add_list = []
+
+    def clean(self):
+        cleaned_data = super(AdHocDebtItemForm, self).clean()
+        if ((cleaned_data['active'] or cleaned_data['verified']) and cleaned_data['duplicate']):
+            raise forms.ValidationError('Duplicate debt_items cannot be'
+                                        ' verified or active')
+        if cleaned_data['false_p'] and cleaned_data['verified']:
+            raise forms.ValidationError('False positive debt_items cannot '
+                                        'be verified.')
+
+        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        if errors:
+            raise forms.ValidationError(errors)
+        else:
+            self.endpoints_to_add_list = endpoints_to_add_list
+
+        return cleaned_data
+
+    class Meta:
+        model = Debt_Item
+        exclude = ('reporter', 'url', 'numerical_severity', 'under_review', 'reviewers', 'cve', 'inherited_tags',
+                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoint_status', 'sla_start_date')
+
+
 class PromoteFindingForm(forms.ModelForm):
     title = forms.CharField(max_length=1000)
     date = forms.DateField(required=True,
@@ -1160,6 +1575,62 @@ class PromoteFindingForm(forms.ModelForm):
         exclude = ('reporter', 'url', 'numerical_severity', 'active', 'false_p', 'verified', 'endpoint_status', 'cve', 'inherited_tags',
                    'duplicate', 'out_of_scope', 'under_review', 'reviewers', 'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'planned_remediation_date', 'planned_remediation_version', 'effort_for_fixing')
 
+
+class PromoteDebtItemForm(forms.ModelForm):
+    title = forms.CharField(max_length=1000)
+    date = forms.DateField(required=True,
+                           widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    cwe = forms.IntegerField(required=False)
+    vulnerability_ids = vulnerability_ids_field
+    cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    description = forms.CharField(widget=forms.Textarea)
+    severity = forms.ChoiceField(
+        choices=SEVERITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+    mitigation = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=False)
+    endpoints = forms.ModelMultipleChoiceField(Endpoint.objects.none(), required=False, label='Systems / Endpoints')
+    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
+                                       help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
+                                                 "Each must be valid.",
+                                       widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
+    references = forms.CharField(widget=forms.Textarea, required=False)
+
+    # the onyl reliable way without hacking internal fields to get predicatble ordering is to make it explicit
+    field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
+                   'request', 'response', 'steps_to_reproduce', 'severity_justification', 'endpoints', 'endpoints_to_add', 'references',
+                   'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
+                   'out_of_scope', 'risk_accept', 'under_defect_review')
+
+    def __init__(self, *args, **kwargs):
+        debt_context = None
+        if 'debt_context' in kwargs:
+            debt_context = kwargs.pop('debt_context')
+
+        super(PromoteDebtItemForm, self).__init__(*args, **kwargs)
+
+        if debt_context:
+            self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=debt_context)
+
+        self.endpoints_to_add_list = []
+
+    def clean(self):
+        cleaned_data = super(PromoteDebtItemForm, self).clean()
+
+        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        if errors:
+            raise forms.ValidationError(errors)
+        else:
+            self.endpoints_to_add_list = endpoints_to_add_list
+
+        return cleaned_data
+
+    class Meta:
+        model = Debt_Item
+        exclude = ('reporter', 'url', 'numerical_severity', 'active', 'false_p', 'verified', 'endpoint_status', 'cve', 'inherited_tags',
+                   'duplicate', 'out_of_scope', 'under_review', 'reviewers', 'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'planned_remediation_date', 'planned_remediation_version', 'effort_for_fixing')
 
 class FindingForm(forms.ModelForm):
     title = forms.CharField(max_length=1000)
@@ -1294,6 +1765,138 @@ class FindingForm(forms.ModelForm):
                    'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'sonarqube_issue', 'endpoint_status')
 
 
+class DebtItemForm(forms.ModelForm):
+    title = forms.CharField(max_length=1000)
+    group = forms.ModelChoiceField(required=False, queryset=Debt_Item_Group.objects.none(), help_text='The Debt_Item Group to which this debt_item belongs, leave empty to remove the debt_item from the group. Groups can only be created via Bulk Edit for now.')
+    date = forms.DateField(required=True,
+                           widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    cwe = forms.IntegerField(required=False)
+    vulnerability_ids = vulnerability_ids_field
+    cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    description = forms.CharField(widget=forms.Textarea)
+    severity = forms.ChoiceField(
+        choices=SEVERITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+    mitigation = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=False)
+    request = forms.CharField(widget=forms.Textarea, required=False)
+    response = forms.CharField(widget=forms.Textarea, required=False)
+    endpoints = forms.ModelMultipleChoiceField(queryset=Endpoint.objects.none(), required=False, label='Systems / Endpoints')
+    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
+                                       help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
+                                                 "Each must be valid.",
+                                       widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
+    references = forms.CharField(widget=forms.Textarea, required=False)
+
+    mitigated = forms.DateField(required=False, help_text='Date and time when the flaw has been fixed', widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    mitigated_by = forms.ModelChoiceField(required=False, queryset=Dojo_User.objects.none())
+
+    publish_date = forms.DateField(widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}), required=False)
+    planned_remediation_date = forms.DateField(widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}), required=False)
+    planned_remediation_version = forms.CharField(max_length=99, required=False)
+    effort_for_fixing = forms.ChoiceField(
+        required=False,
+        choices=EFFORT_FOR_FIXING_CHOICES,
+        error_messages={
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+
+    # the only reliable way without hacking internal fields to get predicatble ordering is to make it explicit
+    field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
+                   'request', 'response', 'steps_to_reproduce', 'severity_justification', 'endpoints', 'endpoints_to_add', 'references',
+                   'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
+                   'out_of_scope', 'risk_accept', 'under_defect_review')
+
+    def __init__(self, *args, **kwargs):
+        req_resp = None
+        if 'req_resp' in kwargs:
+            req_resp = kwargs.pop('req_resp')
+
+        self.can_edit_mitigated_data = kwargs.pop('can_edit_mitigated_data') if 'can_edit_mitigated_data' in kwargs \
+            else False
+
+        super(DebtItemForm, self).__init__(*args, **kwargs)
+
+        self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=self.instance.test.engagement.debt_context)
+        self.fields['mitigated_by'].queryset = get_authorized_users(Permissions.Test_Edit)
+
+        # do not show checkbox if debt_item is not accepted and simple risk acceptance is disabled
+        # if checked, always show to allow unaccept also with full risk acceptance enabled
+        # when adding from template, we don't have access to the test. quickfix for now to just hide simple risk acceptance
+        if not hasattr(self.instance, 'test') or (not self.instance.risk_accepted and not self.instance.test.engagement.debt_context.enable_simple_risk_acceptance):
+            del self.fields['risk_accepted']
+        else:
+            if self.instance.risk_accepted:
+                self.fields['risk_accepted'].help_text = "Uncheck to unaccept the risk. Use full risk acceptance from the dropdown menu if you need advanced settings such as an expiry date."
+            elif self.instance.test.engagement.debt_context.enable_simple_risk_acceptance:
+                self.fields['risk_accepted'].help_text = "Check to accept the risk. Use full risk acceptance from the dropdown menu if you need advanced settings such as an expiry date."
+
+        # self.fields['tags'].widget.choices = t
+        if req_resp:
+            self.fields['request'].initial = req_resp[0]
+            self.fields['response'].initial = req_resp[1]
+
+        if self.instance.duplicate:
+            self.fields['duplicate'].help_text = "Original debt_item that is being duplicated here (readonly). Use view debt_item page to manage duplicate relationships. Unchecking duplicate here will reset this debt_items duplicate status, but will trigger deduplication logic."
+        else:
+            self.fields['duplicate'].help_text = "You can mark debt_items as duplicate only from the view debt_item page."
+
+        self.fields['sla_start_date'].disabled = True
+
+        if self.can_edit_mitigated_data:
+            if hasattr(self, 'instance'):
+                self.fields['mitigated'].initial = self.instance.mitigated
+                self.fields['mitigated_by'].initial = self.instance.mitigated_by
+        else:
+            del self.fields['mitigated']
+            del self.fields['mitigated_by']
+
+        if not is_debt_item_groups_enabled() or not hasattr(self.instance, 'test'):
+            del self.fields['group']
+        else:
+            self.fields['group'].queryset = self.instance.test.debt_item_group_set.all()
+            self.fields['group'].initial = self.instance.debt_item_group
+
+        self.endpoints_to_add_list = []
+
+    def clean(self):
+        cleaned_data = super(DebtItemForm, self).clean()
+
+        if (cleaned_data['active'] or cleaned_data['verified']) and cleaned_data['duplicate']:
+            raise forms.ValidationError('Duplicate debt_items cannot be'
+                                        ' verified or active')
+        if cleaned_data['false_p'] and cleaned_data['verified']:
+            raise forms.ValidationError('False positive debt_items cannot '
+                                        'be verified.')
+        if cleaned_data['active'] and 'risk_accepted' in cleaned_data and cleaned_data['risk_accepted']:
+            raise forms.ValidationError('Active debt_items cannot '
+                                        'be risk accepted.')
+
+        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        if errors:
+            raise forms.ValidationError(errors)
+        else:
+            self.endpoints_to_add_list = endpoints_to_add_list
+
+        return cleaned_data
+
+    def _post_clean(self):
+        super(DebtItemForm, self)._post_clean()
+
+        if self.can_edit_mitigated_data:
+            opts = self.instance._meta
+            try:
+                opts.get_field('mitigated').save_form_data(self.instance, self.cleaned_data.get('mitigated'))
+                opts.get_field('mitigated_by').save_form_data(self.instance, self.cleaned_data.get('mitigated_by'))
+            except forms.ValidationError as e:
+                self._update_errors(e)
+
+    class Meta:
+        model = Debt_Item
+        exclude = ('reporter', 'url', 'numerical_severity', 'under_review', 'reviewers', 'cve', 'inherited_tags',
+                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'sonarqube_issue', 'endpoint_status')
+
 class StubFindingForm(forms.ModelForm):
     title = forms.CharField(required=True, max_length=1000)
 
@@ -1313,6 +1916,25 @@ class StubFindingForm(forms.ModelForm):
 
         return cleaned_data
 
+
+class StubDebtItemForm(forms.ModelForm):
+    title = forms.CharField(required=True, max_length=1000)
+
+    class Meta:
+        model = Stub_Debt_Item
+        order = ('title',)
+        exclude = (
+            'date', 'description', 'severity', 'reporter', 'test', 'is_mitigated')
+
+    def clean(self):
+        cleaned_data = super(StubDebtItemForm, self).clean()
+        if 'title' in cleaned_data:
+            if len(cleaned_data['title']) <= 0:
+                raise forms.ValidationError("The title is required.")
+        else:
+            raise forms.ValidationError("The title is required.")
+
+        return cleaned_data
 
 class ApplyFindingTemplateForm(forms.Form):
 
@@ -1354,6 +1976,46 @@ class ApplyFindingTemplateForm(forms.Form):
         order = ('title', 'cwe', 'vulnerability_ids', 'cvssv3', 'severity', 'description', 'impact', 'is_mitigated')
 
 
+class ApplyDebtItemTemplateForm(forms.Form):
+
+    title = forms.CharField(max_length=1000, required=True)
+
+    cwe = forms.IntegerField(label="CWE", required=False)
+    vulnerability_ids = vulnerability_ids_field
+    cvssv3 = forms.CharField(label="CVSSv3", max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'btn btn-secondary dropdown-toggle', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+
+    severity = forms.ChoiceField(required=False, choices=SEVERITY_CHOICES, error_messages={'required': 'Select valid choice: In Progress, On Hold, Completed', 'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+
+    description = forms.CharField(widget=forms.Textarea)
+    mitigation = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=False)
+    references = forms.CharField(widget=forms.Textarea, required=False)
+
+    tags = TagField(required=False, help_text="Add tags that help describe this debt_item template. Choose from the list or add new tags. Press Enter key to add.", initial=Debt_Item.tags.tag_model.objects.all().order_by('name'))
+
+    def __init__(self, template=None, *args, **kwargs):
+        super(ApplyDebtItemTemplateForm, self).__init__(*args, **kwargs)
+        self.fields['tags'].autocomplete_tags = Debt_Item.tags.tag_model.objects.all().order_by('name')
+        self.template = template
+        if template:
+            self.template.vulnerability_ids = '\n'.join(template.vulnerability_ids)
+
+    def clean(self):
+        cleaned_data = super(ApplyDebtItemTemplateForm, self).clean()
+
+        if 'title' in cleaned_data:
+            if len(cleaned_data['title']) <= 0:
+                raise forms.ValidationError("The title is required.")
+        else:
+            raise forms.ValidationError("The title is required.")
+
+        return cleaned_data
+
+    class Meta:
+        fields = ['title', 'cwe', 'vulnerability_ids', 'cvssv3', 'severity', 'description', 'mitigation', 'impact', 'references', 'tags']
+        order = ('title', 'cwe', 'vulnerability_ids', 'cvssv3', 'severity', 'description', 'impact', 'is_mitigated')
+
+
 class FindingTemplateForm(forms.ModelForm):
     apply_to_findings = forms.BooleanField(required=False, help_text="Apply template to all findings that match this CWE. (Update will overwrite mitigation, impact and references for any active, verified findings.)")
     title = forms.CharField(max_length=1000, required=True)
@@ -1380,6 +2042,40 @@ class FindingTemplateForm(forms.ModelForm):
         exclude = ('numerical_severity', 'is_mitigated', 'last_used', 'endpoint_status', 'cve')
 
 
+class DebtItemTemplateForm(forms.ModelForm):
+    apply_to_debt_items = forms.BooleanField(required=False, help_text="Apply template to all debt_items that match this CWE. (Update will overwrite mitigation, impact and references for any active, verified debt_items.)")
+    title = forms.CharField(max_length=1000, required=True)
+
+    cwe = forms.IntegerField(label="CWE", required=False)
+    vulnerability_ids = vulnerability_ids_field
+    cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'btn btn-secondary dropdown-toggle', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    severity = forms.ChoiceField(
+        required=False,
+        choices=SEVERITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+
+    field_order = ['title', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'description', 'mitigation', 'impact', 'references', 'tags', 'template_match', 'template_match_cwe', 'template_match_title', 'apply_to_debt_items']
+
+    def __init__(self, *args, **kwargs):
+        super(DebtItemTemplateForm, self).__init__(*args, **kwargs)
+        self.fields['tags'].autocomplete_tags = Debt_Item.tags.tag_model.objects.all().order_by('name')
+
+    class Meta:
+        model = Debt_Item_Template
+        order = ('title', 'cwe', 'vulnerability_ids', 'cvssv3', 'severity', 'description', 'impact')
+        exclude = ('numerical_severity', 'is_mitigated', 'last_used', 'endpoint_status', 'cve')
+
+class DeleteDebtItemTemplateForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Item_Template
+        fields = ['id']
+
+
 class DeleteFindingTemplateForm(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
@@ -1388,6 +2084,14 @@ class DeleteFindingTemplateForm(forms.ModelForm):
         model = Finding_Template
         fields = ['id']
 
+
+class DeleteDebtItemTemplateForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Item_Template
+        fields = ['id']
 
 class FindingBulkUpdateForm(forms.ModelForm):
     status = forms.BooleanField(required=False)
@@ -1435,6 +2139,52 @@ class FindingBulkUpdateForm(forms.ModelForm):
         fields = ('severity', 'date', 'planned_remediation_date', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
                   'is_mitigated')
 
+
+class DebtItemBulkUpdateForm(forms.ModelForm):
+    status = forms.BooleanField(required=False)
+    risk_acceptance = forms.BooleanField(required=False)
+    risk_accept = forms.BooleanField(required=False)
+    risk_unaccept = forms.BooleanField(required=False)
+
+    date = forms.DateField(required=False, widget=forms.DateInput(attrs={'class': 'datepicker'}))
+    planned_remediation_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'class': 'datepicker'}))
+    planned_remediation_version = forms.CharField(required=False, max_length=99, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    debt_item_group = forms.BooleanField(required=False)
+    debt_item_group_create = forms.BooleanField(required=False)
+    debt_item_group_create_name = forms.CharField(required=False)
+    debt_item_group_add = forms.BooleanField(required=False)
+    add_to_debt_item_group_id = forms.CharField(required=False)
+    debt_item_group_remove = forms.BooleanField(required=False)
+    debt_item_group_by = forms.BooleanField(required=False)
+    debt_item_group_by_option = forms.CharField(required=False)
+
+    push_to_jira = forms.BooleanField(required=False)
+    # unlink_from_jira = forms.BooleanField(required=False)
+    push_to_github = forms.BooleanField(required=False)
+    tags = TagField(required=False, autocomplete_tags=Debt_Item.tags.tag_model.objects.all().order_by('name'))
+    notes = forms.CharField(required=False, max_length=1024, widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def __init__(self, *args, **kwargs):
+        super(DebtItemBulkUpdateForm, self).__init__(*args, **kwargs)
+        self.fields['severity'].required = False
+        # we need to defer initialization to prevent multiple initializations if other forms are shown
+        self.fields['tags'].widget.tag_options = tagulous.models.options.TagOptions(autocomplete_settings={'width': '200px', 'defer': True})
+
+    def clean(self):
+        cleaned_data = super(DebtItemBulkUpdateForm, self).clean()
+
+        if (cleaned_data['active'] or cleaned_data['verified']) and cleaned_data['duplicate']:
+            raise forms.ValidationError('Duplicate debt_items cannot be'
+                                        ' verified or active')
+        if cleaned_data['false_p'] and cleaned_data['verified']:
+            raise forms.ValidationError('False positive debt_items cannot '
+                                        'be verified.')
+        return cleaned_data
+
+    class Meta:
+        model = Debt_Item
+        fields = ('severity', 'date', 'planned_remediation_date', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
+                  'is_mitigated')
 
 class EditEndpointForm(forms.ModelForm):
     class Meta:
@@ -1632,6 +2382,52 @@ class CloseFindingForm(forms.ModelForm):
         fields = ['note_type', 'entry', 'mitigated', 'mitigated_by', 'false_p', 'out_of_scope', 'duplicate']
 
 
+class CloseDebtItemForm(forms.ModelForm):
+    entry = forms.CharField(
+        required=True, max_length=2400,
+        widget=forms.Textarea, label='Notes:',
+        error_messages={'required': ('The reason for closing a debt_item is '
+                                     'required, please use the text area '
+                                     'below to provide documentation.')})
+
+    mitigated = forms.DateField(required=False, help_text='Date and time when the flaw has been fixed', widget=forms.TextInput(attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    mitigated_by = forms.ModelChoiceField(required=False, queryset=Dojo_User.objects.none())
+    false_p = forms.BooleanField(initial=False, required=False, label='False Positive')
+    out_of_scope = forms.BooleanField(initial=False, required=False, label='Out of Scope')
+    duplicate = forms.BooleanField(initial=False, required=False, label='Duplicate')
+
+    def __init__(self, *args, **kwargs):
+        queryset = kwargs.pop('missing_note_types')
+        super(CloseDebtItemForm, self).__init__(*args, **kwargs)
+        if len(queryset) == 0:
+            self.fields['note_type'].widget = forms.HiddenInput()
+        else:
+            self.fields['note_type'] = forms.ModelChoiceField(queryset=queryset, label='Note Type', required=True)
+
+        self.can_edit_mitigated_data = kwargs.pop('can_edit_mitigated_data') if 'can_edit_mitigated_data' in kwargs \
+            else False
+
+        if self.can_edit_mitigated_data:
+            self.fields['mitigated_by'].queryset = get_authorized_users(Permissions.Test_Edit)
+            self.fields['mitigated'].initial = self.instance.mitigated
+            self.fields['mitigated_by'].initial = self.instance.mitigated_by
+
+    def _post_clean(self):
+        super(CloseDebtItemForm, self)._post_clean()
+
+        if self.can_edit_mitigated_data:
+            opts = self.instance._meta
+            if not self.cleaned_data.get('active'):
+                try:
+                    opts.get_field('mitigated').save_form_data(self.instance, self.cleaned_data.get('mitigated'))
+                    opts.get_field('mitigated_by').save_form_data(self.instance, self.cleaned_data.get('mitigated_by'))
+                except forms.ValidationError as e:
+                    self._update_errors(e)
+
+    class Meta:
+        model = Notes
+        fields = ['note_type', 'entry', 'mitigated', 'mitigated_by', 'false_p', 'out_of_scope', 'duplicate']
+
 class EditPlannedRemediationDateFindingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         finding = None
@@ -1651,6 +2447,24 @@ class EditPlannedRemediationDateFindingForm(forms.ModelForm):
         fields = ['planned_remediation_date']
 
 
+class EditPlannedRemediationDateDebtItemForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        debt_item = None
+        if 'debt_item' in kwargs:
+            debt_item = kwargs.pop('debt_item')
+
+        super(EditPlannedRemediationDateDebtItemForm, self).__init__(*args, **kwargs)
+
+        self.fields['planned_remediation_date'].required = True
+        self.fields['planned_remediation_date'].widget = forms.DateInput(attrs={'class': 'datepicker'})
+
+        if debt_item is not None:
+            self.fields['planned_remediation_date'].initial = debt_item.planned_remediation_date
+
+    class Meta:
+        model = Debt_Item
+        fields = ['planned_remediation_date']
+
 class DefectFindingForm(forms.ModelForm):
     CLOSE_CHOICES = (("Close Finding", "Close Finding"), ("Not Fixed", "Not Fixed"))
     defect_choice = forms.ChoiceField(required=True, choices=CLOSE_CHOICES)
@@ -1659,6 +2473,22 @@ class DefectFindingForm(forms.ModelForm):
         required=True, max_length=2400,
         widget=forms.Textarea, label='Notes:',
         error_messages={'required': ('The reason for closing a finding is '
+                                     'required, please use the text area '
+                                     'below to provide documentation.')})
+
+    class Meta:
+        model = Notes
+        fields = ['entry']
+
+
+class DefectDebtItemForm(forms.ModelForm):
+    CLOSE_CHOICES = (("Close Debt_Item", "Close Debt_Item"), ("Not Fixed", "Not Fixed"))
+    defect_choice = forms.ChoiceField(required=True, choices=CLOSE_CHOICES)
+
+    entry = forms.CharField(
+        required=True, max_length=2400,
+        widget=forms.Textarea, label='Notes:',
+        error_messages={'required': ('The reason for closing a debt_item is '
                                      'required, please use the text area '
                                      'below to provide documentation.')})
 
@@ -1680,6 +2510,19 @@ class ClearFindingReviewForm(forms.ModelForm):
         model = Finding
         fields = ['active', 'verified', 'false_p', 'out_of_scope', 'duplicate']
 
+
+class ClearDebtItemReviewForm(forms.ModelForm):
+    entry = forms.CharField(
+        required=True, max_length=2400,
+        help_text='Please provide a message.',
+        widget=forms.Textarea, label='Notes:',
+        error_messages={'required': ('The reason for clearing a review is '
+                                     'required, please use the text area '
+                                     'below to provide documentation.')})
+
+    class Meta:
+        model = Debt_Item
+        fields = ['active', 'verified', 'false_p', 'out_of_scope', 'duplicate']
 
 class ReviewFindingForm(forms.Form):
     reviewers = forms.MultipleChoiceField(
@@ -1710,6 +2553,59 @@ class ReviewFindingForm(forms.Form):
             users = get_authorized_users_for_product_and_product_type(None, finding.test.engagement.product, Permissions.Finding_Edit)
         else:
             users = get_authorized_users(Permissions.Finding_Edit).filter(is_active=True)
+        # Remove the current user
+        if user is not None:
+            users = users.exclude(id=user.id)
+        # Save a copy of the original query to be used in the validator
+        self.reviewer_queryset = users
+        # Set the users in the form
+        self.fields["reviewers"].choices = self._get_choices(self.reviewer_queryset)
+
+    @staticmethod
+    def _get_choices(queryset):
+        return [(item.pk, item.get_full_name()) for item in queryset]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("allow_all_reviewers", False):
+            cleaned_data["reviewers"] = [user.id for user in self.reviewer_queryset]
+        if len(cleaned_data.get("reviewers", [])) == 0:
+            raise ValidationError("Please select at least one user from the reviewers list")
+        return cleaned_data
+
+    class Meta:
+        fields = ["reviewers", "entry", "allow_all_reviewers"]
+
+
+class ReviewDebtItemForm(forms.Form):
+    reviewers = forms.MultipleChoiceField(
+        help_text=(
+            "Select all users who can review Debt_Item. Only users with "
+            "at least write permission to this debt_item can be selected"),
+        required=False,
+    )
+    entry = forms.CharField(
+        required=True, max_length=2400,
+        help_text="Please provide a message for reviewers.",
+        widget=forms.Textarea, label="Notes:",
+        error_messages={"required": ("The reason for requesting a review is "
+                                     "required, please use the text area "
+                                     "below to provide documentation.")})
+    allow_all_reviewers = forms.BooleanField(
+        required=False,
+        label="Allow All Eligible Reviewers",
+        help_text=("Checking this box will allow any user in the drop down "
+                   "above to provide a review for this debt_item"))
+
+    def __init__(self, *args, **kwargs):
+        debt_item = kwargs.pop("debt_item", None)
+        user = kwargs.pop("user", None)
+        super(ReviewDebtItemForm, self).__init__(*args, **kwargs)
+        # Get the list of users
+        if debt_item is not None:
+            users = get_authorized_users_for_debt_context_and_debt_context_type(None, debt_item.test.engagement.debt_context, Permissions.Debt_Item_Edit)
+        else:
+            users = get_authorized_users(Permissions.Debt_Item_Edit).filter(is_active=True)
         # Remove the current user
         if user is not None:
             users = users.exclude(id=user.id)
@@ -1895,6 +2791,21 @@ class Add_Product_GroupForm(forms.ModelForm):
         fields = ['product', 'groups', 'role']
 
 
+class Add_Debt_Context_GroupForm(forms.ModelForm):
+    groups = forms.ModelMultipleChoiceField(queryset=Dojo_Group.objects.none(), required=True, label='Groups')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_GroupForm, self).__init__(*args, **kwargs)
+        self.fields['debt_context'].disabled = True
+        current_groups = Debt_Context_Group.objects.filter(debt_context=self.initial["debt_context"]).values_list('group', flat=True)
+        authorized_groups = get_authorized_groups(Permissions.Group_View)
+        authorized_groups = authorized_groups.exclude(id__in=current_groups)
+        self.fields['groups'].queryset = authorized_groups
+
+    class Meta:
+        model = Debt_Context_Group
+        fields = ['debt_context', 'groups', 'role']
+
 class Add_Product_Group_GroupForm(forms.ModelForm):
     products = forms.ModelMultipleChoiceField(queryset=Product.objects.none(), required=True, label='Products')
 
@@ -1910,6 +2821,21 @@ class Add_Product_Group_GroupForm(forms.ModelForm):
         fields = ['products', 'group', 'role']
 
 
+class Add_Debt_Context_Group_GroupForm(forms.ModelForm):
+    debt_contexts = forms.ModelMultipleChoiceField(queryset=Debt_Context.objects.none(), required=True, label='Debt_Contexts')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_Group_GroupForm, self).__init__(*args, **kwargs)
+        current_members = Debt_Context_Group.objects.filter(group=self.initial["group"]).values_list('debt_context', flat=True)
+        self.fields['debt_contexts'].queryset = get_authorized_debt_contexts(Permissions.Debt_Context_Member_Add_Owner) \
+            .exclude(id__in=current_members)
+        self.fields['group'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Group
+        fields = ['debt_contexts', 'group', 'role']
+
+
 class Edit_Product_Group_Form(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
@@ -1922,11 +2848,26 @@ class Edit_Product_Group_Form(forms.ModelForm):
         fields = ['product', 'group', 'role']
 
 
+class Edit_Debt_Context_Group_Form(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(Edit_Debt_Context_Group_Form, self).__init__(*args, **kwargs)
+        self.fields['debt_context'].disabled = True
+        self.fields['group'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Group
+        fields = ['debt_context', 'group', 'role']
+
 class Delete_Product_GroupForm(Edit_Product_Group_Form):
     def __init__(self, *args, **kwargs):
         super(Delete_Product_GroupForm, self).__init__(*args, **kwargs)
         self.fields['role'].disabled = True
 
+class Delete_Debt_Context_GroupForm(Edit_Debt_Context_Group_Form):
+    def __init__(self, *args, **kwargs):
+        super(Delete_Debt_Context_GroupForm, self).__init__(*args, **kwargs)
+        self.fields['role'].disabled = True
 
 class Add_Product_Type_GroupForm(forms.ModelForm):
     groups = forms.ModelMultipleChoiceField(queryset=Dojo_Group.objects.none(), required=True, label='Groups')
@@ -1944,6 +2885,21 @@ class Add_Product_Type_GroupForm(forms.ModelForm):
         fields = ['product_type', 'groups', 'role']
 
 
+class Add_Debt_Context_Type_GroupForm(forms.ModelForm):
+    groups = forms.ModelMultipleChoiceField(queryset=Dojo_Group.objects.none(), required=True, label='Groups')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_Type_GroupForm, self).__init__(*args, **kwargs)
+        current_groups = Debt_Context_Type_Group.objects.filter(debt_context_type=self.initial["debt_context_type"]).values_list('group', flat=True)
+        authorized_groups = get_authorized_groups(Permissions.Group_View)
+        authorized_groups = authorized_groups.exclude(id__in=current_groups)
+        self.fields['groups'].queryset = authorized_groups
+        self.fields['debt_context_type'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Type_Group
+        fields = ['debt_context_type', 'groups', 'role']
+
 class Add_Product_Type_Group_GroupForm(forms.ModelForm):
     product_types = forms.ModelMultipleChoiceField(queryset=Product_Type.objects.none(), required=True, label='Product Types')
 
@@ -1959,6 +2915,20 @@ class Add_Product_Type_Group_GroupForm(forms.ModelForm):
         fields = ['product_types', 'group', 'role']
 
 
+class Add_Debt_Context_Type_Group_GroupForm(forms.ModelForm):
+    debt_context_types = forms.ModelMultipleChoiceField(queryset=Debt_Context_Type.objects.none(), required=True, label='Debt_Context Types')
+
+    def __init__(self, *args, **kwargs):
+        super(Add_Debt_Context_Type_Group_GroupForm, self).__init__(*args, **kwargs)
+        current_members = Debt_Context_Type_Group.objects.filter(group=self.initial['group']).values_list('debt_context_type', flat=True)
+        self.fields['debt_context_types'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_Member_Add_Owner) \
+            .exclude(id__in=current_members)
+        self.fields['group'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Type_Group
+        fields = ['debt_context_types', 'group', 'role']
+
 class Edit_Product_Type_Group_Form(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
@@ -1971,11 +2941,27 @@ class Edit_Product_Type_Group_Form(forms.ModelForm):
         fields = ['product_type', 'group', 'role']
 
 
+class Edit_Debt_Context_Type_Group_Form(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(Edit_Debt_Context_Type_Group_Form, self).__init__(*args, **kwargs)
+        self.fields['debt_context_type'].disabled = True
+        self.fields['group'].disabled = True
+
+    class Meta:
+        model = Debt_Context_Type_Group
+        fields = ['debt_context_type', 'group', 'role']
+
 class Delete_Product_Type_GroupForm(Edit_Product_Type_Group_Form):
     def __init__(self, *args, **kwargs):
         super(Delete_Product_Type_GroupForm, self).__init__(*args, **kwargs)
         self.fields['role'].disabled = True
 
+
+class Delete_Debt_Context_Type_GroupForm(Edit_Debt_Context_Type_Group_Form):
+    def __init__(self, *args, **kwargs):
+        super(Delete_Debt_Context_Type_GroupForm, self).__init__(*args, **kwargs)
+        self.fields['role'].disabled = True
 
 class DojoUserForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -2151,6 +3137,13 @@ class DeleteFindingForm(forms.ModelForm):
         model = Finding
         fields = ['id']
 
+class DeleteDebtItemForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Item
+        fields = ['id']
 
 class CopyFindingForm(forms.Form):
     test = forms.ModelChoiceField(
@@ -2164,6 +3157,17 @@ class CopyFindingForm(forms.Form):
         self.fields['test'].queryset = authorized_lists
 
 
+class CopyDebtItemForm(forms.Form):
+    test = forms.ModelChoiceField(
+        required=True,
+        queryset=Test.objects.none(),
+        error_messages={'required': '*'})
+
+    def __init__(self, *args, **kwargs):
+        authorized_lists = kwargs.pop('tests', None)
+        super(CopyDebtItemForm, self).__init__(*args, **kwargs)
+        self.fields['test'].queryset = authorized_lists
+
 class FindingFormID(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
@@ -2173,6 +3177,14 @@ class FindingFormID(forms.ModelForm):
         fields = ('id',)
 
 
+class DebtItemFormID(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Item
+        fields = ('id',)
+
 class DeleteStubFindingForm(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
@@ -2181,6 +3193,14 @@ class DeleteStubFindingForm(forms.ModelForm):
         model = Stub_Finding
         fields = ['id']
 
+
+class DeleteStubDebtItemForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Stub_Debt_Item
+        fields = ['id']
 
 class GITHUB_IssueForm(forms.ModelForm):
 
@@ -2312,6 +3332,12 @@ class Benchmark_Product_SummaryForm(forms.ModelForm):
         exclude = ['product', 'current_level', 'benchmark_type', 'asvs_level_1_benchmark', 'asvs_level_1_score', 'asvs_level_2_benchmark', 'asvs_level_2_score', 'asvs_level_3_benchmark', 'asvs_level_3_score']
 
 
+class Benchmark_Debt_Context_SummaryForm(forms.ModelForm):
+
+    class Meta:
+        model = Benchmark_Debt_Context_Summary
+        exclude = ['debt_context', 'current_level', 'benchmark_type', 'asvs_level_1_benchmark', 'asvs_level_1_score', 'asvs_level_2_benchmark', 'asvs_level_2_score', 'asvs_level_3_benchmark', 'asvs_level_3_score']
+
 class DeleteBenchmarkForm(forms.ModelForm):
     id = forms.IntegerField(required=True,
                             widget=forms.widgets.HiddenInput())
@@ -2344,11 +3370,34 @@ class Product_API_Scan_ConfigurationForm(forms.ModelForm):
         exclude = ['product']
 
 
+class Debt_Context_API_Scan_ConfigurationForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(Debt_Context_API_Scan_ConfigurationForm, self).__init__(*args, **kwargs)
+
+    tool_configuration = forms.ModelChoiceField(
+        label='Tool Configuration',
+        queryset=Tool_Configuration.objects.all().order_by('name'),
+        required=True,
+    )
+
+    class Meta:
+        model = Debt_Context_API_Scan_Configuration
+        exclude = ['debt_context']
+
 class DeleteProduct_API_Scan_ConfigurationForm(forms.ModelForm):
     id = forms.IntegerField(required=True, widget=forms.widgets.HiddenInput())
 
     class Meta:
         model = Product_API_Scan_Configuration
+        fields = ['id']
+
+
+class DeleteDebt_Context_API_Scan_ConfigurationForm(forms.ModelForm):
+    id = forms.IntegerField(required=True, widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Context_API_Scan_Configuration
         fields = ['id']
 
 
@@ -2454,6 +3503,14 @@ class DeleteToolProductSettingsForm(forms.ModelForm):
         fields = ['id']
 
 
+class DeleteToolDebtContextSettingsForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Tool_Debt_Context_Settings
+        fields = ['id']
+
 class ToolProductSettingsForm(forms.ModelForm):
     tool_configuration = forms.ModelChoiceField(queryset=Tool_Configuration.objects.all(), label='Tool Configuration')
 
@@ -2478,6 +3535,30 @@ class ToolProductSettingsForm(forms.ModelForm):
 
         return form_data
 
+
+class ToolDebt_ContextSettingsForm(forms.ModelForm):
+    tool_configuration = forms.ModelChoiceField(queryset=Tool_Configuration.objects.all(), label='Tool Configuration')
+
+    class Meta:
+        model = Tool_Debt_Context_Settings
+        fields = ['name', 'description', 'url', 'tool_configuration', 'tool_project_id']
+        exclude = ['tool_type']
+        order = ['name']
+
+    def clean(self):
+        from django.core.validators import URLValidator
+        form_data = self.cleaned_data
+
+        try:
+            if form_data["url"] is not None:
+                url_validator = URLValidator(schemes=['ssh', 'http', 'https'])
+                url_validator(form_data["url"])
+        except forms.ValidationError:
+            raise forms.ValidationError(
+                'It does not appear as though this endpoint is a valid URL/SSH or IP address.',
+                code='invalid')
+
+        return form_data
 
 class ObjectSettingsForm(forms.ModelForm):
 
@@ -2599,6 +3680,22 @@ class ProductNotificationsForm(forms.ModelForm):
         fields = ['engagement_added', 'close_engagement', 'test_added', 'scan_added', 'sla_breach', 'risk_acceptance_expiration']
 
 
+class DebtContextNotificationsForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(DebtContextNotificationsForm, self).__init__(*args, **kwargs)
+        if not self.instance.id:
+            self.initial['engagement_added'] = ''
+            self.initial['close_engagement'] = ''
+            self.initial['test_added'] = ''
+            self.initial['scan_added'] = ''
+            self.initial['sla_breach'] = ''
+            self.initial['risk_acceptance_expiration'] = ''
+
+    class Meta:
+        model = Notifications
+        fields = ['engagement_added', 'close_engagement', 'test_added', 'scan_added', 'sla_breach', 'risk_acceptance_expiration']
+
 class AjaxChoiceField(forms.ChoiceField):
     def valid_value(self, value):
         return True
@@ -2621,6 +3718,14 @@ class GITHUB_Product_Form(forms.ModelForm):
     class Meta:
         model = GITHUB_PKey
         exclude = ['product']
+
+
+class GITHUB_Debt_Context_Form(forms.ModelForm):
+    git_conf = forms.ModelChoiceField(queryset=GITHUB_Conf.objects.all(), label='GITHUB Configuration', required=False)
+
+    class Meta:
+        model = GITHUB_PKey
+        exclude = ['debt_context']
 
 
 class JIRAProjectForm(forms.ModelForm):
@@ -2756,6 +3861,15 @@ class GITHUBFindingForm(forms.Form):
 
     push_to_github = forms.BooleanField(required=False)
 
+class GITHUBDebtItemForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.enabled = kwargs.pop('enabled')
+        super(GITHUBDebtItemForm, self).__init__(*args, **kwargs)
+        self.fields['push_to_github'] = forms.BooleanField()
+        self.fields['push_to_github'].required = False
+        self.fields['push_to_github'].help_text = "Checking this will overwrite content of your Github issue, or create one."
+
+    push_to_github = forms.BooleanField(required=False)
 
 class JIRAFindingForm(forms.Form):
     def __init__(self, *args, **kwargs):
@@ -2874,6 +3988,125 @@ class JIRAFindingForm(forms.Form):
                 validators=[validators.RegexValidator(
                     regex=r'^[A-Z][A-Z_0-9]+-\d+$',
                     message='JIRA issue key must be in XXXX-nnnn format ([A-Z][A-Z_0-9]+-\\d+)')])
+    push_to_jira = forms.BooleanField(required=False, label="Push to JIRA")
+
+class JIRADebtItemForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.push_all = kwargs.pop('push_all', False)
+        self.instance = kwargs.pop('instance', None)
+        self.jira_project = kwargs.pop('jira_project', None)
+        # we provide the debt_item_form from the same page so we can add validation errors
+        # if the debt_item doesn't satisfy the rules to be pushed to JIRA
+        self.debt_item_form = kwargs.pop('debt_item_form', None)
+
+        if self.instance is None and self.jira_project is None:
+            raise ValueError('either and debt_item instance or jira_project is needed')
+
+        super(JIRADebtItemForm, self).__init__(*args, **kwargs)
+        self.fields['push_to_jira'] = forms.BooleanField()
+        self.fields['push_to_jira'].required = False
+        if is_debt_item_groups_enabled():
+            self.fields['push_to_jira'].help_text = "Checking this will overwrite content of your JIRA issue, or create one. If this debt_item is part of a Debt_Item Group, the group will pushed instead of the debt_item."
+        else:
+            self.fields['push_to_jira'].help_text = "Checking this will overwrite content of your JIRA issue, or create one."
+
+        self.fields['push_to_jira'].label = "Push to JIRA"
+        if self.push_all:
+            # This will show the checkbox as checked and greyed out, this way the user is aware
+            # that issues will be pushed to JIRA, given their product-level settings.
+            self.fields['push_to_jira'].help_text = \
+                "Push all issues is enabled on this product. If you do not wish to push all issues" \
+                " to JIRA, please disable Push all issues on this product."
+            self.fields['push_to_jira'].widget.attrs['checked'] = 'checked'
+            self.fields['push_to_jira'].disabled = True
+
+        if self.instance:
+            if hasattr(self.instance, 'has_jira_issue') and self.instance.has_jira_issue:
+                self.initial['jira_issue'] = self.instance.jira_issue.jira_key
+                self.fields['push_to_jira'].widget.attrs['checked'] = 'checked'
+        if is_debt_item_groups_enabled():
+            self.fields['jira_issue'].widget = forms.TextInput(attrs={'placeholder': 'Leave empty and check push to jira to create a new JIRA issue for this debt_item, or the group this debt_item is in.'})
+        else:
+            self.fields['jira_issue'].widget = forms.TextInput(attrs={'placeholder': 'Leave empty and check push to jira to create a new JIRA issue for this debt_item.'})
+
+        if self.instance and hasattr(self.instance, 'has_jira_group_issue') and self.instance.has_jira_group_issue:
+            self.fields['push_to_jira'].widget.attrs['checked'] = 'checked'
+            self.fields['jira_issue'].help_text = 'Changing the linked JIRA issue for debt_item groups is not (yet) supported.'
+            self.initial['jira_issue'] = self.instance.debt_item_group.jira_issue.jira_key
+            self.fields['jira_issue'].disabled = True
+
+    def clean(self):
+        logger.debug('jform clean')
+        import dojo.jira_link.helper as jira_helper
+        cleaned_data = super(JIRADebtItemForm, self).clean()
+        jira_issue_key_new = self.cleaned_data.get('jira_issue')
+        debt_item = self.instance
+        jira_project = self.jira_project
+
+        logger.debug('self.cleaned_data.push_to_jira: %s', self.cleaned_data.get('push_to_jira', None))
+
+        if self.cleaned_data.get('push_to_jira', None) and debt_item and debt_item.has_jira_group_issue:
+            can_be_pushed_to_jira, error_message, error_code = jira_helper.can_be_pushed_to_jira(debt_item.debt_item_group, self.debt_item_form)
+            if not can_be_pushed_to_jira:
+                self.add_error('push_to_jira', ValidationError(error_message, code=error_code))
+                # for field in error_fields:
+                #     self.debt_item_form.add_error(field, error)
+
+        elif self.cleaned_data.get('push_to_jira', None) and debt_item:
+            can_be_pushed_to_jira, error_message, error_code = jira_helper.can_be_pushed_to_jira(debt_item, self.debt_item_form)
+            if not can_be_pushed_to_jira:
+                self.add_error('push_to_jira', ValidationError(error_message, code=error_code))
+                # for field in error_fields:
+                #     self.debt_item_form.add_error(field, error)
+        elif self.cleaned_data.get('push_to_jira', None):
+            active = self.debt_item_form['active'].value()
+            verified = self.debt_item_form['verified'].value()
+            if not active or not verified:
+                logger.debug('Debt_Items must be active and verified to be pushed to JIRA')
+                error_message = 'Debt_Items must be active and verified to be pushed to JIRA'
+                self.add_error('push_to_jira', ValidationError(error_message, code='not_active_or_verified'))
+
+        if jira_issue_key_new and (not debt_item or not debt_item.has_jira_group_issue):
+            # when there is a group jira issue, we skip all the linking/unlinking as this is not supported (yet)
+            if debt_item:
+                # in theory there can multiple jira instances that have similar projects
+                # so checking by only the jira issue key can lead to false positives
+                # so we check also the jira internal id of the jira issue
+                # if the key and id are equal, it is probably the same jira instance and the same issue
+                # the database model is lacking some relations to also include the jira config name or url here
+                # and I don't want to change too much now. this should cover most usecases.
+
+                jira_issue_need_to_exist = False
+                # changing jira link on debt_item
+                if debt_item.has_jira_issue and jira_issue_key_new != debt_item.jira_issue.jira_key:
+                    jira_issue_need_to_exist = True
+
+                # adding existing jira issue to debt_item without jira link
+                if not debt_item.has_jira_issue:
+                    jira_issue_need_to_exist = True
+
+            else:
+                jira_issue_need_to_exist = True
+
+            if jira_issue_need_to_exist:
+                jira_issue_new = jira_helper.jira_get_issue(jira_project, jira_issue_key_new)
+                if not jira_issue_new:
+                    raise ValidationError('JIRA issue ' + jira_issue_key_new + ' does not exist or cannot be retrieved')
+
+                logger.debug('checking if provided jira issue id already is linked to another debt_item')
+                jira_issues = JIRA_Issue.objects.filter(jira_id=jira_issue_new.id, jira_key=jira_issue_key_new).exclude(engagement__isnull=False)
+
+                if self.instance:
+                    # just be sure we exclude the debt_item that is being edited
+                    jira_issues = jira_issues.exclude(debt_item=debt_item)
+
+                if len(jira_issues) > 0:
+                    raise ValidationError('JIRA issue ' + jira_issue_key_new + ' already linked to ' + reverse('view_debt_item', args=(jira_issues[0].debt_item_id,)))
+
+    jira_issue = forms.CharField(required=False, label="Linked JIRA Issue",
+                                 validators=[validators.RegexValidator(
+                                     regex=r'^[A-Z][A-Z_0-9]+-\d+$',
+                                     message='JIRA issue key must be in XXXX-nnnn format ([A-Z][A-Z_0-9]+-\\d+)')])
     push_to_jira = forms.BooleanField(required=False, label="Push to JIRA")
 
 
