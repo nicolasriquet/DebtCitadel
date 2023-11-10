@@ -56,13 +56,13 @@ def prefetch_for_debt_context_type(debt_context_types):
     prefetch_debt_context_types = debt_context_types
 
     if isinstance(prefetch_debt_context_types, QuerySet):  # old code can arrive here with debt_contexts being a list because the query was already executed
-        active_findings_query = Q(debt_context_type__engagement__test__finding__active=True)
-        active_verified_findings_query = Q(debt_context_type__engagement__test__finding__active=True,
-                                debt_context_type__engagement__test__finding__verified=True)
+        active_debt_items_query = Q(debt_context_type__debt_engagement__debt_test__debt_item__active=True)
+        active_verified_debt_items_query = Q(debt_context_type__debt_engagement__debt_test__debt_item__active=True,
+                                debt_context_type__debt_engagement__debt_test__debt_item__verified=True)
         prefetch_debt_context_types = prefetch_debt_context_types.annotate(
-            active_findings_count=Count('debt_context_type__engagement__test__finding__id', filter=active_findings_query))
+            active_debt_items_count=Count('debt_context_type__debt_engagement__debt_test__debt_item__id', filter=active_debt_items_query))
         prefetch_debt_context_types = prefetch_debt_context_types.annotate(
-            active_verified_findings_count=Count('debt_context_type__engagement__test__finding__id', filter=active_verified_findings_query))
+            active_verified_debt_items_count=Count('debt_context_type__debt_engagement__debt_test__debt_item__id', filter=active_verified_debt_items_query))
         prefetch_debt_context_types = prefetch_debt_context_types.annotate(debt_context_count=Count('debt_context_type', distinct=True))
     else:
         logger.debug('unable to prefetch because query was already executed')

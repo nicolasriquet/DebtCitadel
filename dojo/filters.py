@@ -22,7 +22,7 @@ from django.db.models import Q
 from dojo.models import Dojo_User, Finding_Group, Debt_Item_Group, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration, \
     Product_Type, Debt_Context_Type, Finding, Debt_Item, Product, Debt_Context, Test_Import, Test_Type, \
     Endpoint, Development_Environment, Finding_Template, Debt_Item_Template, Note_Type, Risk_Acceptance, Cred_Mapping, \
-    Engagement_Survey, Question, TextQuestion, ChoiceQuestion, Endpoint_Status, Engagement, \
+    Engagement_Survey, Question, TextQuestion, ChoiceQuestion, Endpoint_Status, Engagement, Debt_Engagement, \
     ENGAGEMENT_STATUS_CHOICES, Test, App_Analysis, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Dojo_Group, Vulnerability_Id, \
     Test_Import_Finding_Action, Test_Import_Debt_Item_Action, IMPORT_ACTIONS
 from dojo.utils import get_system_setting
@@ -515,12 +515,12 @@ def get_debt_item_filterset_fields(metrics=False, similar=False):
         'mitigated',
         'reporter',
         'reviewers',
-        'test__engagement__product__prod_type',
-        'test__engagement__product',
-        'test__engagement',
+        'test__debt_engagement__debt_context__debt_context_type',
+        'test__debt_engagement__debt_context',
+        'test__debt_engagement',
         'test',
         'test__test_type',
-        'test__engagement__version',
+        'test__debt_engagement__version',
         'test__version',
         'endpoints',
         'status',
@@ -659,14 +659,14 @@ class DebtItemFilterWithTags(DojoFilter):
     )
 
     test__engagement__tags = ModelMultipleChoiceFilter(
-        field_name='test__engagement__tags__name',
+        field_name='test__debt_engagement__tags__name',
         to_field_name='name',
         queryset=Engagement.tags.tag_model.objects.all().order_by('name'),
         # label='tags', # doesn't work with tagulous, need to set in __init__ below
     )
 
     test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
-        field_name='test__engagement__debt_context__tags__name',
+        field_name='test__debt_engagement__debt_context__tags__name',
         to_field_name='name',
         queryset=Debt_Context.tags.tag_model.objects.all().order_by('name'),
         # label='tags', # doesn't work with tagulous, need to set in __init__ below
@@ -692,7 +692,7 @@ class DebtItemFilterWithTags(DojoFilter):
     )
 
     not_test__engagement__tags = ModelMultipleChoiceFilter(
-        field_name='test__engagement__tags__name',
+        field_name='test__debt_engagement__tags__name',
         to_field_name='name',
         exclude=True,
         label='Engagement without tags',
@@ -701,7 +701,7 @@ class DebtItemFilterWithTags(DojoFilter):
     )
 
     not_test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
-        field_name='test__engagement__debt_context__tags__name',
+        field_name='test__debt_engagement__debt_context__tags__name',
         to_field_name='name',
         exclude=True,
         label='Debt_Context without tags',
@@ -1148,6 +1148,66 @@ class EngagementFilter(DojoFilter):
     class Meta:
         model = Product
         fields = ['name', 'prod_type']
+
+
+class DebtEngagementFilter(DojoFilter):
+    debt_engagement__name = CharFilter(lookup_expr='icontains', label='Debt_engagement name contains')
+    debt_engagement__lead = ModelChoiceFilter(queryset=Dojo_User.objects.none(), label="Lead")
+    debt_engagement__version = CharFilter(field_name='debt_engagement__version', lookup_expr='icontains', label='Debt_engagement version')
+    debt_engagement__test__version = CharFilter(field_name='debt_engagement__test__version', lookup_expr='icontains', label='Test version')
+
+    name = CharFilter(lookup_expr='icontains', label='Debt_Context name contains')
+    debt_context_type = ModelMultipleChoiceFilter(
+        queryset=Debt_Context_Type.objects.none(),
+        label="Debt_Context Type")
+    debt_engagement__debt_context__lifecycle = MultipleChoiceFilter(
+        choices=Debt_Context.LIFECYCLE_CHOICES, label='Debt_Context lifecycle')
+    debt_engagement__status = MultipleChoiceFilter(choices=ENGAGEMENT_STATUS_CHOICES,
+                                                   label="Status")
+
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Debt_Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('name', 'name'),
+            ('debt_context_type__name', 'debt_context_type__name'),
+        ),
+        field_labels={
+            'name': 'Debt_Context Name',
+            'debt_context_type__name': 'Debt_Context Type',
+        }
+
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(Debt_engagementFilter, self).__init__(*args, **kwargs)
+        self.form.fields['debt_context_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+        self.form.fields['debt_engagement__lead'].queryset = get_authorized_users(Permissions.Debt_Context_Type_View) \
+            .filter(debt_engagement__lead__isnull=False).distinct()
+
+    class Meta:
+        model = Debt_Context
+        fields = ['name', 'debt_context_type']
 
 
 class ProductEngagementFilter(DojoFilter):

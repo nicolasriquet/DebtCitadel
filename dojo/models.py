@@ -1929,7 +1929,7 @@ class Debt_Engagement(models.Model):
         old_files = list(self.files.all())
         old_tags = list(self.tags.all())
         old_risk_acceptances = list(self.risk_acceptance.all())
-        old_tests = list(Test.objects.filter(debt_engagement=self))
+        old_tests = list(Debt_Test.objects.filter(debt_engagement=self))
         # Wipe the IDs of the new object
         copy.pk = None
         copy.id = None
@@ -2651,6 +2651,167 @@ class Test(models.Model):
     def inherit_tags(self, potentially_existing_tags):
         # get a copy of the tags to be inherited
         incoming_inherited_tags = [tag.name for tag in self.engagement.product.tags.all()]
+        _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
+
+
+class Debt_Test(models.Model):
+    debt_engagement = models.ForeignKey(Debt_Engagement, editable=False, on_delete=models.CASCADE)
+    lead = models.ForeignKey(Dojo_User, editable=True, null=True, blank=True, on_delete=models.RESTRICT)
+    test_type = models.ForeignKey(Test_Type, on_delete=models.CASCADE)
+    scan_type = models.TextField(null=True)
+    title = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    target_start = models.DateTimeField()
+    target_end = models.DateTimeField()
+    estimated_time = models.TimeField(null=True, blank=True, editable=False)
+    actual_time = models.TimeField(null=True, blank=True, editable=False, )
+    percent_complete = models.IntegerField(null=True, blank=True,
+                                           editable=True)
+    notes = models.ManyToManyField(Notes, blank=True,
+                                   editable=False)
+    files = models.ManyToManyField(FileUpload, blank=True, editable=False)
+    environment = models.ForeignKey(Development_Environment, null=True,
+                                    blank=False, on_delete=models.RESTRICT)
+
+    updated = models.DateTimeField(auto_now=True, null=True)
+    created = models.DateTimeField(auto_now_add=True, null=True)
+
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this test. Choose from the list or add new tags. Press Enter key to add."))
+    inherited_tags = TagField(blank=True, force_lowercase=True, help_text=_("Internal use tags sepcifically for maintaining parity with debt_context. This field will be present as a subset in the tags field"))
+
+    version = models.CharField(max_length=100, null=True, blank=True)
+
+    build_id = models.CharField(editable=True, max_length=150,
+                                null=True, blank=True, help_text=_("Build ID that was tested, a reimport may update this field."), verbose_name=_('Build ID'))
+    commit_hash = models.CharField(editable=True, max_length=150,
+                                   null=True, blank=True, help_text=_("Commit hash tested, a reimport may update this field."), verbose_name=_('Commit Hash'))
+    branch_tag = models.CharField(editable=True, max_length=150,
+                                  null=True, blank=True, help_text=_("Tag or branch that was tested, a reimport may update this field."), verbose_name=_("Branch/Tag"))
+    api_scan_configuration = models.ForeignKey(Debt_Context_API_Scan_Configuration, null=True, editable=True, blank=True, on_delete=models.CASCADE, verbose_name=_('API Scan Configuration'))
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['debt_engagement', 'test_type']),
+        ]
+
+    def test_type_name(self) -> str:
+        return self.test_type.name
+
+    def __str__(self):
+        if self.title:
+            return "%s (%s)" % (self.title, self.test_type)
+        return str(self.test_type)
+
+    def get_breadcrumbs(self):
+        bc = self.debt_engagement.get_breadcrumbs()
+        bc += [{'title': str(self),
+                'url': reverse('view_test', args=(self.id,))}]
+        return bc
+
+    def copy(self, debt_engagement=None):
+        copy = self
+        # Save the necessary ManyToMany relationships
+        old_notes = list(self.notes.all())
+        old_files = list(self.files.all())
+        old_tags = list(self.tags.all())
+        old_debt_items = list(Debt_Item.objects.filter(test=self))
+        # Wipe the IDs of the new object
+        copy.pk = None
+        copy.id = None
+        if debt_engagement:
+            copy.debt_engagement = debt_engagement
+        # Save the object before setting any ManyToMany relationships
+        copy.save()
+        # Copy the notes
+        for notes in old_notes:
+            copy.notes.add(notes.copy())
+        # Copy the files
+        for files in old_files:
+            copy.files.add(files.copy())
+        # Copy the Debt_Items
+        for debt_item in old_debt_items:
+            debt_item.copy(test=copy)
+        # Assign any tags
+        copy.tags.set(old_tags)
+
+        return copy
+
+    # only used by bulk risk acceptance api
+    @property
+    def unaccepted_open_debt_items(self):
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, verified=True, duplicate=False, test=self)
+
+    def accept_risks(self, accepted_risks):
+        self.debt_engagement.risk_acceptance.add(*accepted_risks)
+
+    @property
+    def deduplication_algorithm(self):
+        deduplicationAlgorithm = settings.DEDUPE_ALGO_LEGACY
+
+        if hasattr(settings, 'DEDUPLICATION_ALGORITHM_PER_PARSER'):
+            if (self.test_type.name in settings.DEDUPLICATION_ALGORITHM_PER_PARSER):
+                deduplicationLogger.debug(f'using DEDUPLICATION_ALGORITHM_PER_PARSER for test_type.name: {self.test_type.name}')
+                deduplicationAlgorithm = settings.DEDUPLICATION_ALGORITHM_PER_PARSER[self.test_type.name]
+            elif (self.scan_type in settings.DEDUPLICATION_ALGORITHM_PER_PARSER):
+                deduplicationLogger.debug(f'using DEDUPLICATION_ALGORITHM_PER_PARSER for scan_type: {self.scan_type}')
+                deduplicationAlgorithm = settings.DEDUPLICATION_ALGORITHM_PER_PARSER[self.scan_type]
+        else:
+            deduplicationLogger.debug('Section DEDUPLICATION_ALGORITHM_PER_PARSER not found in settings.dist.py')
+
+        deduplicationLogger.debug(f'DEDUPLICATION_ALGORITHM_PER_PARSER is: {deduplicationAlgorithm}')
+        return deduplicationAlgorithm
+
+    @property
+    def hash_code_fields(self):
+        hashCodeFields = None
+
+        if hasattr(settings, 'HASHCODE_FIELDS_PER_SCANNER'):
+            if (self.test_type.name in settings.HASHCODE_FIELDS_PER_SCANNER):
+                deduplicationLogger.debug(f'using HASHCODE_FIELDS_PER_SCANNER for test_type.name: {self.test_type.name}')
+                hashCodeFields = settings.HASHCODE_FIELDS_PER_SCANNER[self.test_type.name]
+            elif (self.scan_type in settings.HASHCODE_FIELDS_PER_SCANNER):
+                deduplicationLogger.debug(f'using HASHCODE_FIELDS_PER_SCANNER for scan_type: {self.scan_type}')
+                hashCodeFields = settings.HASHCODE_FIELDS_PER_SCANNER[self.scan_type]
+        else:
+            deduplicationLogger.debug('Section HASHCODE_FIELDS_PER_SCANNER not found in settings.dist.py')
+
+        deduplicationLogger.debug(f'HASHCODE_FIELDS_PER_SCANNER is: {hashCodeFields}')
+        return hashCodeFields
+
+    @property
+    def hash_code_allows_null_cwe(self):
+        hashCodeAllowsNullCwe = True
+
+        if hasattr(settings, 'HASHCODE_ALLOWS_NULL_CWE'):
+            if (self.test_type.name in settings.HASHCODE_ALLOWS_NULL_CWE):
+                deduplicationLogger.debug(f'using HASHCODE_ALLOWS_NULL_CWE for test_type.name: {self.test_type.name}')
+                hashCodeAllowsNullCwe = settings.HASHCODE_ALLOWS_NULL_CWE[self.test_type.name]
+            elif (self.scan_type in settings.HASHCODE_ALLOWS_NULL_CWE):
+                deduplicationLogger.debug(f'using HASHCODE_ALLOWS_NULL_CWE for scan_type: {self.scan_type}')
+                hashCodeAllowsNullCwe = settings.HASHCODE_ALLOWS_NULL_CWE[self.scan_type]
+        else:
+            deduplicationLogger.debug('Section HASHCODE_ALLOWS_NULL_CWE not found in settings.dist.py')
+
+        deduplicationLogger.debug(f'HASHCODE_ALLOWS_NULL_CWE is: {hashCodeAllowsNullCwe}')
+        return hashCodeAllowsNullCwe
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('view_test', args=[str(self.id)])
+
+    def delete(self, *args, **kwargs):
+        logger.debug('%d test delete', self.id)
+        super().delete(*args, **kwargs)
+        calculate_grade(self.debt_engagement.debt_context)
+
+    @property
+    def statistics(self):
+        """ Queries the database, no prefetching, so could be slow for lists of model instances """
+        return _get_statistics_for_queryset(Debt_Item.objects.filter(test=self), _get_annotations_for_statistics)
+
+    def inherit_tags(self, potentially_existing_tags):
+        # get a copy of the tags to be inherited
+        incoming_inherited_tags = [tag.name for tag in self.debt_engagement.debt_context.tags.all()]
         _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
 
 
@@ -3766,10 +3927,10 @@ class Debt_Item(models.Model):
                                   db_column="refs",
                                   verbose_name=_('References'),
                                   help_text=_("The external documentation available for this flaw."))
-    test = models.ForeignKey(Test,
+    test = models.ForeignKey(Debt_Test,
                              editable=False,
                              on_delete=models.CASCADE,
-                             verbose_name=_('Test'),
+                             verbose_name=_('Debt_Test'),
                              help_text=_("The test that is associated with this flaw."))
     active = models.BooleanField(default=True,
                                  verbose_name=_('Active'),

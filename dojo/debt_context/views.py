@@ -24,22 +24,22 @@ from django.utils.translation import gettext as _
 from django.views import View
 
 from dojo.templatetags.display_tags import asvs_calc_level
-from dojo.filters import DebtContextEngagementFilter, DebtContextFilter, EngagementFilter, MetricsEndpointFilter, \
-    MetricsFindingFilter, DebtContextComponentFilter
-from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMetaDataForm, JIRAProjectForm, JIRAFindingForm, \
-    AdHocFindingForm, EngagementPresetsForm, DeleteEngagementPresetsForm, DebtContextNotificationsForm, \
-    GITHUBDebtItemForm, GITHUB_Debt_Context_Form, GITHUBFindingForm, AppAnalysisForm, JIRAEngagementForm, Add_Debt_Context_MemberForm, \
+from dojo.filters import DebtContextEngagementFilter, DebtContextFilter, EngagementFilter, DebtEngagementFilter, \
+    MetricsEndpointFilter, MetricsDebtItemFilter, DebtContextComponentFilter
+from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMetaDataForm, JIRAProjectForm, JIRADebtItemForm, \
+    AdHocDebtItemForm, EngagementPresetsForm, DeleteEngagementPresetsForm, DebtContextNotificationsForm, \
+    GITHUBDebtItemForm, GITHUB_Debt_Context_Form, GITHUBDebtItemForm, AppAnalysisForm, JIRAEngagementForm, Add_Debt_Context_MemberForm, \
     Edit_Debt_Context_MemberForm, Delete_Debt_Context_MemberForm, Add_Debt_Context_GroupForm, Edit_Debt_Context_Group_Form, \
     Delete_Debt_Context_GroupForm, SLA_Configuration, \
     DeleteAppAnalysisForm, Debt_Context_API_Scan_ConfigurationForm, DeleteDebt_Context_API_Scan_ConfigurationForm
-from dojo.models import Debt_Context_Type, Note_Type, Finding, Debt_Context, Engagement, Test, GITHUB_PKey, \
+from dojo.models import Debt_Context_Type, Note_Type, Debt_Item, Debt_Context, Engagement, Test, GITHUB_PKey, \
     Test_Type, System_Settings, Languages, App_Analysis, Benchmark_Debt_Context_Summary, Endpoint_Status, \
     Endpoint, Engagement_Presets, DojoMeta, Notifications, BurpRawRequestResponse, Debt_Context_Member, \
     Debt_Context_Group, Debt_Context_API_Scan_Configuration
 from dojo.utils import add_external_issue, add_error_message_to_response, add_field_errors_to_response, get_page_items, \
     add_breadcrumb, async_delete, \
     get_system_setting, get_setting, Debt_Context_Tab, get_punchcard_data, queryset_check, is_title_in_breadcrumbs, \
-    get_enabled_notifications_list, get_zero_severity_level, sum_by_severity_level, get_open_findings_burndown
+    get_enabled_notifications_list, get_zero_severity_level, sum_by_severity_level, get_open_debt_items_burndown
 
 from dojo.notifications.helper import create_notification
 from dojo.components.sql_group_concat import Sql_GroupConcat
@@ -53,7 +53,7 @@ from dojo.debt_context_type.queries import get_authorized_members_for_debt_conte
 from dojo.tool_config.factory import create_API
 from dojo.tools.factory import get_api_scan_configuration_hints
 
-import dojo.finding.helper as finding_helper
+import dojo.debt_item.helper as debt_item_helper
 import dojo.jira_link.helper as jira_helper
 
 logger = logging.getLogger(__name__)
@@ -102,24 +102,24 @@ def prefetch_for_debt_context(debt_contexts):
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('technical_contact')
 
         prefetched_debt_contexts = prefetched_debt_contexts.annotate(
-            active_engagement_count=Count('engagement__id', filter=Q(engagement__active=True)))
+            active_debt_engagement_count=Count('debt_engagement__id', filter=Q(debt_engagement__active=True)))
         prefetched_debt_contexts = prefetched_debt_contexts.annotate(
-            closed_engagement_count=Count('engagement__id', filter=Q(engagement__active=False)))
-        prefetched_debt_contexts = prefetched_debt_contexts.annotate(last_engagement_date=Max('engagement__target_start'))
-        prefetched_debt_contexts = prefetched_debt_contexts.annotate(active_finding_count=Count('engagement__test__finding__id',
+            closed_debt_engagement_count=Count('debt_engagement__id', filter=Q(debt_engagement__active=False)))
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(last_debt_engagement_date=Max('debt_engagement__target_start'))
+        prefetched_debt_contexts = prefetched_debt_contexts.annotate(active_debt_item_count=Count('debt_engagement__debt_test__debt_item__id',
                                                                                 filter=Q(
-                                                                                    engagement__test__finding__active=True)))
+                                                                                    debt_engagement__debt_test__debt_item__active=True)))
         prefetched_debt_contexts = prefetched_debt_contexts.annotate(
-            active_verified_finding_count=Count('engagement__test__finding__id',
+            active_verified_debt_item_count=Count('debt_engagement__debt_test__debt_item__id',
                                                 filter=Q(
-                                                    engagement__test__finding__active=True,
-                                                    engagement__test__finding__verified=True)))
+                                                    debt_engagement__debt_test__debt_item__active=True,
+                                                    debt_engagement__debt_test__debt_item__verified=True)))
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('jira_project_set__jira_instance')
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('members')
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('debt_context_type__members')
         active_endpoint_query = Endpoint.objects.filter(
-            finding__active=True,
-            finding__mitigated__isnull=True).distinct()
+            debt_item__active=True,
+            debt_item__mitigated__isnull=True).distinct()
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related(
             Prefetch('endpoint_set', queryset=active_endpoint_query, to_attr='active_endpoints'))
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('tags')
@@ -181,7 +181,7 @@ def view_debt_context(request, pid):
 
     debt_context_metadata = dict(debt_context.debt_context_meta.order_by('name').values_list('name', 'value'))
 
-    open_findings = Finding.objects.filter(test__engagement__debt_context=debt_context,
+    open_debt_items = Debt_Item.objects.filter(debt_testdebt_engagement__debt_context=debt_context,
                                            false_p=False,
                                            active=True,
                                            duplicate=False,
@@ -194,7 +194,7 @@ def view_debt_context(request, pid):
     low = 0
     info = 0
 
-    for v in open_findings:
+    for v in open_debt_items:
         if v["severity"] == "Critical":
             critical = v["count"]
         elif v["severity"] == "High":
@@ -243,15 +243,15 @@ def view_debt_context_components(request, pid):
 
     # Get components ordered by component_name and concat component versions to the same row
     if connection.vendor == 'postgresql':
-        component_query = Finding.objects.filter(test__engagement__debt_context__id=pid).values("component_name").order_by(
+        component_query = Debt_Item.objects.filter(debt_testdebt_engagement__debt_context__id=pid).values("component_name").order_by(
             'component_name').annotate(
             component_version=StringAgg('component_version', delimiter=separator, distinct=True))
     else:
-        component_query = Finding.objects.filter(test__engagement__debt_context__id=pid).values("component_name")
+        component_query = Debt_Item.objects.filter(debt_testdebt_engagement__debt_context__id=pid).values("component_name")
         component_query = component_query.annotate(
             component_version=Sql_GroupConcat('component_version', separator=separator, distinct=True))
 
-    # Append finding counts
+    # Append debt_item counts
     component_query = component_query.annotate(total=Count('id')).order_by('component_name', 'component_version')
     component_query = component_query.annotate(active=Count('id', filter=Q(active=True)))
     component_query = component_query.annotate(duplicate=(Count('id', filter=Q(duplicate=True))))
@@ -280,11 +280,11 @@ def identify_view(request):
     if view:
         # value of view is reflected in the template, make sure it's valid
         # although any XSS should be catch by django autoescape, we see people sometimes using '|safe'...
-        if view in ['Endpoint', 'Finding']:
+        if view in ['Endpoint', 'Debt_Item']:
             return view
-        raise ValueError('invalid view, view must be "Endpoint" or "Finding"')
+        raise ValueError('invalid view, view must be "Endpoint" or "Debt_Item"')
     else:
-        if get_data.get('finding__severity', None):
+        if get_data.get('debt_item__severity', None):
             return 'Endpoint'
         elif get_data.get('false_positive', None):
             return 'Endpoint'
@@ -292,45 +292,45 @@ def identify_view(request):
     if referer:
         if referer.find('type=Endpoint') > -1:
             return 'Endpoint'
-    return 'Finding'
+    return 'Debt_Item'
 
 
-def finding_querys(request, debt_context):
+def debt_item_querys(request, debt_context):
     filters = dict()
 
-    findings_query = Finding.objects.filter(test__engagement__debt_context=debt_context,
+    debt_items_query = Debt_Item.objects.filter(debt_testdebt_engagement__debt_context=debt_context,
                                             severity__in=('Critical', 'High', 'Medium', 'Low', 'Info'))
 
     # prefetch only what's needed to avoid lots of repeated queries
-    findings_query = findings_query.prefetch_related(
-        # 'test__engagement',
-        # 'test__engagement__risk_acceptance',
+    debt_items_query = debt_items_query.prefetch_related(
+        # 'debt_testdebt_engagement',
+        # 'debt_testdebt_engagement__risk_acceptance',
         # 'found_by',
         # 'test',
-        # 'test__test_type',
+        # 'debt_testtest_type',
         # 'risk_acceptance_set',
         'reporter')
-    findings = MetricsFindingFilter(request.GET, queryset=findings_query, pid=debt_context)
-    findings_qs = queryset_check(findings)
-    filters['form'] = findings.form
+    debt_items = MetricsDebtItemFilter(request.GET, queryset=debt_items_query, pid=debt_context)
+    debt_items_qs = queryset_check(debt_items)
+    filters['form'] = debt_items.form
 
     # dead code:
-    # if not findings_qs and not findings_query:
+    # if not debt_items_qs and not debt_items_query:
     #     # logger.debug('all filtered')
-    #     findings = findings_query
-    #     findings_qs = queryset_check(findings)
+    #     debt_items = debt_items_query
+    #     debt_items_qs = queryset_check(debt_items)
     #     messages.add_message(request,
     #                                  messages.ERROR,
     #                                  'All objects have been filtered away. Displaying all objects',
     #                                  extra_tags='alert-danger')
 
     try:
-        # logger.debug(findings_qs.query)
-        start_date = findings_qs.earliest('date').date
+        # logger.debug(debt_items_qs.query)
+        start_date = debt_items_qs.earliest('date').date
         start_date = datetime(start_date.year,
                               start_date.month, start_date.day,
                               tzinfo=timezone.get_current_timezone())
-        end_date = findings_qs.latest('date').date
+        end_date = debt_items_qs.latest('date').date
         end_date = datetime(end_date.year,
                             end_date.month, end_date.day,
                             tzinfo=timezone.get_current_timezone())
@@ -340,50 +340,50 @@ def finding_querys(request, debt_context):
         end_date = timezone.now()
     week = end_date - timedelta(days=7)  # seven days and /newnewer are considered "new"
 
-    # risk_acceptances = Risk_Acceptance.objects.filter(engagement__in=Engagement.objects.filter(debt_context=debt_context)).prefetch_related('accepted_findings')
-    # filters['accepted'] = [finding for ra in risk_acceptances for finding in ra.accepted_findings.all()]
+    # risk_acceptances = Risk_Acceptance.objects.filter(debt_engagement__in=Engagement.objects.filter(debt_context=debt_context)).prefetch_related('accepted_debt_items')
+    # filters['accepted'] = [debt_item for ra in risk_acceptances for debt_item in ra.accepted_debt_items.all()]
 
-    from dojo.finding.helper import ACCEPTED_FINDINGS_QUERY
-    filters['accepted'] = findings_qs.filter(ACCEPTED_FINDINGS_QUERY).filter(date__range=[start_date, end_date])
-    filters['verified'] = findings_qs.filter(date__range=[start_date, end_date],
+    from dojo.debt_item.helper import ACCEPTED_DEBT_ITEMS_QUERY
+    filters['accepted'] = debt_items_qs.filter(ACCEPTED_DEBT_ITEMS_QUERY).filter(date__range=[start_date, end_date])
+    filters['verified'] = debt_items_qs.filter(date__range=[start_date, end_date],
                                              false_p=False,
                                              active=True,
                                              verified=True,
                                              duplicate=False,
                                              out_of_scope=False).order_by("date")
-    filters['new_verified'] = findings_qs.filter(date__range=[week, end_date],
+    filters['new_verified'] = debt_items_qs.filter(date__range=[week, end_date],
                                                  false_p=False,
                                                  verified=True,
                                                  active=True,
                                                  duplicate=False,
                                                  out_of_scope=False).order_by("date")
-    filters['open'] = findings_qs.filter(date__range=[start_date, end_date],
+    filters['open'] = debt_items_qs.filter(date__range=[start_date, end_date],
                                          false_p=False,
                                          duplicate=False,
                                          out_of_scope=False,
                                          active=True,
                                          is_mitigated=False)
-    filters['inactive'] = findings_qs.filter(date__range=[start_date, end_date],
+    filters['inactive'] = debt_items_qs.filter(date__range=[start_date, end_date],
                                              duplicate=False,
                                              out_of_scope=False,
                                              active=False,
                                              is_mitigated=False)
-    filters['closed'] = findings_qs.filter(date__range=[start_date, end_date],
+    filters['closed'] = debt_items_qs.filter(date__range=[start_date, end_date],
                                            false_p=False,
                                            duplicate=False,
                                            out_of_scope=False,
                                            active=False,
                                            is_mitigated=True)
-    filters['false_positive'] = findings_qs.filter(date__range=[start_date, end_date],
+    filters['false_positive'] = debt_items_qs.filter(date__range=[start_date, end_date],
                                                    false_p=True,
                                                    duplicate=False,
                                                    out_of_scope=False)
-    filters['out_of_scope'] = findings_qs.filter(date__range=[start_date, end_date],
+    filters['out_of_scope'] = debt_items_qs.filter(date__range=[start_date, end_date],
                                                  false_p=False,
                                                  duplicate=False,
                                                  out_of_scope=True)
-    filters['all'] = findings_qs
-    filters['open_vulns'] = findings_qs.filter(
+    filters['all'] = debt_items_qs
+    filters['open_vulns'] = debt_items_qs.filter(
         false_p=False,
         duplicate=False,
         out_of_scope=False,
@@ -396,7 +396,7 @@ def finding_querys(request, debt_context):
         count=Count('cwe')
     )
 
-    filters['all_vulns'] = findings_qs.filter(
+    filters['all_vulns'] = debt_items_qs.filter(
         duplicate=False,
         cwe__isnull=False,
     ).order_by('cwe').values(
@@ -414,13 +414,13 @@ def finding_querys(request, debt_context):
 
 def endpoint_querys(request, debt_context):
     filters = dict()
-    endpoints_query = Endpoint_Status.objects.filter(finding__test__engagement__debt_context=debt_context,
-                                                     finding__severity__in=(
+    endpoints_query = Endpoint_Status.objects.filter(debt_item__debt_testdebt_engagement__debt_context=debt_context,
+                                                     debt_item__severity__in=(
                                                          'Critical', 'High', 'Medium', 'Low', 'Info')).prefetch_related(
-        'finding__test__engagement',
-        'finding__test__engagement__risk_acceptance',
-        'finding__risk_acceptance_set',
-        'finding__reporter').annotate(severity=F('finding__severity'))
+        'debt_item__debt_testdebt_engagement',
+        'debt_item__debt_testdebt_engagement__risk_acceptance',
+        'debt_item__risk_acceptance_set',
+        'debt_item__reporter').annotate(severity=F('debt_item__severity'))
     endpoints = MetricsEndpointFilter(request.GET, queryset=endpoints_query)
     endpoints_qs = queryset_check(endpoints)
     filters['form'] = endpoints.form
@@ -459,7 +459,7 @@ def endpoint_querys(request, debt_context):
                                                   out_of_scope=False).order_by("date")
     filters['open'] = endpoints_qs.filter(date__range=[start_date, end_date],
                                           mitigated=False,
-                                          finding__active=True)
+                                          debt_item__active=True)
     filters['inactive'] = endpoints_qs.filter(date__range=[start_date, end_date],
                                               mitigated=True)
     filters['closed'] = endpoints_qs.filter(date__range=[start_date, end_date],
@@ -473,19 +473,19 @@ def endpoint_querys(request, debt_context):
         false_positive=False,
         out_of_scope=False,
         mitigated=True,
-        finding__cwe__isnull=False,
-    ).order_by('finding__cwe').values(
-        'finding__cwe'
+        debt_item__cwe__isnull=False,
+    ).order_by('debt_item__cwe').values(
+        'debt_item__cwe'
     ).annotate(
-        count=Count('finding__cwe')
+        count=Count('debt_item__cwe')
     )
 
     filters['all_vulns'] = endpoints_qs.filter(
-        finding__cwe__isnull=False,
-    ).order_by('finding__cwe').values(
-        'finding__cwe'
+        debt_item__cwe__isnull=False,
+    ).order_by('debt_item__cwe').values(
+        'debt_item__cwe'
     ).annotate(
-        count=Count('finding__cwe')
+        count=Count('debt_item__cwe')
     )
 
     filters['start_date'] = start_date
@@ -501,15 +501,15 @@ def view_debt_context_metrics(request, pid):
     engs = Engagement.objects.filter(debt_context=debt_context, active=True)
     view = identify_view(request)
 
-    result = EngagementFilter(
+    result = DebtEngagementFilter(
         request.GET,
         queryset=Engagement.objects.filter(debt_context=debt_context, active=False).order_by('-target_end'))
 
     inactive_engs_page = get_page_items(request, result.qs, 10)
 
     filters = dict()
-    if view == 'Finding':
-        filters = finding_querys(request, debt_context)
+    if view == 'Debt_Item':
+        filters = debt_item_querys(request, debt_context)
     elif view == 'Endpoint':
         filters = endpoint_querys(request, debt_context)
 
@@ -517,8 +517,8 @@ def view_debt_context_metrics(request, pid):
     end_date = filters['end_date']
     week_date = filters['week']
 
-    tests = Test.objects.filter(engagement__debt_context=debt_context).prefetch_related('finding_set', 'test_type')
-    tests = tests.annotate(verified_finding_count=Count('finding__id', filter=Q(finding__verified=True)))
+    tests = Test.objects.filter(debt_engagement__debt_context=debt_context).prefetch_related('debt_item_set', 'test_type')
+    tests = tests.annotate(verified_debt_item_count=Count('debt_item__id', filter=Q(debt_item__verified=True)))
 
     open_vulnerabilities = filters['open_vulns']
     all_vulnerabilities = filters['all_vulns']
@@ -567,10 +567,10 @@ def view_debt_context_metrics(request, pid):
                 open_close_weekly[x] = {'closed': 0, 'open': 1, 'accepted': 0}
             open_close_weekly[x]['week'] = y
 
-        if view == 'Finding':
+        if view == 'Debt_Item':
             severity = v.severity
         elif view == 'Endpoint':
-            severity = v.finding.severity
+            severity = v.debt_item.severity
 
         if x in severity_weekly:
             if severity in severity_weekly[x]:
@@ -603,10 +603,10 @@ def view_debt_context_metrics(request, pid):
             open_objs_by_severity[v.severity] += 1
 
     for a in filters.get('accepted', None):
-        if view == 'Finding':
-            finding = a
+        if view == 'Debt_Item':
+            debt_item = a
         elif view == 'Endpoint':
-            finding = v.finding
+            debt_item = v.debt_item
         iso_cal = a.date.isocalendar()
         x = iso_to_gregorian(iso_cal[0], iso_cal[1], 1)
         y = x.strftime("<span class='small'>%m/%d<br/>%Y</span>")
@@ -624,9 +624,9 @@ def view_debt_context_metrics(request, pid):
     test_data = {}
     for t in tests:
         if t.test_type.name in test_data:
-            test_data[t.test_type.name] += t.verified_finding_count
+            test_data[t.test_type.name] += t.verified_debt_item_count
         else:
-            test_data[t.test_type.name] = t.verified_finding_count
+            test_data[t.test_type.name] = t.verified_debt_item_count
 
     debt_context_tab = Debt_Context_Tab(debt_context, title=_("debt_context"), tab="metrics")
 
@@ -676,21 +676,21 @@ def view_debt_context_metrics(request, pid):
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
 def async_burndown_metrics(request, pid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
-    open_findings_burndown = get_open_findings_burndown(debt_context)
+    open_debt_items_burndown = get_open_debt_items_burndown(debt_context)
 
     return JsonResponse({
-        'critical': open_findings_burndown.get('Critical', []),
-        'high': open_findings_burndown.get('High', []),
-        'medium': open_findings_burndown.get('Medium', []),
-        'low': open_findings_burndown.get('Low', []),
-        'info': open_findings_burndown.get('Info', []),
-        'max': open_findings_burndown.get('y_max', 0),
-        'min': open_findings_burndown.get('y_min', 0)
+        'critical': open_debt_items_burndown.get('Critical', []),
+        'high': open_debt_items_burndown.get('High', []),
+        'medium': open_debt_items_burndown.get('Medium', []),
+        'low': open_debt_items_burndown.get('Low', []),
+        'info': open_debt_items_burndown.get('Info', []),
+        'max': open_debt_items_burndown.get('y_max', 0),
+        'min': open_debt_items_burndown.get('y_min', 0)
     })
 
 
 @user_is_authorized(Debt_Context, Permissions.Engagement_View, 'pid')
-def view_engagements(request, pid):
+def view_debt_engagements(request, pid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
 
     default_page_num = 10
@@ -701,25 +701,25 @@ def view_engagements(request, pid):
     active_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='active')
     result_active_engs = get_page_items(request, active_engs_filter.qs, default_page_num, prefix="engs")
     # prefetch only after creating the filters to avoid https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
-    result_active_engs.object_list = prefetch_for_view_engagements(result_active_engs.object_list,
+    result_active_engs.object_list = prefetch_for_view_debt_engagements(result_active_engs.object_list,
                                                                    recent_test_day_count)
 
     # Engagements that are queued because they haven't started or paused
     engs = Engagement.objects.filter(~Q(status="In Progress"), debt_context=debt_context, active=True).order_by('-updated')
     queued_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='queued')
     result_queued_engs = get_page_items(request, queued_engs_filter.qs, default_page_num, prefix="queued_engs")
-    result_queued_engs.object_list = prefetch_for_view_engagements(result_queued_engs.object_list,
+    result_queued_engs.object_list = prefetch_for_view_debt_engagements(result_queued_engs.object_list,
                                                                    recent_test_day_count)
 
     # Cancelled or Completed Engagements
     engs = Engagement.objects.filter(debt_context=debt_context, active=False).order_by('-target_end')
     inactive_engs_filter = DebtContextEngagementFilter(request.GET, queryset=engs, prefix='closed')
     result_inactive_engs = get_page_items(request, inactive_engs_filter.qs, default_page_num, prefix="inactive_engs")
-    result_inactive_engs.object_list = prefetch_for_view_engagements(result_inactive_engs.object_list,
+    result_inactive_engs.object_list = prefetch_for_view_debt_engagements(result_inactive_engs.object_list,
                                                                      recent_test_day_count)
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("All Engagements"), tab="engagements")
-    return render(request, 'dojo/view_engagements.html', {
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("All Engagements"), tab="debt_engagements")
+    return render(request, 'dojo/view_debt_engagements.html', {
         'debt_context': debt_context,
         'debt_context_tab': debt_context_tab,
         'engs': result_active_engs,
@@ -735,14 +735,14 @@ def view_engagements(request, pid):
         'user': request.user})
 
 
-def prefetch_for_view_engagements(engagements, recent_test_day_count):
-    engagements = engagements.select_related(
+def prefetch_for_view_debt_engagements(debt_engagements, recent_test_day_count):
+    debt_engagements = debt_engagements.select_related(
         'lead'
     ).prefetch_related(
         Prefetch('test_set', queryset=Test.objects.filter(
             id__in=Subquery(
                 Test.objects.filter(
-                    engagement_id=OuterRef('engagement_id'),
+                    debt_engagement_id=OuterRef('debt_engagement_id'),
                     updated__gte=timezone.now() - timedelta(days=recent_test_day_count)
                 ).values_list('id', flat=True)
             ))
@@ -750,27 +750,27 @@ def prefetch_for_view_engagements(engagements, recent_test_day_count):
         'test_set__test_type',
     ).annotate(
         count_tests=Count('test', distinct=True),
-        count_findings_all=Count('test__finding__id'),
-        count_findings_open=Count('test__finding__id', filter=Q(test__finding__active=True)),
-        count_findings_open_verified=Count('test__finding__id',
-                                           filter=Q(test__finding__active=True) & Q(test__finding__verified=True)),
-        count_findings_close=Count('test__finding__id', filter=Q(test__finding__is_mitigated=True)),
-        count_findings_duplicate=Count('test__finding__id', filter=Q(test__finding__duplicate=True)),
-        count_findings_accepted=Count('test__finding__id', filter=Q(test__finding__risk_accepted=True)),
+        count_debt_items_all=Count('debt_test__debt_item__id'),
+        count_debt_items_open=Count('debt_test__debt_item__id', filter=Q(debt_test__debt_item__active=True)),
+        count_debt_items_open_verified=Count('debt_test__debt_item__id',
+                                           filter=Q(debt_test__debt_item__active=True) & Q(debt_test__debt_item__verified=True)),
+        count_debt_items_close=Count('debt_test__debt_item__id', filter=Q(debt_test__debt_item__is_mitigated=True)),
+        count_debt_items_duplicate=Count('debt_test__debt_item__id', filter=Q(debt_test__debt_item__duplicate=True)),
+        count_debt_items_accepted=Count('debt_test__debt_item__id', filter=Q(debt_test__debt_item__risk_accepted=True)),
     )
 
     if System_Settings.objects.get().enable_jira:
-        engagements = engagements.prefetch_related(
+        debt_engagements = debt_engagements.prefetch_related(
             'jira_project__jira_instance',
             'debt_context__jira_project_set__jira_instance',
         )
 
-    return engagements
+    return debt_engagements
 
 
 # Authorization is within the import_scan_results method
 def import_scan_results_debt_context(request, pid=None):
-    from dojo.engagement.views import import_scan_results
+    from dojo.debt_engagement.views import import_scan_results
     return import_scan_results(request, pid=pid)
 
 
@@ -846,7 +846,7 @@ def new_debt_context(request, ptid=None):
             if not error:
                 return HttpResponseRedirect(reverse('view_debt_context', args=(debt_context.id,)))
             else:
-                # engagement was saved, but JIRA errors, so goto edit_debt_context
+                # debt_engagement was saved, but JIRA errors, so goto edit_debt_context
                 return HttpResponseRedirect(reverse('edit_debt_context', args=(debt_context.id,)))
     else:
         if get_system_setting('enable_jira'):
@@ -1014,35 +1014,35 @@ def new_eng_for_app(request, pid, cicd=False):
         logger.debug('new_eng_for_app')
 
         if form.is_valid():
-            # first create the new engagement
-            engagement = form.save(commit=False)
-            engagement.threat_model = False
-            engagement.api_test = False
-            engagement.pen_test = False
-            engagement.check_list = False
-            engagement.debt_context = form.cleaned_data.get('debt_context')
-            if engagement.threat_model:
-                engagement.progress = 'threat_model'
+            # first create the new debt_engagement
+            debt_engagement = form.save(commit=False)
+            debt_engagement.threat_model = False
+            debt_engagement.api_test = False
+            debt_engagement.pen_test = False
+            debt_engagement.check_list = False
+            debt_engagement.debt_context = form.cleaned_data.get('debt_context')
+            if debt_engagement.threat_model:
+                debt_engagement.progress = 'threat_model'
             else:
-                engagement.progress = 'other'
+                debt_engagement.progress = 'other'
             if cicd:
-                engagement.engagement_type = 'CI/CD'
-                engagement.status = "In Progress"
-            engagement.active = True
+                debt_engagement.debt_engagement_type = 'CI/CD'
+                debt_engagement.status = "In Progress"
+            debt_engagement.active = True
 
-            engagement.save()
+            debt_engagement.save()
             form.save_m2m()
 
             logger.debug('new_eng_for_app: process jira coming')
 
-            # new engagement, so do not provide jira_project
+            # new debt_engagement, so do not provide jira_project
             success, jira_project_form = jira_helper.process_jira_project_form(request, instance=None,
-                                                                               engagement=engagement)
+                                                                               debt_engagement=debt_engagement)
             error = not success
 
             logger.debug('new_eng_for_app: process jira epic coming')
 
-            success, jira_epic_form = jira_helper.process_jira_epic_form(request, engagement=engagement)
+            success, jira_epic_form = jira_helper.process_jira_epic_form(request, debt_engagement=debt_engagement)
             error = error or not success
 
             messages.add_message(request,
@@ -1052,15 +1052,15 @@ def new_eng_for_app(request, pid, cicd=False):
 
             if not error:
                 if "_Add Tests" in request.POST:
-                    return HttpResponseRedirect(reverse('add_tests', args=(engagement.id,)))
+                    return HttpResponseRedirect(reverse('add_tests', args=(debt_engagement.id,)))
                 elif "_Import Scan Results" in request.POST:
-                    return HttpResponseRedirect(reverse('import_scan_results', args=(engagement.id,)))
+                    return HttpResponseRedirect(reverse('import_scan_results', args=(debt_engagement.id,)))
                 else:
-                    return HttpResponseRedirect(reverse('view_engagement', args=(engagement.id,)))
+                    return HttpResponseRedirect(reverse('view_debt_engagement', args=(debt_engagement.id,)))
             else:
-                # engagement was saved, but JIRA errors, so goto edit_engagement
+                # debt_engagement was saved, but JIRA errors, so goto edit_debt_engagement
                 logger.debug('new_eng_for_app: jira errors')
-                return HttpResponseRedirect(reverse('edit_engagement', args=(engagement.id,)))
+                return HttpResponseRedirect(reverse('edit_debt_engagement', args=(debt_engagement.id,)))
         else:
             logger.debug(form.errors)
     else:
@@ -1071,7 +1071,7 @@ def new_eng_for_app(request, pid, cicd=False):
         if get_system_setting('enable_jira'):
             jira_project = jira_helper.get_jira_project(debt_context)
             logger.debug('showing jira-project-form')
-            jira_project_form = JIRAProjectForm(target='engagement', debt_context=debt_context)
+            jira_project_form = JIRAProjectForm(target='debt_engagement', debt_context=debt_context)
             logger.debug('showing jira-epic-form')
             jira_epic_form = JIRAEngagementForm()
 
@@ -1080,7 +1080,7 @@ def new_eng_for_app(request, pid, cicd=False):
     else:
         title = _('New Interactive Engagement')
 
-    debt_context_tab = Debt_Context_Tab(Debt_Context, title=title, tab="engagements")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=title, tab="debt_engagements")
     return render(request, 'dojo/new_eng.html', {
         'form': form,
         'title': title,
@@ -1217,7 +1217,7 @@ def edit_meta_data(request, pid):
                    })
 
 
-class AdHocFindingView(View):
+class AdHocDebtItemView(View):
     def get_debt_context(self, debt_context_id: int):
         return get_object_or_404(Debt_Context, id=debt_context_id)
 
@@ -1225,7 +1225,7 @@ class AdHocFindingView(View):
         test_type, nil = Test_Type.objects.get_or_create(name=_("Pen Test"))
         return test_type
 
-    def get_engagement(self, debt_context: debt_context):
+    def get_debt_engagement(self, debt_context: debt_context):
         try:
             return Engagement.objects.get(debt_context=debt_context, name=_("Ad Hoc Engagement"))
         except Engagement.DoesNotExist:
@@ -1235,38 +1235,38 @@ class AdHocFindingView(View):
                 target_end=timezone.now(),
                 active=False, debt_context=debt_context)
 
-    def get_test(self, engagement: Engagement, test_type: Test_Type):
-        if test := Test.objects.filter(engagement=engagement).first():
+    def get_test(self, debt_engagement: Engagement, test_type: Test_Type):
+        if test := Test.objects.filter(debt_engagement=debt_engagement).first():
             return test
         else:
             return Test.objects.create(
-                engagement=engagement,
+                debt_engagement=debt_engagement,
                 test_type=test_type,
                 target_start=timezone.now(),
                 target_end=timezone.now())
 
     def create_nested_objects(self, debt_context: debt_context):
-        engagement = self.get_engagement(debt_context)
+        debt_engagement = self.get_debt_engagement(debt_context)
         test_type = self.get_test_type()
-        return self.get_test(engagement, test_type)
+        return self.get_test(debt_engagement, test_type)
 
     def get_initial_context(self, request: HttpRequest, test: Test):
-        # Get the finding form first since it is used in another place
-        finding_form = self.get_finding_form(request, test.engagement.debt_context)
-        debt_context_tab = Debt_Context_Tab(test.engagement.debt_context, title=_("Add Finding"), tab="engagements")
-        debt_context_tab.setEngagement(test.engagement)
+        # Get the debt_item form first since it is used in another place
+        debt_item_form = self.get_debt_item_form(request, test.debt_engagement.debt_context)
+        debt_context_tab = Debt_Context_Tab(test.debt_engagement.debt_context, title=_("Add Debt_Item"), tab="debt_engagements")
+        debt_context_tab.setEngagement(test.debt_engagement)
         return {
-            "form": finding_form,
+            "form": debt_item_form,
             "debt_context_tab": debt_context_tab,
             "temp": False,
             "tid": test.id,
-            "pid": test.engagement.debt_context.id,
+            "pid": test.debt_engagement.debt_context.id,
             "form_error": False,
-            "jform": self.get_jira_form(request, test, finding_form=finding_form),
+            "jform": self.get_jira_form(request, test, debt_item_form=debt_item_form),
             "gform": self.get_github_form(request, test),
         }
 
-    def get_finding_form(self, request: HttpRequest, debt_context: debt_context):
+    def get_debt_item_form(self, request: HttpRequest, debt_context: debt_context):
         # Set up the args for the form
         args = [request.POST] if request.method == "POST" else []
         # Set the initial form args
@@ -1279,9 +1279,9 @@ class AdHocFindingView(View):
         if request.method == "POST":
             kwargs.pop("initial")
 
-        return AdHocFindingForm(*args, **kwargs)
+        return AdHocDebtItemForm(*args, **kwargs)
 
-    def get_jira_form(self, request: HttpRequest, test: Test, finding_form: AdHocFindingForm = None):
+    def get_jira_form(self, request: HttpRequest, test: Test, debt_item_form: AdHocDebtItemForm = None):
         # Determine if jira should be used
         if (jira_project := jira_helper.get_jira_project(test)) is not None:
             # Set up the args for the form
@@ -1291,17 +1291,17 @@ class AdHocFindingView(View):
                 "push_all": jira_helper.is_push_all_issues(test),
                 "prefix": "jiraform",
                 "jira_project": jira_project,
-                "finding_form": finding_form,
+                "debt_item_form": debt_item_form,
             }
 
-            return JIRAFindingForm(*args, **kwargs)
+            return JIRADebtItemForm(*args, **kwargs)
         return None
 
     def get_github_form(self, request: HttpRequest, test: Test):
         # Determine if github should be used
         if get_system_setting("enable_github"):
             # Ensure there is a github conf correctly configured for the debt_context
-            config_present = GITHUB_PKey.objects.filter(debt_context=test.engagement.debt_context)
+            config_present = GITHUB_PKey.objects.filter(debt_context=test.debt_engagement.debt_context)
             if config_present := config_present.exclude(git_conf_id=None):
                 # Set up the args for the form
                 args = [request.POST] if request.method == "POST" else []
@@ -1311,7 +1311,7 @@ class AdHocFindingView(View):
                     "prefix": "githubform"
                 }
 
-                return GITHUBFindingForm(*args, **kwargs)
+                return GITHUBDebtItemForm(*args, **kwargs)
         return None
 
     def validate_status_change(self, request: HttpRequest, context: dict):
@@ -1322,11 +1322,11 @@ class AdHocFindingView(View):
             closing_disabled = Note_Type.objects.filter(is_mandatory=True, is_active=True).count()
             if closing_disabled != 0:
                 error_inactive = ValidationError(
-                    _('Can not set a finding as inactive without adding all mandatory notes'),
+                    _('Can not set a debt_item as inactive without adding all mandatory notes'),
                     code='inactive_without_mandatory_notes'
                 )
                 error_false_p = ValidationError(
-                    _('Can not set a finding as false positive without adding all mandatory notes'),
+                    _('Can not set a debt_item as false positive without adding all mandatory notes'),
                     code='false_p_without_mandatory_notes'
                 )
                 if context["form"]['active'].value() is False:
@@ -1336,33 +1336,33 @@ class AdHocFindingView(View):
                 messages.add_message(
                     request,
                     messages.ERROR,
-                    _('Can not set a finding as inactive or false positive without adding all mandatory notes'),
+                    _('Can not set a debt_item as inactive or false positive without adding all mandatory notes'),
                     extra_tags='alert-danger')
 
         return request
 
-    def process_finding_form(self, request: HttpRequest, test: Test, context: dict):
-        finding = None
+    def process_debt_item_form(self, request: HttpRequest, test: Test, context: dict):
+        debt_item = None
         if context["form"].is_valid():
-            finding = context["form"].save(commit=False)
-            finding.test = test
-            finding.reporter = request.user
-            finding.numerical_severity = Finding.get_numerical_severity(finding.severity)
-            finding.tags = context["form"].cleaned_data['tags']
-            finding.save()
+            debt_item = context["form"].save(commit=False)
+            debt_item.test = test
+            debt_item.reporter = request.user
+            debt_item.numerical_severity = Debt_Item.get_numerical_severity(debt_item.severity)
+            debt_item.tags = context["form"].cleaned_data['tags']
+            debt_item.save()
             # Save and add new endpoints
-            finding_helper.add_endpoints(finding, context["form"])
-            # Save the finding at the end and return
-            finding.save()
+            debt_item_helper.add_endpoints(debt_item, context["form"])
+            # Save the debt_item at the end and return
+            debt_item.save()
 
-            return finding, request, True
+            return debt_item, request, True
         else:
             add_error_message_to_response("The form has errors, please correct them below.")
             add_field_errors_to_response(context["form"])
 
-        return finding, request, False
+        return debt_item, request, False
 
-    def process_jira_form(self, request: HttpRequest, finding: Finding, context: dict):
+    def process_jira_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         # Capture case if the jira not being enabled
         if context["jform"] is None:
             return request, True, False
@@ -1370,30 +1370,30 @@ class AdHocFindingView(View):
         if context["jform"] and context["jform"].is_valid():
             # Push to Jira?
             logger.debug('jira form valid')
-            push_to_jira = jira_helper.is_push_all_issues(finding) or context["jform"].cleaned_data.get('push_to_jira')
+            push_to_jira = jira_helper.is_push_all_issues(debt_item) or context["jform"].cleaned_data.get('push_to_jira')
             jira_message = None
             # if the jira issue key was changed, update database
             new_jira_issue_key = context["jform"].cleaned_data.get('jira_issue')
-            if finding.has_jira_issue:
-                jira_issue = finding.jira_issue
+            if debt_item.has_jira_issue:
+                jira_issue = debt_item.jira_issue
                 # everything in DD around JIRA integration is based on the internal id of the issue in JIRA
                 # instead of on the public jira issue key.
                 # I have no idea why, but it means we have to retrieve the issue from JIRA to get the internal JIRA id.
                 # we can assume the issue exist, which is already checked in the validation of the jform
                 if not new_jira_issue_key:
-                    jira_helper.finding_unlink_jira(request, finding)
+                    jira_helper.debt_item_unlink_jira(request, debt_item)
                     jira_message = 'Link to JIRA issue removed successfully.'
 
-                elif new_jira_issue_key != finding.jira_issue.jira_key:
-                    jira_helper.finding_unlink_jira(request, finding)
-                    jira_helper.finding_link_jira(request, finding, new_jira_issue_key)
+                elif new_jira_issue_key != debt_item.jira_issue.jira_key:
+                    jira_helper.debt_item_unlink_jira(request, debt_item)
+                    jira_helper.debt_item_link_jira(request, debt_item, new_jira_issue_key)
                     jira_message = 'Changed JIRA link successfully.'
             else:
-                logger.debug('finding has no jira issue yet')
+                logger.debug('debt_item has no jira issue yet')
                 if new_jira_issue_key:
                     logger.debug(
-                        'finding has no jira issue yet, but jira issue specified in request. trying to link.')
-                    jira_helper.finding_link_jira(request, finding, new_jira_issue_key)
+                        'debt_item has no jira issue yet, but jira issue specified in request. trying to link.')
+                    jira_helper.debt_item_link_jira(request, debt_item, new_jira_issue_key)
                     jira_message = 'Linked a JIRA issue successfully.'
             # Determine if a message should be added
             if jira_message:
@@ -1407,12 +1407,12 @@ class AdHocFindingView(View):
 
         return request, False, False
 
-    def process_github_form(self, request: HttpRequest, finding: Finding, context: dict):
+    def process_github_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         if "githubform-push_to_github" not in request.POST:
             return request, True
 
         if context["gform"].is_valid():
-            add_external_issue(finding, 'github')
+            add_external_issue(debt_item, 'github')
 
             return request, True
         else:
@@ -1423,27 +1423,27 @@ class AdHocFindingView(View):
     def process_forms(self, request: HttpRequest, test: Test, context: dict):
         form_success_list = []
         # Set vars for the completed forms
-        # Validate finding mitigation
+        # Validate debt_item mitigation
         request = self.validate_status_change(request, context)
         # Check the validity of the form overall
-        finding, request, success = self.process_finding_form(request, test, context)
+        debt_item, request, success = self.process_debt_item_form(request, test, context)
         form_success_list.append(success)
-        request, success, push_to_jira = self.process_jira_form(request, finding, context)
+        request, success, push_to_jira = self.process_jira_form(request, debt_item, context)
         form_success_list.append(success)
-        request, success = self.process_github_form(request, finding, context)
+        request, success = self.process_github_form(request, debt_item, context)
         form_success_list.append(success)
         # Determine if all forms were successful
         all_forms_valid = all(form_success_list)
         # Check the validity of all the forms
         if all_forms_valid:
-            # if we're removing the "duplicate" in the edit finding screen
-            finding_helper.save_vulnerability_ids(finding, context["form"].cleaned_data["vulnerability_ids"].split())
+            # if we're removing the "duplicate" in the edit debt_item screen
+            debt_item_helper.save_vulnerability_ids(debt_item, context["form"].cleaned_data["vulnerability_ids"].split())
             # Push things to jira if needed
-            finding.save(push_to_jira=push_to_jira)
+            debt_item.save(push_to_jira=push_to_jira)
             # Save the burp req resp
             if "request" in context["form"].cleaned_data or "response" in context["form"].cleaned_data:
                 burp_rr = BurpRawRequestResponse(
-                    finding=finding,
+                    debt_item=debt_item,
                     burpRequestBase64=base64.b64encode(context["form"].cleaned_data["request"].encode()),
                     burpResponseBase64=base64.b64encode(context["form"].cleaned_data["response"].encode()),
                 )
@@ -1453,19 +1453,19 @@ class AdHocFindingView(View):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                _('Finding added successfully.'),
+                _('Debt_Item added successfully.'),
                 extra_tags='alert-success')
 
-        return finding, request, all_forms_valid
+        return debt_item, request, all_forms_valid
 
     def get_template(self):
-        return "dojo/ad_hoc_findings.html"
+        return "dojo/ad_hoc_debt_items.html"
 
     def get(self, request: HttpRequest, debt_context_id: int):
         # Get the initial objects
         debt_context = self.get_debt_context(debt_context_id)
         # Make sure the user is authorized
-        user_has_permission_or_403(request.user, debt_context, Permissions.Finding_Add)
+        user_has_permission_or_403(request.user, debt_context, Permissions.Debt_Item_Add)
         # Create the necessary nested objects
         test = self.create_nested_objects(debt_context)
         # Set up the initial context
@@ -1477,7 +1477,7 @@ class AdHocFindingView(View):
         # Get the initial objects
         debt_context = self.get_debt_context(debt_context_id)
         # Make sure the user is authorized
-        user_has_permission_or_403(request.user, debt_context, Permissions.Finding_Add)
+        user_has_permission_or_403(request.user, debt_context, Permissions.Debt_Item_Add)
         # Create the necessary nested objects
         test = self.create_nested_objects(debt_context)
         # Set up the initial context
@@ -1489,7 +1489,7 @@ class AdHocFindingView(View):
             if '_Finished' in request.POST:
                 return HttpResponseRedirect(reverse('view_test', args=(test.id,)))
             else:
-                return HttpResponseRedirect(reverse('add_findings', args=(test.id,)))
+                return HttpResponseRedirect(reverse('add_debt_items', args=(test.id,)))
         else:
             context["form_error"] = True
         # Render the form
@@ -1497,7 +1497,7 @@ class AdHocFindingView(View):
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_View, 'pid')
-def engagement_presets(request, pid):
+def debt_engagement_presets(request, pid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     presets = Engagement_Presets.objects.filter(debt_context=debt_context).all()
 
@@ -1510,7 +1510,7 @@ def engagement_presets(request, pid):
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
-def edit_engagement_presets(request, pid, eid):
+def edit_debt_engagement_presets(request, pid, eid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
 
@@ -1525,7 +1525,7 @@ def edit_engagement_presets(request, pid, eid):
                 messages.SUCCESS,
                 _('Engagement Preset Successfully Updated.'),
                 extra_tags='alert-success')
-            return HttpResponseRedirect(reverse('engagement_presets', args=(pid,)))
+            return HttpResponseRedirect(reverse('debt_engagement_presets', args=(pid,)))
     else:
         tform = EngagementPresetsForm(instance=preset)
 
@@ -1536,7 +1536,7 @@ def edit_engagement_presets(request, pid, eid):
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
-def add_engagement_presets(request, pid):
+def add_debt_engagement_presets(request, pid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
         tform = EngagementPresetsForm(request.POST)
@@ -1550,7 +1550,7 @@ def add_engagement_presets(request, pid):
                 messages.SUCCESS,
                 _('Engagement Preset Successfully Created.'),
                 extra_tags='alert-success')
-            return HttpResponseRedirect(reverse('engagement_presets', args=(pid,)))
+            return HttpResponseRedirect(reverse('debt_engagement_presets', args=(pid,)))
     else:
         tform = EngagementPresetsForm()
 
@@ -1559,7 +1559,7 @@ def add_engagement_presets(request, pid):
 
 
 @user_is_authorized(Debt_Context, Permissions.Debt_Context_Edit, 'pid')
-def delete_engagement_presets(request, pid, eid):
+def delete_debt_engagement_presets(request, pid, eid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
     form = DeleteEngagementPresetsForm(instance=preset)
@@ -1571,9 +1571,9 @@ def delete_engagement_presets(request, pid, eid):
                 preset.delete()
                 messages.add_message(request,
                                      messages.SUCCESS,
-                                     _('Engagement presets and engagement relationships removed.'),
+                                     _('Engagement presets and debt_engagement relationships removed.'),
                                      extra_tags='alert-success')
-                return HttpResponseRedirect(reverse('engagement_presets', args=(pid,)))
+                return HttpResponseRedirect(reverse('debt_engagement_presets', args=(pid,)))
 
     collector = NestedObjects(using=DEFAULT_DB_ALIAS)
     collector.collect([preset])
