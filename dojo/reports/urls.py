@@ -20,6 +20,8 @@ urlpatterns = [
         name='endpoint_host_report'),
     re_path(r'^product/report$',
         views.product_findings_report, name='product_findings_report'),
+    re_path(r'^debt_context/report$',
+            views.debt_context_debt_items_report, name='debt_context_debt_items_report'),
     re_path(r'^reports/cover$',
         views.report_cover_page, name='report_cover_page'),
     re_path(r'^reports/builder$',

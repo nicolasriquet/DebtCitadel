@@ -421,6 +421,34 @@ class System_Settings(models.Model):
         verbose_name=_('Enable Product Tag Inheritance'),
         help_text=_("Enables product tag inheritance globally for all products. Any tags added on a product will automatically be added to all Engagements, Tests, and Findings"))
 
+    enable_debt_context_grade = models.BooleanField(default=False, verbose_name=_('Enable Debt_Context Grading'), help_text=_("Displays a grade letter next to a debt_context to show the overall health."))
+    debt_context_grade = models.CharField(max_length=800, blank=True)
+    debt_context_grade_a = models.IntegerField(default=90,
+                                               verbose_name=_('Grade A'),
+                                               help_text=_("Percentage score for an "
+                                                           "'A' >="))
+    debt_context_grade_b = models.IntegerField(default=80,
+                                               verbose_name=_('Grade B'),
+                                               help_text=_("Percentage score for a "
+                                                           "'B' >="))
+    debt_context_grade_c = models.IntegerField(default=70,
+                                               verbose_name=_('Grade C'),
+                                               help_text=_("Percentage score for a "
+                                                           "'C' >="))
+    debt_context_grade_d = models.IntegerField(default=60,
+                                               verbose_name=_('Grade D'),
+                                               help_text=_("Percentage score for a "
+                                                           "'D' >="))
+    debt_context_grade_f = models.IntegerField(default=59,
+                                               verbose_name=_('Grade F'),
+                                               help_text=_("Percentage score for an "
+                                                           "'F' <="))
+    enable_debt_context_tag_inheritance = models.BooleanField(
+        default=False,
+        blank=False,
+        verbose_name=_('Enable Debt_Context Tag Inheritance'),
+        help_text=_("Enables debt_context tag inheritance globally for all debt_contexts. Any tags added on a debt_context will automatically be added to all Engagements, Tests, and Findings"))
+
     enable_benchmark = models.BooleanField(
         default=True,
         blank=False,
@@ -586,15 +614,16 @@ class System_Settings(models.Model):
 
 class SystemSettingsFormAdmin(forms.ModelForm):
     product_grade = forms.CharField(widget=forms.Textarea)
+    debt_context_grade = forms.CharField(widget=forms.Textarea)
 
     class Meta:
         model = System_Settings
-        fields = ['product_grade']
+        fields = ['product_grade', 'debt_context_grade']
 
 
 class System_SettingsAdmin(admin.ModelAdmin):
     form = SystemSettingsFormAdmin
-    fields = ('product_grade',)
+    fields = ('product_grade', 'debt_context_grade')
 
 
 def get_current_date():

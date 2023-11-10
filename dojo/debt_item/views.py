@@ -101,7 +101,7 @@ from dojo.utils import (
     get_system_setting,
     apply_cwe_to_template,
     Product_Tab,
-    calculate_grade,
+    debt_calculate_grade,
     redirect_to_return_url_or_else,
     get_return_url,
     add_external_issue,
@@ -134,7 +134,7 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
     prefetched_debt_items = debt_items
     if isinstance(
         debt_items, QuerySet
-    ):  # old code can arrive here with prods being a list because the query was already executed
+    ):  # old code can arrive here with debt_contexts being a list because the query was already executed
         prefetched_debt_items = prefetched_debt_items.prefetch_related("reporter")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "jira_issue__jira_project__jira_instance"
@@ -144,7 +144,7 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
             "test__engagement__jira_project__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__engagement__product__jira_project_set__jira_instance"
+            "test__engagement__debt_context__jira_project_set__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("found_by")
 
@@ -197,10 +197,10 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_item_group_set")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__engagement__product__members"
+            "test__engagement__debt_context__members"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__engagement__product__prod_type__members"
+            "test__engagement__debt_context__debt_context_type__members"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "vulnerability_id_set"
@@ -215,7 +215,7 @@ def prefetch_for_similar_debt_items(debt_items):
     prefetched_debt_items = debt_items
     if isinstance(
         debt_items, QuerySet
-    ):  # old code can arrive here with prods being a list because the query was already executed
+    ):  # old code can arrive here with debt_contexts being a list because the query was already executed
         prefetched_debt_items = prefetched_debt_items.prefetch_related("reporter")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "jira_issue__jira_project__jira_instance"
@@ -225,7 +225,7 @@ def prefetch_for_similar_debt_items(debt_items):
             "test__engagement__jira_project__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__engagement__product__jira_project_set__jira_instance"
+            "test__engagement__debt_context__jira_project_set__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("found_by")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
@@ -264,14 +264,14 @@ class BaseListdebt_items:
     def __init__(
         self,
         filter_name: str = "All",
-        product_id: int = None,
+        debt_context_id: int = None,
         engagement_id: int = None,
         test_id: int = None,
         order_by: str = "numerical_severity",
         prefetch_type: str = "all",
     ):
         self.filter_name = filter_name
-        self.product_id = product_id
+        self.debt_context_id = debt_context_id
         self.engagement_id = engagement_id
         self.test_id = test_id
         self.order_by = order_by
@@ -292,10 +292,10 @@ class BaseListdebt_items:
             self.prefetch_type = "all"
         return self.prefetch_type
 
-    def get_product_id(self):
-        if not hasattr(self, "product_id"):
-            self.product_id = None
-        return self.product_id
+    def get_debt_context_id(self):
+        if not hasattr(self, "debt_context_id"):
+            self.debt_context_id = None
+        return self.debt_context_id
 
     def get_engagement_id(self):
         if not hasattr(self, "engagement_id"):
@@ -308,8 +308,8 @@ class BaseListdebt_items:
         return self.test_id
 
     def filter_debt_items_by_object(self, debt_items: QuerySet[Debt_Item]):
-        if product_id := self.get_product_id():
-            return debt_items.filter(test__engagement__product__id=product_id)
+        if debt_context_id := self.get_debt_context_id():
+            return debt_items.filter(test__engagement__debt_context__id=debt_context_id)
         elif engagement_id := self.get_engagement_id():
             return debt_items.filter(test__engagement=engagement_id)
         elif test_id := self.get_test_id():
@@ -342,7 +342,7 @@ class BaseListdebt_items:
         # Set the initial form args
         kwargs = {
             "user": request.user,
-            "pid": self.get_product_id(),
+            "pid": self.get_debt_context_id(),
         }
 
         return (
@@ -367,31 +367,31 @@ class Listdebt_items(View, BaseListdebt_items):
     def get_initial_context(self, request: HttpRequest):
         context = {
             "filter_name": self.get_filter_name(),
-            "show_product_column": True,
+            "show_debt_context_column": True,
             "custom_breadcrumb": None,
-            "product_tab": None,
+            "debt_context_tab": None,
             "jira_project": None,
             "github_config": None,
             "bulk_edit_form": DebtItemBulkUpdateForm(request.GET),
             "title_words": get_words_for_field(Debt_Item, "title"),
             "component_words": get_words_for_field(Debt_Item, "component_name"),
         }
-        # Look to see if the product was used
-        if product_id := self.get_product_id():
-            product = get_object_or_404(Product, id=product_id)
-            user_has_permission_or_403(request.user, product, Permissions.Product_View)
-            context["show_product_column"] = False
-            context["product_tab"] = Product_Tab(product, title="debt_items", tab="debt_items")
-            context["jira_project"] = jira_helper.get_jira_project(product)
-            if github_config := GITHUB_PKey.objects.filter(product=product).first():
+        # Look to see if the debt_context was used
+        if debt_context_id := self.get_debt_context_id():
+            debt_context = get_object_or_404(Product, id=debt_context_id)
+            user_has_permission_or_403(request.user, debt_context, Permissions.Product_View)
+            context["show_debt_context_column"] = False
+            context["debt_context_tab"] = Product_Tab(debt_context, title="debt_items", tab="debt_items")
+            context["jira_project"] = jira_helper.get_jira_project(debt_context)
+            if github_config := GITHUB_PKey.objects.filter(debt_context=debt_context).first():
                 context["github_config"] = github_config.git_conf_id
         elif engagement_id := self.get_engagement_id():
             engagement = get_object_or_404(Engagement, id=engagement_id)
             user_has_permission_or_403(request.user, engagement, Permissions.Engagement_View)
-            context["show_product_column"] = False
-            context["product_tab"] = Product_Tab(engagement.product, title=engagement.name, tab="engagements")
+            context["show_debt_context_column"] = False
+            context["debt_context_tab"] = Product_Tab(engagement.debt_context, title=engagement.name, tab="engagements")
             context["jira_project"] = jira_helper.get_jira_project(engagement)
-            if github_config := GITHUB_PKey.objects.filter(product__engagement=engagement).first():
+            if github_config := GITHUB_PKey.objects.filter(debt_context__engagement=engagement).first():
                 context["github_config"] = github_config.git_conf_id
 
         return request, context
@@ -413,15 +413,15 @@ class Listdebt_items(View, BaseListdebt_items):
                         (endpoint, reverse("view_endpoint", args=(endpoint.id,))),
                     ]
                 )
-        # Show the "All debt_items" breadcrumb if nothing is coming from the product or engagement
-        elif not self.get_engagement_id() and not self.get_product_id():
+        # Show the "All debt_items" breadcrumb if nothing is coming from the debt_context or engagement
+        elif not self.get_engagement_id() and not self.get_debt_context_id():
             add_breadcrumb(title="debt_items", top_level=not len(request.GET), request=request)
 
         return request, context
 
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
-        # Store the product and engagement ids
-        self.product_id = product_id
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
+        # Store the debt_context and engagement ids
+        self.debt_context_id = debt_context_id
         self.engagement_id = engagement_id
         # Get the initial context
         request, context = self.get_initial_context(request)
@@ -445,46 +445,46 @@ class Listdebt_items(View, BaseListdebt_items):
 
 
 class ListOpendebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "Open"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class ListVerifieddebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "Verified"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class ListOutOfScopedebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "Out of Scope"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class ListFalsePositivedebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "False Positive"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class ListInactivedebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "Inactive"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class ListAccepteddebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "Accepted"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class ListCloseddebt_items(Listdebt_items):
-    def get(self, request: HttpRequest, product_id: int = None, engagement_id: int = None):
+    def get(self, request: HttpRequest, debt_context_id: int = None, engagement_id: int = None):
         self.filter_name = "Closed"
         self.order_by = "-mitigated"
-        return super().get(request, product_id=product_id, engagement_id=engagement_id)
+        return super().get(request, debt_context_id=debt_context_id, engagement_id=engagement_id)
 
 
 class Viewdebt_item(View):
@@ -728,8 +728,8 @@ class Viewdebt_item(View):
             "files": debt_item.files.all(),
             "note_type_activation": note_type_activation,
             "available_note_types": available_note_types,
-            "product_tab": Product_Tab(
-                debt_item.test.engagement.product, title="View debt_item", tab="debt_items"
+            "debt_context_tab": Product_Tab(
+                debt_item.test.engagement.debt_context, title="View debt_item", tab="debt_items"
             )
         }
         # Set the form using the context, and then update the context
@@ -833,8 +833,8 @@ class Editdebt_item(View):
     def get_github_form(self, request: HttpRequest, debt_item: Debt_Item):
         # Determine if github should be used
         if get_system_setting("enable_github"):
-            # Ensure there is a github conf correctly configured for the product
-            config_present = GITHUB_PKey.objects.filter(product=debt_item.test.engagement.product)
+            # Ensure there is a github conf correctly configured for the debt_context
+            config_present = GITHUB_PKey.objects.filter(debt_context=debt_item.test.engagement.debt_context)
             if config_present := config_present.exclude(git_conf_id=None):
                 # Set up the args for the form
                 args = [request.POST] if request.method == "POST" else []
@@ -856,8 +856,8 @@ class Editdebt_item(View):
             "jform": self.get_jira_form(request, debt_item, debt_item_form=debt_item_form),
             "gform": self.get_github_form(request, debt_item),
             "return_url": get_return_url(request),
-            "product_tab": Product_Tab(
-                debt_item.test.engagement.product, title="Edit debt_item", tab="debt_items"
+            "debt_context_tab": Product_Tab(
+                debt_item.test.engagement.debt_context, title="Edit debt_item", tab="debt_items"
             )
         }
 
@@ -931,7 +931,7 @@ class Editdebt_item(View):
                 logger.debug('FALSE_POSITIVE_HISTORY: Reactivating existing debt_items based on: %s', debt_item)
 
                 existing_fp_debt_items = match_debt_item_to_existing_debt_items(
-                    debt_item, product=debt_item.test.engagement.product
+                    debt_item, debt_context=debt_item.test.engagement.debt_context
                 ).filter(false_p=True)
 
                 for fp in existing_fp_debt_items:
@@ -973,7 +973,7 @@ class Editdebt_item(View):
                 debt_item_helper.update_debt_item_group(new_debt_item, debt_item_group)
             # Handle risk exception related things
             if "risk_accepted" in context["form"].cleaned_data and context["form"]["risk_accepted"].value():
-                if new_debt_item.test.engagement.product.enable_simple_risk_acceptance:
+                if new_debt_item.test.engagement.debt_context.enable_simple_risk_acceptance:
                     ra_helper.simple_risk_accept(new_debt_item, perform_save=False)
             else:
                 if new_debt_item.risk_accepted:
@@ -1145,10 +1145,10 @@ class Deletedebt_item(View):
 
     def process_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         if context["form"].is_valid():
-            product = debt_item.test.engagement.product
+            debt_context = debt_item.test.engagement.debt_context
             debt_item.delete()
-            # Update the grade of the product async
-            calculate_grade(product)
+            # Update the grade of the debt_context async
+            debt_calculate_grade(debt_context)
             # Add a message to the request that the debt_item was successfully deleted
             messages.add_message(
                 request,
@@ -1161,7 +1161,7 @@ class Deletedebt_item(View):
                 event="other",
                 title=f"Deletion of {debt_item.title}",
                 description=f'The debt_item "{debt_item.title}" was deleted by {request.user}',
-                product=product,
+                debt_context=debt_context,
                 url=request.build_absolute_uri(reverse("all_debt_items")),
                 recipients=[debt_item.test.engagement.lead],
                 icon="exclamation-triangle",
@@ -1291,8 +1291,8 @@ def close_debt_item(request, fid):
                     reverse("close_debt_item", args=(debt_item.id,))
                 )
 
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product, title="Close", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context, title="Close", tab="debt_items"
     )
 
     return render(
@@ -1300,7 +1300,7 @@ def close_debt_item(request, fid):
         "dojo/close_debt_item.html",
         {
             "debt_item": debt_item,
-            "product_tab": product_tab,
+            "debt_context_tab": debt_context_tab,
             "active_tab": "debt_items",
             "user": request.user,
             "form": form,
@@ -1378,8 +1378,8 @@ def defect_debt_item_review(request, fid):
     else:
         form = DefectDebtItemForm()
 
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product, title="Jira Status Review", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context, title="Jira Status Review", tab="debt_items"
     )
 
     return render(
@@ -1387,7 +1387,7 @@ def defect_debt_item_review(request, fid):
         "dojo/defect_debt_item_review.html",
         {
             "debt_item": debt_item,
-            "product_tab": product_tab,
+            "debt_context_tab": debt_context_tab,
             "user": request.user,
             "form": form,
         },
@@ -1479,7 +1479,7 @@ def apply_template_cwe(request, fid):
 @user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def copy_debt_item(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
-    product = debt_item.test.engagement.product
+    debt_context = debt_item.test.engagement.debt_context
     tests = get_authorized_tests(Permissions.Test_Edit).filter(
         engagement=debt_item.test.engagement
     )
@@ -1489,9 +1489,9 @@ def copy_debt_item(request, fid):
         form = CopyDebtItemForm(request.POST, tests=tests)
         if form.is_valid():
             test = form.cleaned_data.get("test")
-            product = debt_item.test.engagement.product
+            debt_context = debt_item.test.engagement.debt_context
             debt_item_copy = debt_item.copy(test=test)
-            calculate_grade(product)
+            debt_calculate_grade(debt_context)
             messages.add_message(
                 request,
                 messages.SUCCESS,
@@ -1503,7 +1503,7 @@ def copy_debt_item(request, fid):
                 title="Copying of %s" % debt_item.title,
                 description='The debt_item "%s" was copied by %s to %s'
                 % (debt_item.title, request.user, test.title),
-                product=product,
+                debt_context=debt_context,
                 url=request.build_absolute_uri(
                     reverse("copy_debt_item", args=(debt_item_copy.id,))
                 ),
@@ -1521,7 +1521,7 @@ def copy_debt_item(request, fid):
                 extra_tags="alert-danger",
             )
 
-    product_tab = Product_Tab(product, title="Copy debt_item", tab="debt_items")
+    debt_context_tab = Product_Tab(debt_context, title="Copy debt_item", tab="debt_items")
     return render(
         request,
         "dojo/copy_object.html",
@@ -1529,7 +1529,7 @@ def copy_debt_item(request, fid):
             "source": debt_item,
             "source_label": "debt_item",
             "destination_label": "Test",
-            "product_tab": product_tab,
+            "debt_context_tab": debt_context_tab,
             "form": form,
         },
     )
@@ -1559,8 +1559,8 @@ def remediation_date(request, fid):
     else:
         form = EditPlannedRemediationDateDebtItemForm(debt_item=debt_item)
 
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product,
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context,
         title="Planned Remediation Date",
         tab="debt_items",
     )
@@ -1568,7 +1568,7 @@ def remediation_date(request, fid):
     return render(
         request,
         "dojo/remediation_date.html",
-        {"debt_item": debt_item, "product_tab": product_tab, "user": user, "form": form},
+        {"debt_item": debt_item, "debt_context_tab": debt_context_tab, "user": user, "form": form},
     )
 
 
@@ -1587,7 +1587,7 @@ def touch_debt_item(request, fid):
 def simple_risk_accept(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
 
-    if not debt_item.test.engagement.product.enable_simple_risk_acceptance:
+    if not debt_item.test.engagement.debt_context.enable_simple_risk_acceptance:
         raise PermissionDenied()
 
     ra_helper.simple_risk_accept(debt_item)
@@ -1700,14 +1700,14 @@ def request_debt_item_review(request, fid):
             )
             return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product, title="Review debt_item", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context, title="Review debt_item", tab="debt_items"
     )
 
     return render(
         request,
         "dojo/review_debt_item.html",
-        {"debt_item": debt_item, "product_tab": product_tab, "user": user, "form": form},
+        {"debt_item": debt_item, "debt_context_tab": debt_context_tab, "user": user, "form": form},
     )
 
 
@@ -1776,14 +1776,14 @@ def clear_debt_item_review(request, fid):
     else:
         form = ClearDebtItemReviewForm(instance=debt_item)
 
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product, title="Clear debt_item Review", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context, title="Clear debt_item Review", tab="debt_items"
     )
 
     return render(
         request,
         "dojo/clear_debt_item_review.html",
-        {"debt_item": debt_item, "product_tab": product_tab, "user": user, "form": form},
+        {"debt_item": debt_item, "debt_context_tab": debt_context_tab, "user": user, "form": form},
     )
 
 
@@ -1869,15 +1869,15 @@ def find_template_to_apply(request, fid):
 
     # just query all templates as this weird ordering above otherwise breaks Django ORM
     title_words = get_words_for_field(Debt_Item_Template, "title")
-    product_tab = Product_Tab(
-        test.engagement.product, title="Apply Template to debt_item", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        test.engagement.debt_context, title="Apply Template to debt_item", tab="debt_items"
     )
     return render(
         request,
         "dojo/templates.html",
         {
             "templates": paged_templates,
-            "product_tab": product_tab,
+            "debt_context_tab": debt_context_tab,
             "filtered": templates,
             "title_words": title_words,
             "tid": test.id,
@@ -1898,8 +1898,8 @@ def choose_debt_item_template_options(request, tid, fid):
     data["vulnerability_ids"] = "\n".join(debt_item.vulnerability_ids)
 
     form = ApplyDebtItemTemplateForm(data=data, template=template)
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product,
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context,
         title="debt_item Template Options",
         tab="debt_items",
     )
@@ -1908,7 +1908,7 @@ def choose_debt_item_template_options(request, tid, fid):
         "dojo/apply_debt_item_template.html",
         {
             "debt_item": debt_item,
-            "product_tab": product_tab,
+            "debt_context_tab": debt_context_tab,
             "template": template,
             "form": form,
             "debt_item_tags": [tag.name for tag in debt_item.tags.all()],
@@ -1951,8 +1951,8 @@ def apply_template_to_debt_item(request, fid, tid):
                 "There appears to be errors on the form, please correct below.",
                 extra_tags="alert-danger",
             )
-            product_tab = Product_Tab(
-                debt_item.test.engagement.product,
+            debt_context_tab = Product_Tab(
+                debt_item.test.engagement.debt_context,
                 title="Apply debt_item Template",
                 tab="debt_items",
             )
@@ -1961,7 +1961,7 @@ def apply_template_to_debt_item(request, fid, tid):
                 "dojo/apply_debt_item_template.html",
                 {
                     "debt_item": debt_item,
-                    "product_tab": product_tab,
+                    "debt_context_tab": debt_context_tab,
                     "template": template,
                     "form": form,
                 },
@@ -2048,12 +2048,12 @@ def promote_to_debt_item(request, fid):
     push_all_jira_issues = jira_helper.is_push_all_issues(debt_item)
     jform = None
     use_jira = jira_helper.get_jira_project(debt_item) is not None
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product, title="Promote debt_item", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context, title="Promote debt_item", tab="debt_items"
     )
 
     if request.method == "POST":
-        form = PromoteDebtItemForm(request.POST, product=test.engagement.product)
+        form = PromoteDebtItemForm(request.POST, debt_context=test.engagement.debt_context)
         if use_jira:
             jform = JIRADebtItemForm(
                 request.POST,
@@ -2140,7 +2140,7 @@ def promote_to_debt_item(request, fid):
                     request.POST,
                     prefix="githubform",
                     enabled=GITHUB_PKey.objects.get(
-                        product=test.engagement.product
+                        debt_context=test.engagement.debt_context
                     ).push_all_issues,
                 )
                 if gform.is_valid():
@@ -2165,14 +2165,14 @@ def promote_to_debt_item(request, fid):
         form = PromoteDebtItemForm(
             initial={
                 "title": debt_item.title,
-                "product_tab": product_tab,
+                "debt_context_tab": debt_context_tab,
                 "date": debt_item.date,
                 "severity": debt_item.severity,
                 "description": debt_item.description,
                 "test": debt_item.test,
                 "reporter": debt_item.reporter,
             },
-            product=test.engagement.product,
+            debt_context=test.engagement.debt_context,
         )
 
         if use_jira:
@@ -2187,7 +2187,7 @@ def promote_to_debt_item(request, fid):
         "dojo/promote_to_debt_item.html",
         {
             "form": form,
-            "product_tab": product_tab,
+            "debt_context_tab": debt_context_tab,
             "test": test,
             "stub_debt_item": debt_item,
             "form_error": form_error,
@@ -2487,8 +2487,8 @@ def download_debt_item_pic(request, token):
 
 
 @user_is_authorized(Product, Permissions.Debt_Item_Edit, "pid")
-def merge_debt_item_product(request, pid):
-    product = get_object_or_404(Product, pk=pid)
+def merge_debt_item_debt_context(request, pid):
+    debt_context = get_object_or_404(Product, pk=pid)
     debt_item_to_update = request.GET.getlist("debt_item_to_update")
     debt_items = None
 
@@ -2496,10 +2496,10 @@ def merge_debt_item_product(request, pid):
         request.GET.get("merge_debt_items") or request.method == "POST"
     ) and debt_item_to_update:
         debt_item = Debt_Item.objects.get(
-            id=debt_item_to_update[0], test__engagement__product=product
+            id=debt_item_to_update[0], test__engagement__debt_context=debt_context
         )
         debt_items = debt_item.objects.filter(
-            id__in=debt_item_to_update, test__engagement__product=product
+            id__in=debt_item_to_update, test__engagement__debt_context=debt_context
         )
         form = MergeDebtItems(
             debt_item=debt_item,
@@ -2659,15 +2659,15 @@ def merge_debt_item_product(request, pid):
                     extra_tags="alert-danger",
                 )
 
-    product_tab = Product_Tab(
-        debt_item.test.engagement.product, title="Merge debt_items", tab="debt_items"
+    debt_context_tab = Product_Tab(
+        debt_item.test.engagement.debt_context, title="Merge debt_items", tab="debt_items"
     )
     custom_breadcrumb = {
         "Open debt_items": reverse(
-            "product_open_debt_items", args=(debt_item.test.engagement.product.id,)
+            "debt_context_open_debt_items", args=(debt_item.test.engagement.debt_context.id,)
         )
-        + "?test__engagement__product="
-        + str(debt_item.test.engagement.product.id)
+        + "?test__engagement__debt_context="
+        + str(debt_item.test.engagement.debt_context.id)
     }
 
     return render(
@@ -2677,8 +2677,8 @@ def merge_debt_item_product(request, pid):
             "form": form,
             "name": "Merge debt_items",
             "debt_item": debt_item,
-            "product_tab": product_tab,
-            "title": product_tab.title,
+            "debt_context_tab": debt_context_tab,
+            "title": debt_context_tab.title,
             "custom_breadcrumb": custom_breadcrumb,
         },
     )
@@ -2699,13 +2699,13 @@ def debt_item_bulk_update_all(request, pid=None):
         debt_item_to_update = request.POST.getlist("debt_item_to_update")
         finds = Debt_Item.objects.filter(id__in=debt_item_to_update).order_by("id")
         total_find_count = finds.count()
-        prods = set([find.test.engagement.product for find in finds])
+        debt_contexts = set([find.test.engagement.debt_context for find in finds])
         if request.POST.get("delete_bulk_debt_items"):
             if form.is_valid() and debt_item_to_update:
                 if pid is not None:
-                    product = get_object_or_404(Product, id=pid)
+                    debt_context = get_object_or_404(Product, id=pid)
                     user_has_permission_or_403(
-                        request.user, product, Permissions.Debt_Item_Delete
+                        request.user, debt_context, Permissions.Debt_Item_Delete
                     )
 
                 finds = get_authorized_debt_items(
@@ -2737,9 +2737,9 @@ def debt_item_bulk_update_all(request, pid=None):
         else:
             if form.is_valid() and debt_item_to_update:
                 if pid is not None:
-                    product = get_object_or_404(Product, id=pid)
+                    debt_context = get_object_or_404(Product, id=pid)
                     user_has_permission_or_403(
-                        request.user, product, Permissions.Debt_Item_Edit
+                        request.user, debt_context, Permissions.Debt_Item_Edit
                     )
 
                 # make sure users are not editing stuff they are not authorized for
@@ -2795,7 +2795,7 @@ def debt_item_bulk_update_all(request, pid=None):
                                     logger.debug('FALSE_POSITIVE_HISTORY: Reactivating existing debt_items based on: %s', find)
 
                                     existing_fp_debt_items = match_debt_item_to_existing_debt_items(
-                                        find, product=find.test.engagement.product
+                                        find, debt_context=find.test.engagement.debt_context
                                     ).filter(false_p=True)
 
                                     for fp in existing_fp_debt_items:
@@ -2807,8 +2807,8 @@ def debt_item_bulk_update_all(request, pid=None):
                                         fp.is_mitigated = find.is_mitigated
                                         fp.save_no_options()
 
-                    for prod in prods:
-                        calculate_grade(prod)
+                    for debt_context in debt_contexts:
+                        debt_calculate_grade(debt_context)
 
                 if form.cleaned_data["date"]:
                     for debt_item in finds:
@@ -2835,7 +2835,7 @@ def debt_item_bulk_update_all(request, pid=None):
                         if not debt_item.duplicate:
                             if form.cleaned_data["risk_accept"]:
                                 if (
-                                    not debt_item.test.engagement.product.enable_simple_risk_acceptance
+                                    not debt_item.test.engagement.debt_context.enable_simple_risk_acceptance
                                 ):
                                     skipped_risk_accept_count += 1
                                 else:
@@ -2843,15 +2843,15 @@ def debt_item_bulk_update_all(request, pid=None):
                             elif form.cleaned_data["risk_unaccept"]:
                                 ra_helper.risk_unaccept(debt_item)
 
-                    for prod in prods:
-                        calculate_grade(prod)
+                    for debt_context in debt_contexts:
+                        debt_calculate_grade(debt_context)
 
                 if skipped_risk_accept_count > 0:
                     messages.add_message(
                         request,
                         messages.WARNING,
                         ("Skipped simple risk acceptance of %i debt_items, "
-                         "simple risk acceptance is disabled on the related products")
+                         "simple risk acceptance is disabled on the related debt_contexts")
                         % skipped_risk_accept_count,
                         extra_tags="alert-warning",
                     )

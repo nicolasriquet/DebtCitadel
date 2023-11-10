@@ -389,7 +389,7 @@ def add_findings_to_auto_group(name, findings, group_by, create_finding_groups_f
 @dojo_async_task
 @app.task
 @dojo_model_from_id
-def post_process_finding_save(finding, dedupe_option=True, rules_option=True, product_grading_option=True,
+def post_process_finding_save(finding, dedupe_option=True, rules_option=True, debt_context_grading_option=True,
              issue_updater_option=True, push_to_jira=False, user=None, *args, **kwargs):
 
     system_settings = System_Settings.objects.get()
@@ -418,12 +418,12 @@ def post_process_finding_save(finding, dedupe_option=True, rules_option=True, pr
         from dojo.tools import tool_issue_updater
         tool_issue_updater.async_tool_issue_update(finding)
 
-    if product_grading_option:
-        if system_settings.enable_product_grade:
+    if debt_context_grading_option:
+        if system_settings.enable_debt_context_grade:
             from dojo.utils import calculate_grade
-            calculate_grade(finding.test.engagement.product)
+            calculate_grade(finding.test.engagement.debt_context)
         else:
-            deduplicationLogger.debug("skipping product grading because it's disabled in system settings")
+            deduplicationLogger.debug("skipping debt_context grading because it's disabled in system settings")
 
     # Adding a snippet here for push to JIRA so that it's in one place
     if push_to_jira:
@@ -481,7 +481,7 @@ def finding_delete(instance, **kwargs):
 @receiver(post_delete, sender=Finding)
 def finding_post_delete(sender, instance, **kwargs):
     logger.debug('finding post_delete, sender: %s instance: %s', to_str_typed(sender), to_str_typed(instance))
-    # calculate_grade(instance.test.engagement.product)
+    # calculate_grade(instance.test.engagement.debt_context)
 
 
 def reset_duplicate_before_delete(dupe):
@@ -671,7 +671,7 @@ def removeLoop(finding_id, counter):
 
 
 def add_endpoints(new_finding, form):
-    added_endpoints = save_endpoints_to_add(form.endpoints_to_add_list, new_finding.test.engagement.product)
+    added_endpoints = save_endpoints_to_add(form.endpoints_to_add_list, new_finding.test.engagement.debt_context)
     endpoint_ids = []
     for endpoint in added_endpoints:
         endpoint_ids.append(endpoint.id)

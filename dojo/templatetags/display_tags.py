@@ -304,6 +304,30 @@ def product_grade(product):
     return grade
 
 
+@register.filter(name='debt_context_grade')
+def debt_context_grade(debt_context):
+    grade = ""
+    system_settings = System_Settings.objects.get()
+    if system_settings.enable_debt_context_grade and debt_context:
+        debt_context_numeric_grade = debt_context.debt_context_numeric_grade
+
+        if debt_context_numeric_grade == "" or debt_context_numeric_grade is None:
+            from dojo.utils import calculate_grade
+            calculate_grade(debt_context)
+        if debt_context_numeric_grade:
+            if debt_context_numeric_grade >= system_settings.debt_context_grade_a:
+                grade = 'A'
+            elif debt_context_numeric_grade < system_settings.debt_context_grade_a and debt_context_numeric_grade >= system_settings.debt_context_grade_b:
+                grade = 'B'
+            elif debt_context_numeric_grade < system_settings.debt_context_grade_b and debt_context_numeric_grade >= system_settings.debt_context_grade_c:
+                grade = 'C'
+            elif debt_context_numeric_grade < system_settings.debt_context_grade_c and debt_context_numeric_grade >= system_settings.debt_context_grade_d:
+                grade = 'D'
+            elif debt_context_numeric_grade <= system_settings.debt_context_grade_f:
+                grade = 'F'
+
+    return grade
+
 @register.filter
 def display_index(data, index):
     return data[index]

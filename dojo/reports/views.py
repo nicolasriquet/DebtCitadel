@@ -28,6 +28,7 @@ from dojo.authorization.authorization_decorators import user_is_authorized
 from dojo.authorization.roles_permissions import Permissions
 from dojo.authorization.authorization import user_has_permission_or_403
 from dojo.finding.queries import get_authorized_findings
+from dojo.debt_item.queries import get_authorized_debt_items
 from dojo.finding.views import BaseListFindings
 
 logger = logging.getLogger(__name__)
@@ -193,6 +194,10 @@ def product_report(request, pid):
 def product_findings_report(request):
     findings = get_authorized_findings(Permissions.Finding_View)
     return generate_report(request, findings)
+
+def debt_context_debt_items_report(request):
+    debt_items = get_authorized_debt_items(Permissions.Debt_Item_View)
+    return generate_report(request, debt_items)
 
 
 @user_is_authorized(Engagement, Permissions.Engagement_View, 'eid')

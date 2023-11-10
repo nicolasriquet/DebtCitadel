@@ -1643,6 +1643,48 @@ def calculate_grade(product, *args, **kwargs):
         product.save()
 
 
+@dojo_model_to_id
+@dojo_async_task
+@app.task
+@dojo_model_from_id(model=Debt_Context)
+def debt_calculate_grade(debt_context, *args, **kwargs):
+    system_settings = System_Settings.objects.get()
+    if not debt_context:
+        logger.warning('ignoring calculate debt_context for debt_context None!')
+        return
+
+    if system_settings.enable_debt_context_grade:
+        logger.debug('calculating debt_context grade for %s:%s', debt_context.id, debt_context.name)
+        severity_values = Finding.objects.filter(
+            ~Q(severity='Info'),
+            active=True,
+            duplicate=False,
+            verified=True,
+            false_p=False,
+            test__engagement__debt_context=debt_context).values('severity').annotate(
+            Count('numerical_severity')).order_by()
+
+        low = 0
+        medium = 0
+        high = 0
+        critical = 0
+        for severity_count in severity_values:
+            if severity_count['severity'] == "Critical":
+                critical = severity_count['numerical_severity__count']
+            elif severity_count['severity'] == "High":
+                high = severity_count['numerical_severity__count']
+            elif severity_count['severity'] == "Medium":
+                medium = severity_count['numerical_severity__count']
+            elif severity_count['severity'] == "Low":
+                low = severity_count['numerical_severity__count']
+        aeval = Interpreter()
+        aeval(system_settings.debt_context_grade)
+        grade_debt_context = "grade_debt_context(%s, %s, %s, %s)" % (
+            critical, high, medium, low)
+        debt_context.prod_numeric_grade = aeval(grade_debt_context)
+        debt_context.save()
+
+
 def get_celery_worker_status():
     from .tasks import celery_status
     res = celery_status.apply_async()
