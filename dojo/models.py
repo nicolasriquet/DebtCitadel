@@ -846,23 +846,23 @@ class Debt_Context_Type(models.Model):
     @cached_property
     def critical_present(self):
         c_debt_items = Debt_Item.objects.filter(
-            test__engagement__debt_context__prod_type=self, severity='Critical')
+            test__debt_engagement__debt_context__prod_type=self, severity='Critical')
         if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def high_present(self):
         c_debt_items = Debt_Item.objects.filter(
-            test__engagement__debt_context__prod_type=self, severity='High')
+            test__debt_engagement__debt_context__prod_type=self, severity='High')
         if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def calc_health(self):
         h_debt_items = Debt_Item.objects.filter(
-            test__engagement__debt_context__prod_type=self, severity='High')
+            test__debt_engagement__debt_context__prod_type=self, severity='High')
         c_debt_items = Debt_Item.objects.filter(
-            test__engagement__debt_context__prod_type=self, severity='Critical')
+            test__debt_engagement__debt_context__prod_type=self, severity='Critical')
         health = 100
         if c_debt_items.count() > 0:
             health = 40
@@ -879,7 +879,7 @@ class Debt_Context_Type(models.Model):
     # only used by bulk risk acceptance api
     @property
     def unaccepted_open_debt_items(self):
-        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__engagement__debt__context__prod_type=self)
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__debt_engagement__debt__context__prod_type=self)
 
     class Meta:
         ordering = ('name',)
@@ -895,6 +895,7 @@ class Debt_Context_Type(models.Model):
     def get_absolute_url(self):
         from django.urls import reverse
         return reverse('debt_context_type', args=[str(self.id)])
+
 
 
 class Product_Line(models.Model):
@@ -1352,7 +1353,7 @@ class Debt_Context(models.Model):
         default=False,
         blank=False,
         verbose_name=_('Enable Debt Context Tag Inheritance'),
-        help_text=_("Enables debt context tag inheritance. Any tags added on a Debt_Context will automatically be added to all Engagements, Tests, and Debt_Items"))
+        help_text=_("Enables debt context tag inheritance. Any tags added on a Debt_Context will automatically be added to all Debt_Engagements, Tests, and Debt_Items"))
     enable_simple_risk_acceptance = models.BooleanField(default=False, help_text=_('Allows simple risk acceptance by checking/unchecking a checkbox.'))
     enable_full_risk_acceptance = models.BooleanField(default=True, help_text=_('Allows full risk acceptance using a risk acceptance form, expiration date, uploaded proof, etc.'))
 
@@ -1376,7 +1377,7 @@ class Debt_Context(models.Model):
         except AttributeError:
             # ideally it's always prefetched and we can remove this code in the future
             self.active_debt_item_count = Debt_Item.objects.filter(active=True,
-                                                                   test__engagement__debt__context=self).count()
+                                                                   test__debt_engagement__debt__context=self).count()
             return self.active_debt_item_count
 
     @cached_property
@@ -1388,7 +1389,7 @@ class Debt_Context(models.Model):
             # ideally it's always prefetched and we can remove this code in the future
             self.active_verified_debt_item_count = Debt_Item.objects.filter(active=True,
                                                                             verified=True,
-                                                                            test__engagement__debt__context=self).count()
+                                                                            test__debt_engagement__debt__context=self).count()
             return self.active_verified_debt_item_count
 
     @cached_property
@@ -1414,7 +1415,7 @@ class Debt_Context(models.Model):
         if start_date is None or end_date is None:
             return {}
         else:
-            critical = Debt_Item.objects.filter(test__engagement__debt__context=self,
+            critical = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
                                                 mitigated__isnull=True,
                                                 verified=True,
                                                 false_p=False,
@@ -1423,7 +1424,7 @@ class Debt_Context(models.Model):
                                                 severity="Critical",
                                                 date__range=[start_date,
                                                              end_date]).count()
-            high = Debt_Item.objects.filter(test__engagement__debt__context=self,
+            high = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
                                             mitigated__isnull=True,
                                             verified=True,
                                             false_p=False,
@@ -1432,7 +1433,7 @@ class Debt_Context(models.Model):
                                             severity="High",
                                             date__range=[start_date,
                                                          end_date]).count()
-            medium = Debt_Item.objects.filter(test__engagement__debt__context=self,
+            medium = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
                                               mitigated__isnull=True,
                                               verified=True,
                                               false_p=False,
@@ -1441,7 +1442,7 @@ class Debt_Context(models.Model):
                                               severity="Medium",
                                               date__range=[start_date,
                                                            end_date]).count()
-            low = Debt_Item.objects.filter(test__engagement__debt__context=self,
+            low = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
                                            mitigated__isnull=True,
                                            verified=True,
                                            false_p=False,
@@ -1468,7 +1469,7 @@ class Debt_Context(models.Model):
     # only used in APIv2 serializers.py, query should be aligned with debt_items_count
     @cached_property
     def open_debt_items_list(self):
-        debt_items = Debt_Item.objects.filter(test__engagement__debt__context=self,
+        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
                                               active=True)
         debt_items_list = []
         for i in debt_items:
@@ -1486,7 +1487,7 @@ class Debt_Context(models.Model):
 
     @property
     def violates_sla(self):
-        debt_items = Debt_Item.objects.filter(test__engagement__debt__context=self,
+        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
                                               active=True)
         for f in debt_items:
             if f.violates_sla:
@@ -1706,7 +1707,6 @@ class Engagement(models.Model):
     reason = models.CharField(max_length=2000, null=True, blank=True)
     report_type = models.ForeignKey(Report_Type, null=True, blank=True, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
     updated = models.DateTimeField(auto_now=True, null=True)
     created = models.DateTimeField(auto_now_add=True, null=True)
     active = models.BooleanField(default=True, editable=False)
@@ -1840,6 +1840,155 @@ class Engagement(models.Model):
     def inherit_tags(self, potentially_existing_tags):
         # get a copy of the tags to be inherited
         incoming_inherited_tags = [tag.name for tag in self.product.tags.all()]
+        _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
+
+
+class Debt_Engagement(models.Model):
+    name = models.CharField(max_length=300, null=True, blank=True)
+    description = models.CharField(max_length=2000, null=True, blank=True)
+    version = models.CharField(max_length=100, null=True, blank=True, help_text=_("Version of the debt_context the debt_engagement tested."))
+    first_contacted = models.DateField(null=True, blank=True)
+    target_start = models.DateField(null=False, blank=False)
+    target_end = models.DateField(null=False, blank=False)
+    lead = models.ForeignKey(Dojo_User, editable=True, null=True, blank=True, on_delete=models.RESTRICT)
+    requester = models.ForeignKey(Contact, null=True, blank=True, on_delete=models.CASCADE)
+    preset = models.ForeignKey(Engagement_Presets, null=True, blank=True, help_text=_("Settings and notes for performing this debt_engagement."), on_delete=models.CASCADE)
+    reason = models.CharField(max_length=2000, null=True, blank=True)
+    report_type = models.ForeignKey(Report_Type, null=True, blank=True, on_delete=models.CASCADE)
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    updated = models.DateTimeField(auto_now=True, null=True)
+    created = models.DateTimeField(auto_now_add=True, null=True)
+    active = models.BooleanField(default=True, editable=False)
+    tracker = models.URLField(max_length=200, help_text=_("Link to epic or ticket system with changes to version."), editable=True, blank=True, null=True)
+    test_strategy = models.URLField(editable=True, blank=True, null=True)
+    threat_model = models.BooleanField(default=True)
+    api_test = models.BooleanField(default=True)
+    pen_test = models.BooleanField(default=True)
+    check_list = models.BooleanField(default=True)
+    notes = models.ManyToManyField(Notes, blank=True, editable=False)
+    files = models.ManyToManyField(FileUpload, blank=True, editable=False)
+    status = models.CharField(editable=True, max_length=2000, default='',
+                              null=True,
+                              choices=ENGAGEMENT_STATUS_CHOICES)
+    progress = models.CharField(max_length=100,
+                                default='threat_model', editable=False)
+    tmodel_path = models.CharField(max_length=1000, default='none',
+                                   editable=False, blank=True, null=True)
+    risk_acceptance = models.ManyToManyField("Risk_Acceptance",
+                                             default=None,
+                                             editable=False,
+                                             blank=True)
+    done_testing = models.BooleanField(default=False, editable=False)
+    debt_engagement_type = models.CharField(editable=True, max_length=30, default='Interactive',
+                                            null=True,
+                                            choices=(('Interactive', 'Interactive'),
+                                                     ('CI/CD', 'CI/CD')))
+    build_id = models.CharField(editable=True, max_length=150,
+                                null=True, blank=True, help_text=_("Build ID of the debt_context the debt_engagement tested."), verbose_name=_('Build ID'))
+    commit_hash = models.CharField(editable=True, max_length=150,
+                                   null=True, blank=True, help_text=_("Commit hash from repo"), verbose_name=_('Commit Hash'))
+    branch_tag = models.CharField(editable=True, max_length=150,
+                                  null=True, blank=True, help_text=_("Tag or branch of the debt_context the debt_engagement tested."), verbose_name=_("Branch/Tag"))
+    build_server = models.ForeignKey(Tool_Configuration, verbose_name=_('Build Server'), help_text=_("Build server responsible for CI/CD test"), null=True, blank=True, related_name='debt_build_server', on_delete=models.CASCADE)
+    source_code_management_server = models.ForeignKey(Tool_Configuration, null=True, blank=True, verbose_name=_('SCM Server'), help_text=_("Source code server for CI/CD test"), related_name='debt_source_code_management_server', on_delete=models.CASCADE)
+    source_code_management_uri = models.URLField(max_length=600, null=True, blank=True, editable=True, verbose_name=_('Repo'), help_text=_("Resource link to source code"))
+    orchestration_engine = models.ForeignKey(Tool_Configuration, verbose_name=_('Orchestration Engine'), help_text=_("Orchestration service responsible for CI/CD test"), null=True, blank=True, related_name='debt_orchestration', on_delete=models.CASCADE)
+    deduplication_on_debt_engagement = models.BooleanField(default=False, verbose_name=_('Deduplication within this debt_engagement only'), help_text=_("If enabled deduplication will only mark a debt_item in this debt_engagement as duplicate of another debt_item if both debt_items are in this debt_engagement. If disabled, deduplication is on the debt_context level."))
+
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this debt_engagement. Choose from the list or add new tags. Press Enter key to add."))
+    inherited_tags = TagField(blank=True, force_lowercase=True, help_text=_("Internal use tags sepcifically for maintaining parity with debt_context. This field will be present as a subset in the tags field"))
+
+    class Meta:
+        ordering = ['-target_start']
+        indexes = [
+            models.Index(fields=['debt_context', 'active']),
+        ]
+
+    def is_overdue(self):
+        if self.debt_engagement_type == 'CI/CD':
+            overdue_grace_days = 10
+        else:
+            overdue_grace_days = 0
+
+        max_end_date = timezone.now() - relativedelta(days=overdue_grace_days)
+
+        if self.target_end < max_end_date.date():
+            return True
+
+        return False
+
+    def __str__(self):
+        return "Debt_Engagement %i: %s (%s)" % (self.id if id else 0, self.name if self.name else '',
+                                                self.target_start.strftime(
+                                                    "%b %d, %Y"))
+
+    def copy(self):
+        copy = self
+        # Save the necessary ManyToMany relationships
+        old_notes = list(self.notes.all())
+        old_files = list(self.files.all())
+        old_tags = list(self.tags.all())
+        old_risk_acceptances = list(self.risk_acceptance.all())
+        old_tests = list(Test.objects.filter(debt_engagement=self))
+        # Wipe the IDs of the new object
+        copy.pk = None
+        copy.id = None
+        # Save the object before setting any ManyToMany relationships
+        copy.save()
+        # Copy the notes
+        for notes in old_notes:
+            copy.notes.add(notes.copy())
+        # Copy the files
+        for files in old_files:
+            copy.files.add(files.copy())
+        # Copy the tests
+        for test in old_tests:
+            test.copy(debt_engagement=copy)
+        # Copy the risk_acceptances
+        for risk_acceptance in old_risk_acceptances:
+            copy.risk_acceptance.add(risk_acceptance.copy(debt_engagement=copy))
+        # Assign any tags
+        copy.tags.set(old_tags)
+
+        return copy
+
+    def get_breadcrumbs(self):
+        bc = self.debt_context.get_breadcrumbs()
+        bc += [{'title': str(self),
+                'url': reverse('view_debt_engagement', args=(self.id,))}]
+        return bc
+
+    # only used by bulk risk acceptance api
+    @property
+    def unaccepted_open_debt_items(self):
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, verified=True, duplicate=False, test__debt_engagement=self)
+
+    def accept_risks(self, accepted_risks):
+        self.risk_acceptance.add(*accepted_risks)
+
+    @property
+    def has_jira_issue(self):
+        import dojo.jira_link.helper as jira_helper
+        return jira_helper.has_jira_issue(self)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('view_debt_engagement', args=[str(self.id)])
+
+    @property
+    def is_ci_cd(self):
+        return self.debt_engagement_type == "CI/CD"
+
+    def delete(self, *args, **kwargs):
+        logger.debug('%d debt_engagement delete', self.id)
+        import dojo.debt_item.helper as helper
+        helper.prepare_duplicates_for_delete(debt_engagement=self)
+        super().delete(*args, **kwargs)
+        calculate_grade(self.debt_context)
+
+    def inherit_tags(self, potentially_existing_tags):
+        # get a copy of the tags to be inherited
+        incoming_inherited_tags = [tag.name for tag in self.debt_context.tags.all()]
         _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
 
 
@@ -3645,7 +3794,7 @@ class Debt_Item(models.Model):
                                             help_text=_("Link to the original debt item if this debt item is a duplicate."))
     out_of_scope = models.BooleanField(default=False,
                                        verbose_name=_('Out Of Scope'),
-                                       help_text=_("Denotes if this flaw falls outside the scope of the test and/or engagement."))
+                                       help_text=_("Denotes if this flaw falls outside the scope of the test and/or debt_engagement."))
     risk_accepted = models.BooleanField(default=False,
                                         verbose_name=_('Risk Accepted'),
                                         help_text=_("Denotes if this debt item has been marked as an accepted risk."))
@@ -3951,7 +4100,7 @@ class Debt_Item(models.Model):
         import dojo.debt_item.helper as helper
         helper.debt_item_delete(self)
         super().delete(*args, **kwargs)
-        calculate_grade(self.test.engagement.debt_context)
+        calculate_grade(self.test.debt_engagement.debt_context)
 
     # only used by bulk risk acceptance api
     @classmethod
@@ -4211,7 +4360,7 @@ class Debt_Item(models.Model):
         return self._age(self.date)
 
     def get_sla_periods(self):
-        sla_configuration = SLA_Configuration.objects.filter(id=self.test.engagement.debt_context.sla_configuration_id).first()
+        sla_configuration = SLA_Configuration.objects.filter(id=self.test.debt_engagement.debt_context.sla_configuration_id).first()
         return sla_configuration
 
     def get_sla_start_date(self):
@@ -4255,7 +4404,7 @@ class Debt_Item(models.Model):
 
     def github_conf(self):
         try:
-            github_debt_context_key = GITHUB_PKey.objects.get(debt_context=self.test.engagement.debt_context)
+            github_debt_context_key = GITHUB_PKey.objects.get(debt_context=self.test.debt_engagement.debt_context)
             github_conf = github_debt_context_key.conf
         except:
             github_conf = None
@@ -4265,7 +4414,7 @@ class Debt_Item(models.Model):
     # newer version that can work with prefetching
     def github_conf_new(self):
         try:
-            return self.test.engagement.debt_context.github_pkey_set.all()[0].git_conf
+            return self.test.debt_engagement.debt_context.github_pkey_set.all()[0].git_conf
         except:
             return None
             pass
@@ -4424,9 +4573,9 @@ class Debt_Item(models.Model):
         from dojo.utils import create_bleached_link
         if self.sast_source_file_path is None:
             return None
-        if self.test.engagement.source_code_management_uri is None:
+        if self.test.debt_engagement.source_code_management_uri is None:
             return escape(self.sast_source_file_path)
-        link = self.test.engagement.source_code_management_uri + '/' + self.sast_source_file_path
+        link = self.test.debt_engagement.source_code_management_uri + '/' + self.sast_source_file_path
         if self.sast_source_line:
             link = link + '#L' + str(self.sast_source_line)
         return create_bleached_link(link, self.sast_source_file_path)
@@ -4435,7 +4584,7 @@ class Debt_Item(models.Model):
         from dojo.utils import create_bleached_link
         if self.file_path is None:
             return None
-        if self.test.engagement.source_code_management_uri is None:
+        if self.test.debt_engagement.source_code_management_uri is None:
             return escape(self.file_path)
         link = self.get_file_path_with_raw_link()
         return create_bleached_link(link, self.file_path)
@@ -4443,17 +4592,17 @@ class Debt_Item(models.Model):
     def get_file_path_with_raw_link(self):
         if self.file_path is None:
             return None
-        link = self.test.engagement.source_code_management_uri
-        if (self.test.engagement.source_code_management_uri is not None
-                and "https://github.com/" in self.test.engagement.source_code_management_uri):
+        link = self.test.debt_engagement.source_code_management_uri
+        if (self.test.debt_engagement.source_code_management_uri is not None
+                and "https://github.com/" in self.test.debt_engagement.source_code_management_uri):
             if self.test.commit_hash:
                 link += '/blob/' + self.test.commit_hash + '/' + self.file_path
-            elif self.test.engagement.commit_hash:
-                link += '/blob/' + self.test.engagement.commit_hash + '/' + self.file_path
+            elif self.test.debt_engagement.commit_hash:
+                link += '/blob/' + self.test.debt_engagement.commit_hash + '/' + self.file_path
             elif self.test.branch_tag:
                 link += '/blob/' + self.test.branch_tag + '/' + self.file_path
-            elif self.test.engagement.branch_tag:
-                link += '/blob/' + self.test.engagement.branch_tag + '/' + self.file_path
+            elif self.test.debt_engagement.branch_tag:
+                link += '/blob/' + self.test.debt_engagement.branch_tag + '/' + self.file_path
             else:
                 link += '/' + self.file_path
         else:
@@ -4504,7 +4653,7 @@ class Debt_Item(models.Model):
 
     def inherit_tags(self, potentially_existing_tags):
         # get a copy of the tags to be inherited
-        incoming_inherited_tags = [tag.name for tag in self.test.engagement.debt_context.tags.all()]
+        incoming_inherited_tags = [tag.name for tag in self.test.debt_engagement.debt_context.tags.all()]
         _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
 
     @property
