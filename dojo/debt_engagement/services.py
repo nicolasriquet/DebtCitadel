@@ -18,7 +18,23 @@ def close_engagement(eng):
         jira_helper.close_epic(eng, True)
 
 
+
+def close_debt_engagement(eng):
+    eng.active = False
+    eng.status = 'Completed'
+    eng.save()
+
+    if jira_helper.get_jira_project(eng):
+        jira_helper.close_epic(eng, True)
+
+
 def reopen_engagement(eng):
+    eng.active = True
+    eng.status = 'In Progress'
+    eng.save()
+
+
+def reopen_debt_engagement(eng):
     eng.active = True
     eng.status = 'In Progress'
     eng.save()

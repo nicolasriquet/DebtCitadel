@@ -9,7 +9,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.http import HttpResponse
 from dojo import views
-from dojo.api_v2.views import EndPointViewSet, EngagementViewSet, \
+from dojo.api_v2.views import EndPointViewSet, EngagementViewSet, DebtEngagementViewSet, \
     FindingTemplatesViewSet, FindingViewSet, JiraInstanceViewSet, \
     DebtItemTemplatesViewSet, DebtItemViewSet, DebtContextViewSet, ToolDebtContextSettingsViewSet, \
     StubDebtItemsViewSet, DebtContextTypeViewSet, DebtContextTypeMemberViewSet, \
@@ -23,7 +23,7 @@ from dojo.api_v2.views import EndPointViewSet, EngagementViewSet, \
     RegulationsViewSet, ProductTypeMemberViewSet, ProductMemberViewSet, RiskAcceptanceViewSet, \
     DojoGroupViewSet, ProductGroupViewSet, ProductTypeGroupViewSet, RoleViewSet, GlobalRoleViewSet, \
     DojoGroupMemberViewSet, ImportLanguagesView, LanguageTypeViewSet, LanguageViewSet, \
-    NotificationsViewSet, EngagementPresetsViewset, NetworkLocationsViewset, UserContactInfoViewSet, \
+    NotificationsViewSet, EngagementPresetsViewset, DebtEngagementPresetsViewset, NetworkLocationsViewset, UserContactInfoViewSet, \
     ProductAPIScanConfigurationViewSet, UserProfileView, EndpointMetaImporterView, \
     ConfigurationPermissionViewSet, QuestionnaireQuestionViewSet, QuestionnaireAnswerViewSet, \
     QuestionnaireGeneralSurveyViewSet, QuestionnaireEngagementSurveyViewSet, QuestionnaireAnsweredSurveyViewSet
@@ -32,6 +32,7 @@ from dojo.utils import get_system_setting
 from dojo.development_environment.urls import urlpatterns as dev_env_urls
 from dojo.endpoint.urls import urlpatterns as endpoint_urls
 from dojo.engagement.urls import urlpatterns as eng_urls
+from dojo.debt_engagement.urls import urlpatterns as debt_engagement_urls
 from dojo.finding.urls import urlpatterns as finding_urls
 from dojo.debt_item.urls import urlpatterns as debt_item_urls
 from dojo.finding_group.urls import urlpatterns as finding_group_urls
@@ -87,6 +88,7 @@ v2_api.register(r'endpoints', EndPointViewSet)
 v2_api.register(r'endpoint_meta_import', EndpointMetaImporterView, basename='endpointmetaimport')
 v2_api.register(r'endpoint_status', EndpointStatusViewSet)
 v2_api.register(r'engagements', EngagementViewSet)
+v2_api.register(r'debt_engagements', DebtEngagementViewSet)
 v2_api.register(r'development_environments', DevelopmentEnvironmentViewSet)
 v2_api.register(r'finding_templates', FindingTemplatesViewSet)
 v2_api.register(r'debt_item_templates', DebtItemTemplatesViewSet)
@@ -144,6 +146,7 @@ v2_api.register(r'languages', LanguageViewSet)
 v2_api.register(r'import-languages', ImportLanguagesView, basename='importlanguages')
 v2_api.register(r'notifications', NotificationsViewSet, basename='notifications')
 v2_api.register(r'engagement_presets', EngagementPresetsViewset)
+v2_api.register(r'debt_engagement_presets', DebtEngagementPresetsViewset)
 v2_api.register(r'network_locations', NetworkLocationsViewset)
 v2_api.register(r'questionnaire_answers', QuestionnaireAnswerViewSet)
 v2_api.register(r'questionnaire_answered_questionnaires', QuestionnaireAnsweredSurveyViewSet)
@@ -154,6 +157,7 @@ ur = []
 ur += dev_env_urls
 ur += endpoint_urls
 ur += eng_urls
+ur += debt_engagement_urls
 ur += finding_urls
 ur += debt_item_urls
 ur += finding_group_urls

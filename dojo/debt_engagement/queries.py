@@ -1,46 +1,46 @@
 from crum import get_current_user
 from django.db.models import Exists, OuterRef, Q
-from dojo.models import Engagement, Product_Member, Product_Type_Member, \
-    Product_Group, Product_Type_Group
+from dojo.models import Debt_Engagement, Debt_Context_Member, Debt_Context_Type_Member, \
+    Debt_Context_Group, Debt_Context_Type_Group
 from dojo.authorization.authorization import get_roles_for_permission, user_has_global_permission
 
 
-def get_authorized_engagements(permission):
+def get_authorized_debt_engagements(permission):
     user = get_current_user()
 
     if user is None:
-        return Engagement.objects.none()
+        return Debt_Engagement.objects.none()
 
     if user.is_superuser:
-        return Engagement.objects.all()
+        return Debt_Engagement.objects.all()
 
     if user_has_global_permission(user, permission):
-        return Engagement.objects.all()
+        return Debt_Engagement.objects.all()
 
     roles = get_roles_for_permission(permission)
-    authorized_product_type_roles = Product_Type_Member.objects.filter(
-        product_type=OuterRef('product__prod_type_id'),
+    authorized_debt_context_type_roles = Debt_Context_Type_Member.objects.filter(
+        debt_context_type=OuterRef('debt_context__prod_type_id'),
         user=user,
         role__in=roles)
-    authorized_product_roles = Product_Member.objects.filter(
-        product=OuterRef('product_id'),
+    authorized_debt_context_roles = Debt_Context_Member.objects.filter(
+        debt_context=OuterRef('debt_context_id'),
         user=user,
         role__in=roles)
-    authorized_product_type_groups = Product_Type_Group.objects.filter(
-        product_type=OuterRef('product__prod_type_id'),
+    authorized_debt_context_type_groups = Debt_Context_Type_Group.objects.filter(
+        debt_context_type=OuterRef('debt_context__prod_type_id'),
         group__users=user,
         role__in=roles)
-    authorized_product_groups = Product_Group.objects.filter(
-        product=OuterRef('product_id'),
+    authorized_debt_context_groups = Debt_Context_Group.objects.filter(
+        debt_context=OuterRef('debt_context_id'),
         group__users=user,
         role__in=roles)
-    engagements = Engagement.objects.annotate(
-        product__prod_type__member=Exists(authorized_product_type_roles),
-        product__member=Exists(authorized_product_roles),
-        product__prod_type__authorized_group=Exists(authorized_product_type_groups),
-        product__authorized_group=Exists(authorized_product_groups))
-    engagements = engagements.filter(
-        Q(product__prod_type__member=True) | Q(product__member=True) |
-        Q(product__prod_type__authorized_group=True) | Q(product__authorized_group=True))
+    debt_engagements = Debt_Engagement.objects.annotate(
+        debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
+        debt_context__member=Exists(authorized_debt_context_roles),
+        debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
+        debt_context__authorized_group=Exists(authorized_debt_context_groups))
+    debt_engagements = debt_engagements.filter(
+        Q(debt_context__prod_type__member=True) | Q(debt_context__member=True) |
+        Q(debt_context__prod_type__authorized_group=True) | Q(debt_context__authorized_group=True))
 
-    return engagements
+    return debt_engagements

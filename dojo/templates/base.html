@@ -292,6 +292,41 @@
                                             <!-- /.nav-second-level -->
                                         </li>
                                         <li>
+                                            <a href="{% url 'debt_engagement' %}" aria-expanded="false" aria-label="Debt Engagements">
+                                                <i class="fa-solid fa-inbox fa-fw"></i>
+                                                <span>{% trans "Debt Engagements" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <li>
+                                                    <a href="{% url 'active_debt_engagements' %}">
+                                                        {% trans "Active Debt Engagements" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'all_debt_engagements' %}">
+                                                        {% trans "All Debt Engagements" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'debt_engagements_all' %}">
+                                                        {% trans "Debt Engagements by Debt Context" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'test_type' %}">
+                                                        {% trans "Test Types" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'dev_env' %}">
+                                                        {% trans "Environments" %}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <!-- /.nav-second-level -->
+                                        </li>
+                                        <li>
                                             <a href="{% url 'engagement' %}" aria-expanded="false" aria-label="Engagements">
                                                 <i class="fa-solid fa-inbox fa-fw"></i>
                                                 <span>{% trans "Engagements" %}</span>

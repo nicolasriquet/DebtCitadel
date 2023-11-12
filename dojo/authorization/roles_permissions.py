@@ -65,12 +65,23 @@ class Permissions(IntEnum):
     Engagement_Add = 1203
     Engagement_Edit = 1206
     Engagement_Delete = 1207
+
+    Debt_Engagement_View = 1202
+    Debt_Engagement_Add = 1203
+    Debt_Engagement_Edit = 1206
+    Debt_Engagement_Delete = 1207
+
     Risk_Acceptance = 1208
 
     Test_View = 1302
     Test_Add = 1303
     Test_Edit = 1306
     Test_Delete = 1307
+
+    Debt_Test_View = 1302
+    Debt_Test_Add = 1303
+    Debt_Test_Edit = 1306
+    Debt_Test_Delete = 1307
 
     Finding_View = 1402
     Finding_Add = 1403

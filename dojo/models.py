@@ -1694,6 +1694,31 @@ ENGAGEMENT_STATUS_CHOICES = (('Not Started', 'Not Started'),
                              ('Waiting for Resource', 'Waiting for Resource'))
 
 
+class Debt_Engagement_Presets(models.Model):
+    title = models.CharField(max_length=500, default=None, help_text=_("Brief description of preset."))
+    test_type = models.ManyToManyField(Test_Type, default=None, blank=True)
+    network_locations = models.ManyToManyField(Network_Locations, default=None, blank=True)
+    notes = models.CharField(max_length=2000, help_text=_("Description of what needs to be tested or setting up environment for testing"), null=True, blank=True)
+    scope = models.CharField(max_length=800, help_text=_("Scope of Debt_Engagement testing, IP's/Resources/URL's)"), default=None, blank=True)
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, null=False)
+
+    class Meta:
+        ordering = ['title']
+
+    def __str__(self):
+        return self.title
+
+
+DEBT_ENGAGEMENT_STATUS_CHOICES = (('Not Started', 'Not Started'),
+                             ('Blocked', 'Blocked'),
+                             ('Cancelled', 'Cancelled'),
+                             ('Completed', 'Completed'),
+                             ('In Progress', 'In Progress'),
+                             ('On Hold', 'On Hold'),
+                             ('Waiting for Resource', 'Waiting for Resource'))
+
+
 class Engagement(models.Model):
     name = models.CharField(max_length=300, null=True, blank=True)
     description = models.CharField(max_length=2000, null=True, blank=True)

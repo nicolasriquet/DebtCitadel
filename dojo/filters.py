@@ -23,7 +23,7 @@ from dojo.models import Dojo_User, Finding_Group, Debt_Item_Group, Product_API_S
     Product_Type, Debt_Context_Type, Finding, Debt_Item, Product, Debt_Context, Test_Import, Test_Type, \
     Endpoint, Development_Environment, Finding_Template, Debt_Item_Template, Note_Type, Risk_Acceptance, Cred_Mapping, \
     Engagement_Survey, Question, TextQuestion, ChoiceQuestion, Endpoint_Status, Engagement, Debt_Engagement, \
-    ENGAGEMENT_STATUS_CHOICES, Test, App_Analysis, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Dojo_Group, Vulnerability_Id, \
+    ENGAGEMENT_STATUS_CHOICES, Test, Debt_Test, App_Analysis, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Dojo_Group, Vulnerability_Id, \
     Test_Import_Finding_Action, Test_Import_Debt_Item_Action, IMPORT_ACTIONS
 from dojo.utils import get_system_setting
 from django.contrib.contenttypes.models import ContentType
@@ -1090,6 +1090,72 @@ class EngagementDirectFilter(DojoFilter):
         fields = ['product__name', 'product__prod_type']
 
 
+class DebtEngagementDirectFilter(DojoFilter):
+    name = CharFilter(lookup_expr='icontains', label='Debt_Engagement name contains')
+    lead = ModelChoiceFilter(queryset=Dojo_User.objects.none(), label="Lead")
+    version = CharFilter(field_name='version', lookup_expr='icontains', label='Debt_Engagement version')
+    test__version = CharFilter(field_name='test__version', lookup_expr='icontains', label='Test version')
+
+    debt_context__name = CharFilter(lookup_expr='icontains', label='Debt_Context name contains')
+    debt_context__prod_type = ModelMultipleChoiceFilter(
+        queryset=Debt_Context_Type.objects.none(),
+        label="Debt_Context Type")
+    test__debt_engagement__debt_context__lifecycle = MultipleChoiceFilter(
+        choices=Debt_Context.LIFECYCLE_CHOICES, label='Debt_Context lifecycle')
+    status = MultipleChoiceFilter(choices=ENGAGEMENT_STATUS_CHOICES,
+                                  label="Status")
+
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Debt_Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Engagement.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('target_start', 'target_start'),
+            ('name', 'name'),
+            ('debt_context__name', 'debt_context__name'),
+            ('debt_context__prod_type__name', 'debt_context__prod_type__name'),
+            ('lead__first_name', 'lead__first_name'),
+        ),
+        field_labels={
+            'target_start': 'Start date',
+            'name': 'Debt_Engagement',
+            'debt_context__name': 'Debt_Context Name',
+            'debt_context__prod_type__name': 'Debt_Context Type',
+            'lead__first_name': 'Lead',
+        }
+
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(DebtEngagementDirectFilter, self).__init__(*args, **kwargs)
+        self.form.fields['debt_context__prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+        self.form.fields['lead'].queryset = get_authorized_users(Permissions.Debt_Context_Type_View) \
+            .filter(debt_engagement__lead__isnull=False).distinct()
+
+    class Meta:
+        model = Debt_Engagement
+        fields = ['debt_context__name', 'debt_context__prod_type']
+
+
 class EngagementFilter(DojoFilter):
     engagement__name = CharFilter(lookup_expr='icontains', label='Engagement name contains')
     engagement__lead = ModelChoiceFilter(queryset=Dojo_User.objects.none(), label="Lead")
@@ -1200,7 +1266,7 @@ class DebtEngagementFilter(DojoFilter):
     )
 
     def __init__(self, *args, **kwargs):
-        super(Debt_engagementFilter, self).__init__(*args, **kwargs)
+        super(DebtEngagementFilter, self).__init__(*args, **kwargs)
         self.form.fields['debt_context_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
         self.form.fields['debt_engagement__lead'].queryset = get_authorized_users(Permissions.Debt_Context_Type_View) \
             .filter(debt_engagement__lead__isnull=False).distinct()
@@ -1366,6 +1432,50 @@ class ApiEngagementFilter(DojoFilter):
                      'target_end', 'requester', 'report_type',
                      'updated', 'threat_model', 'api_test',
                      'pen_test', 'status', 'product', 'name', 'version', 'tags']
+
+
+class ApiDebtEngagementFilter(DojoFilter):
+    debt_context__prod_type = NumberInFilter(field_name='debt_context__prod_type', lookup_expr='in')
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Tag name contains')
+    tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                             help_text='Comma separated list of exact tags')
+    debt_context__tags = CharFieldInFilter(field_name='debt_context__tags__name',
+                                           lookup_expr='in',
+                                           help_text='Comma separated list of exact tags present on debt_context')
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', help_text='Not Tag name contains', exclude='True')
+    not_tags = CharFieldInFilter(field_name='tags__name', lookup_expr='in',
+                                 help_text='Comma separated list of exact tags not present on model', exclude='True')
+    not_debt_context__tags = CharFieldInFilter(field_name='debt_context__tags__name',
+                                               lookup_expr='in',
+                                               help_text='Comma separated list of exact tags not present on debt_context',
+                                               exclude='True')
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('name', 'name'),
+            ('version', 'version'),
+            ('target_start', 'target_start'),
+            ('target_end', 'target_end'),
+            ('status', 'status'),
+            ('lead', 'lead'),
+            ('created', 'created'),
+            ('updated', 'updated'),
+        ),
+        field_labels={
+            'name': 'Debt_Engagement Name',
+        }
+
+    )
+
+    class Meta:
+        model = Debt_Engagement
+        fields = ['id', 'active', 'target_start',
+                  'target_end', 'requester', 'report_type',
+                  'updated', 'threat_model', 'api_test',
+                  'pen_test', 'status', 'debt_context', 'name', 'version', 'tags']
 
 
 class ProductFilter(DojoFilter):
@@ -3168,6 +3278,68 @@ class EngagementTestFilter(DojoFilter):
         self.form.fields['api_scan_configuration'].queryset = Product_API_Scan_Configuration.objects.filter(product=self.engagement.product).distinct()
         self.form.fields['lead'].queryset = get_authorized_users(Permissions.Product_Type_View) \
             .filter(test__lead__isnull=False).distinct()
+
+
+class DebtEngagementDebtTestFilter(DojoFilter):
+    lead = ModelChoiceFilter(queryset=Dojo_User.objects.none(), label="Lead")
+    version = CharFilter(lookup_expr='icontains', label='Version')
+
+    if settings.TRACK_IMPORT_HISTORY:
+        debt_test_import__version = CharFilter(field_name='debt_test_import__version', lookup_expr='icontains', label='Reimported Version')
+
+    target_start = DateRangeFilter()
+    target_end = DateRangeFilter()
+
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        queryset=Debt_Test.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Tag name contains')
+
+    not_tags = ModelMultipleChoiceFilter(
+        field_name='tags__name',
+        to_field_name='name',
+        exclude=True,
+        queryset=Debt_Test.tags.tag_model.objects.all().order_by('name'),
+        # label='tags', # doesn't work with tagulous, need to set in __init__ below
+    )
+
+    not_tag = CharFilter(field_name='tags__name', lookup_expr='icontains', label='Not tag name contains', exclude=True)
+
+    has_tags = BooleanFilter(field_name='tags', lookup_expr='isnull', exclude=True, label='Has tags')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('title', 'title'),
+            ('version', 'version'),
+            ('target_start', 'target_start'),
+            ('target_end', 'target_end'),
+            ('lead', 'lead'),
+            ('api_scan_configuration', 'api_scan_configuration'),
+        ),
+        field_labels={
+            'name': 'Debt_Test Name',
+        }
+
+    )
+
+    class Meta:
+        model = Debt_Test
+        fields = ['id', 'title', 'test_type', 'target_start',
+                  'target_end', 'percent_complete',
+                  'version', 'api_scan_configuration']
+
+    def __init__(self, *args, **kwargs):
+        self.debt_engagement = kwargs.pop('debt_engagement')
+        super(DojoFilter, self).__init__(*args, **kwargs)
+        self.form.fields['debt_test_type'].queryset = Debt_Test_Type.objects.filter(debt_test__debt_engagement=self.debt_engagement).distinct().order_by('name')
+        self.form.fields['api_scan_configuration'].queryset = Debt_Context_API_Scan_Configuration.objects.filter(debt_context=self.debt_engagement.debt_context).distinct()
+        self.form.fields['lead'].queryset = get_authorized_users(Permissions.Debt_Context_Type_View) \
+            .filter(debt_test__lead__isnull=False).distinct()
 
 
 class ApiTestFilter(DojoFilter):

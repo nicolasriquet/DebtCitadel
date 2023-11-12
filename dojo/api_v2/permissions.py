@@ -350,6 +350,45 @@ class UserHasEngagementPermission(permissions.BasePermission):
             )
 
 
+class UserHasDebtEngagementPermission(permissions.BasePermission):
+    # Permission checks for related objects (like notes or metadata) can be moved
+    # into a seperate class, when the legacy authorization will be removed.
+    path_debt_engagement_post = re.compile(r"^/api/v2/debt_engagements/$")
+    path_debt_engagement = re.compile(r"^/api/v2/debt_engagements/\d+/$")
+
+    def has_permission(self, request, view):
+        if UserHasDebtEngagementPermission.path_debt_engagement_post.match(
+                request.path
+        ) or UserHasDebtEngagementPermission.path_debt_engagement.match(request.path):
+            return check_post_permission(
+                request, Debt_Context, "debt_context", Permissions.Debt_Engagement_Add
+            )
+        else:
+            # related object only need object permission
+            return True
+
+    def has_object_permission(self, request, view, obj):
+        if UserHasDebtEngagementPermission.path_debt_engagement_post.match(
+                request.path
+        ) or UserHasDebtEngagementPermission.path_debt_engagement.match(request.path):
+            return check_object_permission(
+                request,
+                obj,
+                Permissions.Debt_Engagement_View,
+                Permissions.Debt_Engagement_Edit,
+                Permissions.Debt_Engagement_Delete,
+            )
+        else:
+            return check_object_permission(
+                request,
+                obj,
+                Permissions.Debt_Engagement_View,
+                Permissions.Debt_Engagement_Edit,
+                Permissions.Debt_Engagement_Edit,
+                Permissions.Debt_Engagement_Edit,
+            )
+
+
 class UserHasRiskAcceptancePermission(permissions.BasePermission):
     # Permission checks for related objects (like notes or metadata) can be moved
     # into a seperate class, when the legacy authorization will be removed.
@@ -1182,6 +1221,23 @@ class UserHasEngagementPresetPermission(permissions.BasePermission):
             Permissions.Product_Edit,
             Permissions.Product_Edit,
             Permissions.Product_Edit,
+        )
+
+
+class UserHasDebtEngagementPresetPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request, Debt_Context, "debt_context", Permissions.Debt_Context_Edit
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj.debt_context,
+            Permissions.Debt_Context_View,
+            Permissions.Debt_Context_Edit,
+            Permissions.Debt_Context_Edit,
+            Permissions.Debt_Context_Edit,
         )
 
 

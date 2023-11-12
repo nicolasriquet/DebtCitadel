@@ -24,7 +24,7 @@ from dojo.endpoint.utils import endpoint_get_or_create, endpoint_filter, \
     validate_endpoints_to_add
 from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_Item_Group, \
     Product_Type, Debt_Context_Type, Product, Debt_Context, Note_Type, \
-    Check_List, SLA_Configuration, User, Engagement, Test, Test_Type, Notes, Risk_Acceptance, \
+    Check_List, SLA_Configuration, User, Engagement, Debt_Engagement, Test, Debt_Test, Test_Type, Notes, Risk_Acceptance, \
     Development_Environment, Dojo_User, Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
     JIRA_Issue, JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
     Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
@@ -1140,6 +1140,15 @@ class DeleteEngagementForm(forms.ModelForm):
         fields = ['id']
 
 
+class DeleteDebtEngagementForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Engagement
+        fields = ['id']
+
+
 class TestForm(forms.ModelForm):
     title = forms.CharField(max_length=255, required=False)
     description = forms.CharField(widget=forms.Textarea(attrs={'rows': '3'}), required=False)
@@ -1176,6 +1185,46 @@ class TestForm(forms.ModelForm):
     class Meta:
         model = Test
         fields = ['title', 'test_type', 'target_start', 'target_end', 'description',
+                  'environment', 'percent_complete', 'tags', 'lead', 'version', 'branch_tag', 'build_id', 'commit_hash',
+                  'api_scan_configuration']
+
+
+class DebtTestForm(forms.ModelForm):
+    title = forms.CharField(max_length=255, required=False)
+    description = forms.CharField(widget=forms.Textarea(attrs={'rows': '3'}), required=False)
+    debt_test_type = forms.ModelChoiceField(queryset=Test_Type.objects.all().order_by('name'))
+    environment = forms.ModelChoiceField(
+        queryset=Development_Environment.objects.all().order_by('name'))
+    target_start = forms.DateTimeField(widget=forms.TextInput(
+        attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    target_end = forms.DateTimeField(widget=forms.TextInput(
+        attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+
+    lead = forms.ModelChoiceField(
+        queryset=None,
+        required=False, label="Debt_Testing Lead")
+
+    def __init__(self, *args, **kwargs):
+        obj = None
+
+        if 'engagement' in kwargs:
+            obj = kwargs.pop('engagement')
+
+        if 'instance' in kwargs:
+            obj = kwargs.get('instance')
+
+        super(DebtTestForm, self).__init__(*args, **kwargs)
+
+        if obj:
+            debt_context = get_debt_context(obj)
+            self.fields['lead'].queryset = get_authorized_users_for_debt_context_and_debt_context_type(None, debt_context, Permissions.Debt_Context_View).filter(is_active=True)
+            self.fields['api_scan_configuration'].queryset = Debt_Context_API_Scan_Configuration.objects.filter(debt_context=debt_context)
+        else:
+            self.fields['lead'].queryset = get_authorized_users(Permissions.Debt_Test_View).filter(is_active=True)
+
+    class Meta:
+        model = Debt_Test
+        fields = ['title', 'debt_test_type', 'target_start', 'target_end', 'description',
                   'environment', 'percent_complete', 'tags', 'lead', 'version', 'branch_tag', 'build_id', 'commit_hash',
                   'api_scan_configuration']
 
@@ -4134,6 +4183,25 @@ class JIRAEngagementForm(forms.Form):
         self.instance = kwargs.pop('instance', None)
 
         super(JIRAEngagementForm, self).__init__(*args, **kwargs)
+
+        if self.instance:
+            if self.instance.has_jira_issue:
+                self.fields['push_to_jira'].widget.attrs['checked'] = 'checked'
+                self.fields['push_to_jira'].label = 'Update JIRA Epic'
+                self.fields['push_to_jira'].help_text = 'Checking this will update the existing EPIC in JIRA.'
+
+    push_to_jira = forms.BooleanField(required=False, label="Create EPIC", help_text="Checking this will create an EPIC in JIRA for this engagement.")
+    epic_name = forms.CharField(max_length=200, required=False, help_text="EPIC name in JIRA. If not specified, it defaults to the engagement name")
+    epic_priority = forms.CharField(max_length=200, required=False, help_text="EPIC priority. If not specified, the JIRA default priority will be used")
+
+
+class JIRADebtEngagementForm(forms.Form):
+    prefix = 'jira-epic-form'
+
+    def __init__(self, *args, **kwargs):
+        self.instance = kwargs.pop('instance', None)
+
+        super(JIRADebtEngagementForm, self).__init__(*args, **kwargs)
 
         if self.instance:
             if self.instance.has_jira_issue:

@@ -25,6 +25,7 @@ from dojo.models import (
     Product,
     Debt_Context,
     Engagement,
+    Debt_Engagement,
     Test,
     Finding,
     Debt_Item,
@@ -80,6 +81,7 @@ from dojo.models import (
     Notifications,
     NOTIFICATION_CHOICES,
     Engagement_Presets,
+    Debt_Engagement_Presets,
     Network_Locations,
     UserContactInfo,
     Product_API_Scan_Configuration,
@@ -1287,9 +1289,39 @@ class EngagementSerializer(TaggitSerializer, serializers.ModelSerializer):
         return super().build_relational_field(field_name, relation_info)
 
 
+class DebtEngagementSerializer(TaggitSerializer, serializers.ModelSerializer):
+    tags = TagListSerializerField(required=False)
+
+    class Meta:
+        model = Debt_Engagement
+        exclude = ("inherited_tags",)
+
+    def validate(self, data):
+        if self.context["request"].method == "POST":
+            if data.get("target_start") > data.get("target_end"):
+                raise serializers.ValidationError(
+                    "Your target start date exceeds your target end date"
+                )
+        return data
+
+    def build_relational_field(self, field_name, relation_info):
+        if field_name == "notes":
+            return NoteSerializer, {"many": True, "read_only": True}
+        if field_name == "files":
+            return FileSerializer, {"many": True, "read_only": True}
+        return super().build_relational_field(field_name, relation_info)
+
+
 class EngagementToNotesSerializer(serializers.Serializer):
     engagement_id = serializers.PrimaryKeyRelatedField(
         queryset=Engagement.objects.all(), many=False, allow_null=True
+    )
+    notes = NoteSerializer(many=True)
+
+
+class DebtEngagementToNotesSerializer(serializers.Serializer):
+    engagement_id = serializers.PrimaryKeyRelatedField(
+        queryset=Debt_Engagement.objects.all(), many=False, allow_null=True
     )
     notes = NoteSerializer(many=True)
 
@@ -1321,7 +1353,39 @@ class EngagementToFilesSerializer(serializers.Serializer):
         return new_data
 
 
+class DebtEngagementToFilesSerializer(serializers.Serializer):
+    debt_engagement_id = serializers.PrimaryKeyRelatedField(
+        queryset=Debt_Engagement.objects.all(), many=False, allow_null=True
+    )
+    files = FileSerializer(many=True)
+
+    def to_representation(self, data):
+        debt_engagement = data.get("debt_engagement_id")
+        files = data.get("files")
+        new_files = []
+        for file in files:
+            new_files.append(
+                {
+                    "id": file.id,
+                    "file": "{site_url}/{file_access_url}".format(
+                        site_url=settings.SITE_URL,
+                        file_access_url=file.get_accessible_url(
+                            debt_engagement, debt_engagement.id
+                        ),
+                    ),
+                    "title": file.title,
+                }
+            )
+        new_data = {"debt_engagement_id": debt_engagement.id, "files": new_files}
+        return new_data
+
 class EngagementCheckListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Check_List
+        fields = "__all__"
+
+
+class DebtEngagementCheckListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Check_List
         fields = "__all__"
@@ -3745,6 +3809,12 @@ class NotificationsSerializer(serializers.ModelSerializer):
 class EngagementPresetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Engagement_Presets
+        fields = "__all__"
+
+
+class DebtEngagementPresetsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Debt_Engagement_Presets
         fields = "__all__"
 
 

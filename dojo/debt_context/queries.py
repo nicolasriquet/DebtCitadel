@@ -1,7 +1,7 @@
 from crum import get_current_user
 from django.db.models import Exists, OuterRef, Q
 from dojo.models import Debt_Context, Debt_Context_Member, Debt_Context_Type_Member, App_Analysis, \
-    DojoMeta, Debt_Context_Group, Debt_Context_Type_Group, Languages, Engagement_Presets, \
+    DojoMeta, Debt_Context_Group, Debt_Context_Type_Group, Languages, Engagement_Presets, Debt_Engagement_Presets, \
     Debt_Context_API_Scan_Configuration
 from dojo.authorization.authorization import get_roles_for_permission, user_has_global_permission, user_has_permission, \
     role_has_permission
@@ -291,17 +291,17 @@ def get_authorized_languages(permission):
     return languages
 
 
-def get_authorized_engagement_presets(permission):
+def get_authorized_debt_engagement_presets(permission):
     user = get_current_user()
 
     if user is None:
-        return Engagement_Presets.objects.none()
+        return Debt_Engagement_Presets.objects.none()
 
     if user.is_superuser:
-        return Engagement_Presets.objects.all().order_by('title')
+        return Debt_Engagement_Presets.objects.all().order_by('title')
 
     if user_has_global_permission(user, permission):
-        return Engagement_Presets.objects.all().order_by('title')
+        return Debt_Engagement_Presets.objects.all().order_by('title')
 
     roles = get_roles_for_permission(permission)
     authorized_debt_context_type_roles = Debt_Context_Type_Member.objects.filter(
@@ -320,16 +320,16 @@ def get_authorized_engagement_presets(permission):
         debt_context=OuterRef('debt_context_id'),
         group__users=user,
         role__in=roles)
-    engagement_presets = Engagement_Presets.objects.annotate(
+    debt_engagement_presets = Debt_Engagement_Presets.objects.annotate(
         debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
         debt_context__member=Exists(authorized_debt_context_roles),
         debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
         debt_context__authorized_group=Exists(authorized_debt_context_groups)).order_by('title')
-    engagement_presets = engagement_presets.filter(
+    debt_engagement_presets = debt_engagement_presets.filter(
         Q(debt_context__prod_type__member=True) | Q(debt_context__member=True) |
         Q(debt_context__prod_type__authorized_group=True) | Q(debt_context__authorized_group=True))
 
-    return engagement_presets
+    return debt_engagement_presets
 
 
 def get_authorized_debt_context_api_scan_configurations(permission):

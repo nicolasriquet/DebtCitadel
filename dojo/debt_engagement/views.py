@@ -21,35 +21,37 @@ from time import strftime
 from django.contrib.admin.utils import NestedObjects
 from django.db import DEFAULT_DB_ALIAS
 
-from dojo.engagement.services import close_engagement, reopen_engagement
-from dojo.filters import EngagementFilter, EngagementDirectFilter, EngagementTestFilter
+from dojo.debt_engagement.services import close_debt_engagement, reopen_debt_engagement
+from dojo.filters import DebtEngagementFilter, DebtEngagementDirectFilter, DebtEngagementDebtTestFilter
 from dojo.forms import CheckForm, \
     UploadThreatForm, RiskAcceptanceForm, NoteForm, DoneForm, \
-    EngForm, TestForm, ReplaceRiskAcceptanceProofForm, AddFindingsRiskAcceptanceForm, DeleteEngagementForm, ImportScanForm, \
-    CredMappingForm, JIRAEngagementForm, JIRAImportScanForm, TypedNoteForm, JIRAProjectForm, \
+    EngForm, TestForm, DebtTestForm, ReplaceRiskAcceptanceProofForm, AddDebtItemsRiskAcceptanceForm, DeleteDebtEngagementForm, ImportScanForm, \
+    CredMappingForm, JIRADebtEngagementForm, JIRAImportScanForm, TypedNoteForm, JIRAProjectForm, \
     EditRiskAcceptanceForm
 
-from dojo.models import Finding, Product, Engagement, Test, \
+from dojo.models import Debt_Item, Debt_Context, Debt_Engagement, Debt_Test, \
     Check_List, Test_Import, Notes, \
     Risk_Acceptance, Development_Environment, Endpoint, \
-    Cred_Mapping, System_Settings, Note_Type, Product_API_Scan_Configuration
+    Cred_Mapping, System_Settings, Note_Type, Debt_Context_API_Scan_Configuration
 from dojo.tools.factory import get_scan_types_sorted
 from dojo.utils import add_error_message_to_response, add_success_message_to_response, get_page_items, add_breadcrumb, handle_uploaded_threat, \
-    FileIterWrapper, get_cal_event, Product_Tab, is_scan_file_too_large, async_delete, \
+    FileIterWrapper, get_cal_event, Debt_Context_Tab, is_scan_file_too_large, async_delete, \
     get_system_setting, get_setting, redirect_to_return_url_or_else, get_return_url, calculate_grade
 from dojo.notifications.helper import create_notification
-from dojo.finding.views import find_available_notetypes
+from dojo.debt_item.views import find_available_notetypes
 from functools import reduce
 from django.db.models.query import Prefetch, QuerySet
 import dojo.jira_link.helper as jira_helper
 import dojo.risk_acceptance.helper as ra_helper
 from dojo.risk_acceptance.helper import prefetch_for_expiration
 from dojo.finding.helper import NOT_ACCEPTED_FINDINGS_QUERY
+from dojo.debt_item.helper import NOT_ACCEPTED_DEBT_ITEMS_QUERY
 from django.views.decorators.vary import vary_on_cookie
 from dojo.authorization.authorization import user_has_permission_or_403
 from dojo.authorization.roles_permissions import Permissions
-from dojo.product.queries import get_authorized_products
+from dojo.debt_context.queries import get_authorized_debt_contexts
 from dojo.engagement.queries import get_authorized_engagements
+from dojo.debt_engagement.queries import get_authorized_debt_engagements
 from dojo.user.queries import get_authorized_users
 from dojo.authorization.authorization_decorators import user_is_authorized
 from dojo.importers.importer.importer import DojoDefaultImporter as Importer
@@ -62,13 +64,13 @@ logger = logging.getLogger(__name__)
 
 @cache_page(60 * 5)  # cache for 5 minutes
 @vary_on_cookie
-def engagement_calendar(request):
+def debt_engagement_calendar(request):
 
     if not get_system_setting('enable_calendar'):
         raise Resolver404()
 
     if 'lead' not in request.GET or '0' in request.GET.getlist('lead'):
-        engagements = get_authorized_engagements(Permissions.Engagement_View)
+        debt_engagements = get_authorized_debt_engagements(Permissions.Debt_Engagement_View)
     else:
         filters = []
         leads = request.GET.getlist('lead', '')
@@ -76,323 +78,323 @@ def engagement_calendar(request):
             leads.remove('-1')
             filters.append(Q(lead__isnull=True))
         filters.append(Q(lead__in=leads))
-        engagements = get_authorized_engagements(Permissions.Engagement_View).filter(reduce(operator.or_, filters))
+        debt_engagements = get_authorized_debt_engagements(Permissions.Debt_Engagement_View).filter(reduce(operator.or_, filters))
 
-    engagements = engagements.select_related('lead')
-    engagements = engagements.prefetch_related('product')
+    debt_engagements = debt_engagements.select_related('lead')
+    debt_engagements = debt_engagements.prefetch_related('debt_context')
 
     add_breadcrumb(
-        title="Engagement Calendar", top_level=True, request=request)
+        title="Debt_Engagement Calendar", top_level=True, request=request)
     return render(
         request, 'dojo/calendar.html', {
-            'caltype': 'engagements',
+            'caltype': 'debt_engagements',
             'leads': request.GET.getlist('lead', ''),
-            'engagements': engagements,
-            'users': get_authorized_users(Permissions.Engagement_View)
+            'debt_engagements': debt_engagements,
+            'users': get_authorized_users(Permissions.Debt_Engagement_View)
         })
 
 
-def get_filtered_engagements(request, view):
+def get_filtered_debt_engagements(request, view):
 
     if view not in ['all', 'active']:
         raise ValidationError(f'View {view} is not allowed')
 
-    engagements = get_authorized_engagements(Permissions.Engagement_View).order_by('-target_start')
+    debt_engagements = get_authorized_debt_engagements(Permissions.Debt_Engagement_View).order_by('-target_start')
 
     if view == 'active':
-        engagements = engagements.filter(active=True)
+        debt_engagements = debt_engagements.filter(active=True)
 
-    engagements = engagements.select_related('product', 'product__prod_type') \
-        .prefetch_related('lead', 'tags', 'product__tags')
+    debt_engagements = debt_engagements.select_related('debt_context', 'debt_context__prod_type') \
+        .prefetch_related('lead', 'tags', 'debt_context__tags')
 
     if System_Settings.objects.get().enable_jira:
-        engagements = engagements.prefetch_related(
+        debt_engagements = debt_engagements.prefetch_related(
             'jira_project__jira_instance',
-            'product__jira_project_set__jira_instance'
+            'debt_context__jira_project_set__jira_instance'
         )
 
-    engagements = EngagementDirectFilter(request.GET, queryset=engagements)
+    debt_engagements = DebtEngagementDirectFilter(request.GET, queryset=debt_engagements)
 
-    return engagements
+    return debt_engagements
 
 
-def get_test_counts(engagements):
-    # Get the test counts per engagement. As a separate query, this is much
-    # faster than annotating the above `engagements` query.
-    engagement_test_counts = {
-        test['engagement']: test['test_count']
-        for test in Test.objects.filter(
-            engagement__in=engagements
+def get_debt_test_counts(debt_engagements):
+    # Get the debt_test counts per debt_engagement. As a separate query, this is much
+    # faster than annotating the above `debt_engagements` query.
+    debt_engagement_debt_test_counts = {
+        debt_test['debt_engagement']: debt_test['debt_test_count']
+        for debt_test in Debt_Test.objects.filter(
+            debt_engagement__in=debt_engagements
         ).values(
-            'engagement'
+            'debt_engagement'
         ).annotate(
-            test_count=Count('engagement')
+            debt_test_count=Count('debt_engagement')
         )
     }
-    return engagement_test_counts
+    return debt_engagement_debt_test_counts
 
 
-def engagements(request, view):
+def debt_engagements(request, view):
 
     if not view:
         view = 'active'
 
-    filtered_engagements = get_filtered_engagements(request, view)
+    filtered_debt_engagements = get_filtered_debt_engagements(request, view)
 
-    engs = get_page_items(request, filtered_engagements.qs, 25)
-    product_name_words = sorted(get_authorized_products(Permissions.Product_View).values_list('name', flat=True))
-    engagement_name_words = sorted(get_authorized_engagements(Permissions.Engagement_View).values_list('name', flat=True).distinct())
+    engs = get_page_items(request, filtered_debt_engagements.qs, 25)
+    debt_context_name_words = sorted(get_authorized_debt_contexts(Permissions.Debt_Context_View).values_list('name', flat=True))
+    debt_engagement_name_words = sorted(get_authorized_debt_engagements(Permissions.Debt_Engagement_View).values_list('name', flat=True).distinct())
 
     add_breadcrumb(
-        title=f"{view.capitalize()} Engagements",
+        title=f"{view.capitalize()} Debt_Engagements",
         top_level=not len(request.GET),
         request=request)
 
     return render(
-        request, 'dojo/engagement.html', {
-            'engagements': engs,
-            'engagement_test_counts': get_test_counts(filtered_engagements.qs),
-            'filter_form': filtered_engagements.form,
-            'product_name_words': product_name_words,
-            'engagement_name_words': engagement_name_words,
+        request, 'dojo/debt_engagement.html', {
+            'debt_engagements': engs,
+            'debt_engagement_debt_test_counts': get_debt_test_counts(filtered_debt_engagements.qs),
+            'filter_form': filtered_debt_engagements.form,
+            'debt_context_name_words': debt_context_name_words,
+            'debt_engagement_name_words': debt_engagement_name_words,
             'view': view.capitalize(),
         })
 
 
-def engagements_all(request):
+def debt_engagements_all(request):
 
-    products_with_engagements = get_authorized_products(Permissions.Engagement_View)
-    products_with_engagements = products_with_engagements.filter(~Q(engagement=None)).distinct()
+    debt_contexts_with_debt_engagements = get_authorized_debt_contexts(Permissions.Debt_Engagement_View)
+    debt_contexts_with_debt_engagements = debt_contexts_with_debt_engagements.filter(~Q(debt_engagement=None)).distinct()
 
-    # count using prefetch instead of just using 'engagement__set_test_test` to avoid loading all test in memory just to count them
-    filter_qs = products_with_engagements.prefetch_related(
-        Prefetch('engagement_set', queryset=Engagement.objects.all().annotate(test_count=Count('test__id')))
+    # count using prefetch instead of just using 'debt_engagement__set_debt_test_debt_test` to avoid loading all debt_test in memory just to count them
+    filter_qs = debt_contexts_with_debt_engagements.prefetch_related(
+        Prefetch('debt_engagement_set', queryset=Debt_Engagement.objects.all().annotate(debt_test_count=Count('debt_test__id')))
     )
 
     filter_qs = filter_qs.prefetch_related(
-        'engagement_set__tags',
+        'debt_engagement_set__tags',
         'prod_type',
-        'engagement_set__lead',
+        'debt_engagement_set__lead',
         'tags',
     )
     if System_Settings.objects.get().enable_jira:
         filter_qs = filter_qs.prefetch_related(
-            'engagement_set__jira_project__jira_instance',
+            'debt_engagement_set__jira_project__jira_instance',
             'jira_project_set__jira_instance'
         )
 
-    filtered = EngagementFilter(
+    filtered = DebtEngagementFilter(
         request.GET,
         queryset=filter_qs
     )
 
     prods = get_page_items(request, filtered.qs, 25)
 
-    name_words = products_with_engagements.values_list('name', flat=True)
-    eng_words = get_authorized_engagements(Permissions.Engagement_View).values_list('name', flat=True).distinct()
+    name_words = debt_contexts_with_debt_engagements.values_list('name', flat=True)
+    eng_words = get_authorized_debt_engagements(Permissions.Debt_Engagement_View).values_list('name', flat=True).distinct()
 
     add_breadcrumb(
-        title="All Engagements",
+        title="All Debt_Engagements",
         top_level=not len(request.GET),
         request=request)
 
     return render(
-        request, 'dojo/engagements_all.html', {
-            'products': prods,
+        request, 'dojo/debt_engagements_all.html', {
+            'debt_contexts': prods,
             'filter_form': filtered.form,
             'name_words': sorted(set(name_words)),
             'eng_words': sorted(set(eng_words)),
         })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Edit, 'eid')
-def edit_engagement(request, eid):
-    engagement = Engagement.objects.get(pk=eid)
-    is_ci_cd = engagement.engagement_type == "CI/CD"
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Edit, 'eid')
+def edit_debt_engagement(request, eid):
+    debt_engagement = Debt_Engagement.objects.get(pk=eid)
+    is_ci_cd = debt_engagement.debt_engagement_type == "CI/CD"
     jira_project_form = None
     jira_epic_form = None
     jira_project = None
     jira_error = False
 
     if request.method == 'POST':
-        form = EngForm(request.POST, instance=engagement, cicd=is_ci_cd, product=engagement.product, user=request.user)
-        jira_project = jira_helper.get_jira_project(engagement, use_inheritance=False)
+        form = EngForm(request.POST, instance=debt_engagement, cicd=is_ci_cd, debt_context=debt_engagement.debt_context, user=request.user)
+        jira_project = jira_helper.get_jira_project(debt_engagement, use_inheritance=False)
 
         if form.is_valid():
-            # first save engagement details
+            # first save debt_engagement details
             new_status = form.cleaned_data.get('status')
-            engagement.product = form.cleaned_data.get('product')
-            engagement = form.save(commit=False)
+            debt_engagement.debt_context = form.cleaned_data.get('debt_context')
+            debt_engagement = form.save(commit=False)
             if (new_status == "Cancelled" or new_status == "Completed"):
-                engagement.active = False
-                create_notification(event='close_engagement',
-                        title='Closure of %s' % engagement.name,
-                        description='The engagement "%s" was closed' % (engagement.name),
-                        engagement=engagement, url=reverse('engagement_all_findings', args=(engagement.id, ))),
+                debt_engagement.active = False
+                create_notification(event='close_debt_engagement',
+                        title='Closure of %s' % debt_engagement.name,
+                        description='The debt_engagement "%s" was closed' % (debt_engagement.name),
+                        debt_engagement=debt_engagement, url=reverse('debt_engagement_all_debt_items', args=(debt_engagement.id, ))),
             else:
-                engagement.active = True
-            engagement.save()
+                debt_engagement.active = True
+            debt_engagement.save()
             form.save_m2m()
 
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Engagement updated successfully.',
+                'Debt_Engagement updated successfully.',
                 extra_tags='alert-success')
 
-            success, jira_project_form = jira_helper.process_jira_project_form(request, instance=jira_project, target='engagement', engagement=engagement, product=engagement.product)
+            success, jira_project_form = jira_helper.process_jira_project_form(request, instance=jira_project, target='debt_engagement', debt_engagement=debt_engagement, debt_context=debt_engagement.debt_context)
             error = not success
 
-            success, jira_epic_form = jira_helper.process_jira_epic_form(request, engagement=engagement)
+            success, jira_epic_form = jira_helper.process_jira_epic_form(request, debt_engagement=debt_engagement)
             error = error or not success
 
             if not error:
-                if '_Add Tests' in request.POST:
+                if '_Add Debt_Tests' in request.POST:
                     return HttpResponseRedirect(
-                        reverse('add_tests', args=(engagement.id, )))
+                        reverse('add_debt_tests', args=(debt_engagement.id, )))
                 else:
                     return HttpResponseRedirect(
-                        reverse('view_engagement', args=(engagement.id, )))
+                        reverse('view_debt_engagement', args=(debt_engagement.id, )))
         else:
             logger.debug(form.errors)
 
     else:
-        form = EngForm(initial={'product': engagement.product}, instance=engagement, cicd=is_ci_cd, product=engagement.product, user=request.user)
+        form = EngForm(initial={'debt_context': debt_engagement.debt_context}, instance=debt_engagement, cicd=is_ci_cd, debt_context=debt_engagement.debt_context, user=request.user)
 
         jira_epic_form = None
         if get_system_setting('enable_jira'):
-            jira_project = jira_helper.get_jira_project(engagement, use_inheritance=False)
-            jira_project_form = JIRAProjectForm(instance=jira_project, target='engagement', product=engagement.product)
+            jira_project = jira_helper.get_jira_project(debt_engagement, use_inheritance=False)
+            jira_project_form = JIRAProjectForm(instance=jira_project, target='debt_engagement', debt_context=debt_engagement.debt_context)
             logger.debug('showing jira-epic-form')
-            jira_epic_form = JIRAEngagementForm(instance=engagement)
+            jira_epic_form = JIRADebtEngagementForm(instance=debt_engagement)
 
     if is_ci_cd:
-        title = 'Edit CI/CD Engagement'
+        title = 'Edit CI/CD Debt_Engagement'
     else:
-        title = 'Edit Interactive Engagement'
+        title = 'Edit Interactive Debt_Engagement'
 
-    product_tab = Product_Tab(engagement.product, title=title, tab="engagements")
-    product_tab.setEngagement(engagement)
+    debt_context_tab = Debt_Context_Tab(debt_engagement.debt_context, title=title, tab="debt_engagements")
+    debt_context_tab.setDebtEngagement(debt_engagement)
     return render(request, 'dojo/new_eng.html', {
-        'product_tab': product_tab,
+        'debt_context_tab': debt_context_tab,
         'title': title,
         'form': form,
         'edit': True,
         'jira_epic_form': jira_epic_form,
         'jira_project_form': jira_project_form,
-        'engagement': engagement,
+        'debt_engagement': debt_engagement,
     })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Delete, 'eid')
-def delete_engagement(request, eid):
-    engagement = get_object_or_404(Engagement, pk=eid)
-    product = engagement.product
-    form = DeleteEngagementForm(instance=engagement)
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Delete, 'eid')
+def delete_debt_engagement(request, eid):
+    debt_engagement = get_object_or_404(Debt_Engagement, pk=eid)
+    debt_context = debt_engagement.debt_context
+    form = DeleteDebtEngagementForm(instance=debt_engagement)
 
     if request.method == 'POST':
-        if 'id' in request.POST and str(engagement.id) == request.POST['id']:
-            form = DeleteEngagementForm(request.POST, instance=engagement)
+        if 'id' in request.POST and str(debt_engagement.id) == request.POST['id']:
+            form = DeleteDebtEngagementForm(request.POST, instance=debt_engagement)
             if form.is_valid():
-                product = engagement.product
+                debt_context = debt_engagement.debt_context
                 if get_setting("ASYNC_OBJECT_DELETE"):
                     async_del = async_delete()
-                    async_del.delete(engagement)
-                    message = 'Engagement and relationships will be removed in the background.'
+                    async_del.delete(debt_engagement)
+                    message = 'Debt_Engagement and relationships will be removed in the background.'
                 else:
-                    message = 'Engagement and relationships removed.'
-                    engagement.delete()
+                    message = 'Debt_Engagement and relationships removed.'
+                    debt_engagement.delete()
                 messages.add_message(
                     request,
                     messages.SUCCESS,
                     message,
                     extra_tags='alert-success')
                 create_notification(event='other',
-                                    title='Deletion of %s' % engagement.name,
-                                    product=product,
-                                    description='The engagement "%s" was deleted by %s' % (engagement.name, request.user),
-                                    url=request.build_absolute_uri(reverse('view_engagements', args=(product.id, ))),
-                                    recipients=[engagement.lead],
+                                    title='Deletion of %s' % debt_engagement.name,
+                                    debt_context=debt_context,
+                                    description='The debt_engagement "%s" was deleted by %s' % (debt_engagement.name, request.user),
+                                    url=request.build_absolute_uri(reverse('view_debt_engagements', args=(debt_context.id, ))),
+                                    recipients=[debt_engagement.lead],
                                     icon="exclamation-triangle")
 
-                return HttpResponseRedirect(reverse("view_engagements", args=(product.id, )))
+                return HttpResponseRedirect(reverse("view_debt_engagements", args=(debt_context.id, )))
 
     rels = ['Previewing the relationships has been disabled.', '']
     display_preview = get_setting('DELETE_PREVIEW')
     if display_preview:
         collector = NestedObjects(using=DEFAULT_DB_ALIAS)
-        collector.collect([engagement])
+        collector.collect([debt_engagement])
         rels = collector.nested()
 
-    product_tab = Product_Tab(product, title="Delete Engagement", tab="engagements")
-    product_tab.setEngagement(engagement)
-    return render(request, 'dojo/delete_engagement.html', {
-        'product_tab': product_tab,
-        'engagement': engagement,
+    debt_context_tab = Debt_Context_Tab(debt_context, title="Delete Debt_Engagement", tab="debt_engagements")
+    debt_context_tab.setDebt_Engagement(debt_engagement)
+    return render(request, 'dojo/delete_debt_engagement.html', {
+        'debt_context_tab': debt_context_tab,
+        'debt_engagement': debt_engagement,
         'form': form,
         'rels': rels,
     })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Edit, 'eid')
-def copy_engagement(request, eid):
-    engagement = get_object_or_404(Engagement, id=eid)
-    product = engagement.product
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Edit, 'eid')
+def copy_debt_engagement(request, eid):
+    debt_engagement = get_object_or_404(Debt_Engagement, id=eid)
+    debt_context = debt_engagement.debt_context
     form = DoneForm()
 
     if request.method == 'POST':
         form = DoneForm(request.POST)
         if form.is_valid():
-            engagement_copy = engagement.copy()
-            calculate_grade(product)
+            debt_engagement_copy = debt_engagement.copy()
+            calculate_grade(debt_context)
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Engagement Copied successfully.',
+                'Debt_Engagement Copied successfully.',
                 extra_tags='alert-success')
             create_notification(event='other',
-                                title='Copying of %s' % engagement.name,
-                                description='The engagement "%s" was copied by %s' % (engagement.name, request.user),
-                                product=product,
-                                url=request.build_absolute_uri(reverse('view_engagement', args=(engagement_copy.id, ))),
-                                recipients=[engagement.lead],
+                                title='Copying of %s' % debt_engagement.name,
+                                description='The debt_engagement "%s" was copied by %s' % (debt_engagement.name, request.user),
+                                debt_context=debt_context,
+                                url=request.build_absolute_uri(reverse('view_debt_engagement', args=(debt_engagement_copy.id, ))),
+                                recipients=[debt_engagement.lead],
                                 icon="exclamation-triangle")
-            return redirect_to_return_url_or_else(request, reverse("view_engagements", args=(product.id, )))
+            return redirect_to_return_url_or_else(request, reverse("view_debt_engagements", args=(debt_context.id, )))
         else:
             messages.add_message(
                 request,
                 messages.ERROR,
-                'Unable to copy engagement, please try again.',
+                'Unable to copy debt_engagement, please try again.',
                 extra_tags='alert-danger')
 
-    product_tab = Product_Tab(product, title="Copy Engagement", tab="engagements")
+    debt_context_tab = Debt_Context_Tab(debt_context, title="Copy Debt_Engagement", tab="debt_engagements")
     return render(request, 'dojo/copy_object.html', {
-        'source': engagement,
-        'source_label': 'Engagement',
-        'destination_label': 'Product',
-        'product_tab': product_tab,
+        'source': debt_engagement,
+        'source_label': 'Debt_Engagement',
+        'destination_label': 'Debt_Context',
+        'debt_context_tab': debt_context_tab,
         'form': form,
     })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_View, 'eid')
-def view_engagement(request, eid):
-    eng = get_object_or_404(Engagement, id=eid)
-    tests = eng.test_set.all().order_by('test_type__name', '-updated')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_View, 'eid')
+def view_debt_engagement(request, eid):
+    eng = get_object_or_404(Debt_Engagement, id=eid)
+    debt_tests = eng.debt_test_set.all().order_by('debt_test_type__name', '-updated')
 
     default_page_num = 10
 
-    tests_filter = EngagementTestFilter(request.GET, queryset=tests, engagement=eng)
-    paged_tests = get_page_items(request, tests_filter.qs, default_page_num)
+    debt_tests_filter = DebtEngagementDebt_TestFilter(request.GET, queryset=debt_tests, debt_engagement=eng)
+    paged_debt_tests = get_page_items(request, debt_tests_filter.qs, default_page_num)
     # prefetch only after creating the filters to avoid https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
-    paged_tests.object_list = prefetch_for_view_tests(paged_tests.object_list)
+    paged_debt_tests.object_list = prefetch_for_view_debt_tests(paged_debt_tests.object_list)
 
-    prod = eng.product
-    risks_accepted = eng.risk_acceptance.all().select_related('owner').annotate(accepted_findings_count=Count('accepted_findings__id'))
-    preset_test_type = None
+    prod = eng.debt_context
+    risks_accepted = eng.risk_acceptance.all().select_related('owner').annotate(accepted_debt_items_count=Count('accepted_debt_items__id'))
+    preset_debt_test_type = None
     network = None
     if eng.preset:
-        preset_test_type = eng.preset.test_type.all()
+        preset_debt_test_type = eng.preset.debt_test_type.all()
         network = eng.preset.network_locations.all()
     system_settings = System_Settings.objects.get()
 
@@ -400,7 +402,7 @@ def view_engagement(request, eid):
     jira_project = jira_helper.get_jira_project(eng)
 
     try:
-        check = Check_List.objects.get(engagement=eng)
+        check = Check_List.objects.get(debt_engagement=eng)
     except:
         check = None
         pass
@@ -429,8 +431,8 @@ def view_engagement(request, eid):
                 form = TypedNoteForm(available_note_types=available_note_types)
             else:
                 form = NoteForm()
-            url = request.build_absolute_uri(reverse("view_engagement", args=(eng.id,)))
-            title = "Engagement: %s on %s" % (eng.name, eng.product.name)
+            url = request.build_absolute_uri(reverse("view_debt_engagement", args=(eng.id,)))
+            title = "Debt_Engagement: %s on %s" % (eng.name, eng.debt_context.name)
             messages.add_message(request,
                                  messages.SUCCESS,
                                  'Note added successfully.',
@@ -442,24 +444,24 @@ def view_engagement(request, eid):
             form = NoteForm()
 
     creds = Cred_Mapping.objects.filter(
-        product=eng.product).select_related('cred_id').order_by('cred_id')
+        debt_context=eng.debt_context).select_related('cred_id').order_by('cred_id')
     cred_eng = Cred_Mapping.objects.filter(
-        engagement=eng.id).select_related('cred_id').order_by('cred_id')
+        debt_engagement=eng.id).select_related('cred_id').order_by('cred_id')
 
     add_breadcrumb(parent=eng, top_level=False, request=request)
 
     title = ""
-    if eng.engagement_type == "CI/CD":
+    if eng.debt_engagement_type == "CI/CD":
         title = " CI/CD"
-    product_tab = Product_Tab(prod, title="View" + title + " Engagement", tab="engagements")
-    product_tab.setEngagement(eng)
+    debt_context_tab = Debt_Context_Tab(prod, title="View" + title + " Debt_Engagement", tab="debt_engagements")
+    debt_context_tab.setDebt_Engagement(eng)
     return render(
         request, 'dojo/view_eng.html', {
             'eng': eng,
-            'product_tab': product_tab,
+            'debt_context_tab': debt_context_tab,
             'system_settings': system_settings,
-            'tests': paged_tests,
-            'filter': tests_filter,
+            'debt_tests': paged_debt_tests,
+            'filter': debt_tests_filter,
             'check': check,
             'threat': eng.tmodel_path,
             'form': form,
@@ -471,23 +473,23 @@ def view_engagement(request, eid):
             'creds': creds,
             'cred_eng': cred_eng,
             'network': network,
-            'preset_test_type': preset_test_type
+            'preset_debt_test_type': preset_debt_test_type
         })
 
 
-def prefetch_for_view_tests(tests):
-    prefetched = tests
-    if isinstance(tests,
+def prefetch_for_view_debt_tests(debt_tests):
+    prefetched = debt_tests
+    if isinstance(debt_tests,
                   QuerySet):  # old code can arrive here with prods being a list because the query was already executed
 
         prefetched = prefetched.select_related('lead')
-        prefetched = prefetched.prefetch_related('tags', 'test_type', 'notes')
-        prefetched = prefetched.annotate(count_findings_test_all=Count('finding__id', distinct=True))
-        prefetched = prefetched.annotate(count_findings_test_active=Count('finding__id', filter=Q(finding__active=True), distinct=True))
-        prefetched = prefetched.annotate(count_findings_test_active_verified=Count('finding__id', filter=Q(finding__active=True) & Q(finding__verified=True), distinct=True))
-        prefetched = prefetched.annotate(count_findings_test_mitigated=Count('finding__id', filter=Q(finding__is_mitigated=True), distinct=True))
-        prefetched = prefetched.annotate(count_findings_test_dups=Count('finding__id', filter=Q(finding__duplicate=True), distinct=True))
-        prefetched = prefetched.annotate(total_reimport_count=Count('test_import__id', filter=Q(test_import__type=Test_Import.REIMPORT_TYPE), distinct=True))
+        prefetched = prefetched.prefetch_related('tags', 'debt_test_type', 'notes')
+        prefetched = prefetched.annotate(count_debt_items_debt_test_all=Count('debt_item__id', distinct=True))
+        prefetched = prefetched.annotate(count_debt_items_debt_test_active=Count('debt_item__id', filter=Q(debt_item__active=True), distinct=True))
+        prefetched = prefetched.annotate(count_debt_items_debt_test_active_verified=Count('debt_item__id', filter=Q(debt_item__active=True) & Q(debt_item__verified=True), distinct=True))
+        prefetched = prefetched.annotate(count_debt_items_debt_test_mitigated=Count('debt_item__id', filter=Q(debt_item__is_mitigated=True), distinct=True))
+        prefetched = prefetched.annotate(count_debt_items_debt_test_dups=Count('debt_item__id', filter=Q(debt_item__duplicate=True), distinct=True))
+        prefetched = prefetched.annotate(total_reimport_count=Count('debt_test_import__id', filter=Q(debt_test_import__type=Debt_Test_Import.REIMPORT_TYPE), distinct=True))
 
     else:
         logger.warning('unable to prefetch because query was already executed')
@@ -495,77 +497,77 @@ def prefetch_for_view_tests(tests):
     return prefetched
 
 
-@user_is_authorized(Engagement, Permissions.Test_Add, 'eid')
-def add_tests(request, eid):
-    eng = Engagement.objects.get(id=eid)
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Test_Add, 'eid')
+def add_debt_tests(request, eid):
+    eng = Debt_Engagement.objects.get(id=eid)
     cred_form = CredMappingForm()
     cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
-        engagement=eng).order_by('cred_id')
+        debt_engagement=eng).order_by('cred_id')
 
     if request.method == 'POST':
-        form = TestForm(request.POST, engagement=eng)
+        form = Debt_TestForm(request.POST, debt_engagement=eng)
         cred_form = CredMappingForm(request.POST)
         cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
-            engagement=eng).order_by('cred_id')
+            debt_engagement=eng).order_by('cred_id')
         if form.is_valid():
-            new_test = form.save(commit=False)
+            new_debt_test = form.save(commit=False)
             # set default scan_type as it's used in reimport
-            new_test.scan_type = new_test.test_type.name
-            new_test.engagement = eng
+            new_debt_test.scan_type = new_debt_test.debt_test_type.name
+            new_debt_test.debt_engagement = eng
             try:
-                new_test.lead = User.objects.get(id=form['lead'].value())
+                new_debt_test.lead = User.objects.get(id=form['lead'].value())
             except:
-                new_test.lead = None
+                new_debt_test.lead = None
                 pass
 
-            # Set status to in progress if a test is added
+            # Set status to in progress if a debt_test is added
             if eng.status != "In Progress" and eng.active is True:
                 eng.status = "In Progress"
                 eng.save()
 
-            new_test.save()
+            new_debt_test.save()
 
-            # Save the credential to the test
+            # Save the credential to the debt_test
             if cred_form.is_valid():
                 if cred_form.cleaned_data['cred_user']:
-                    # Select the credential mapping object from the selected list and only allow if the credential is associated with the product
+                    # Select the credential mapping object from the selected list and only allow if the credential is associated with the debt_context
                     cred_user = Cred_Mapping.objects.filter(
                         pk=cred_form.cleaned_data['cred_user'].id,
-                        engagement=eid).first()
+                        debt_engagement=eid).first()
 
                     new_f = cred_form.save(commit=False)
-                    new_f.test = new_test
+                    new_f.debt_test = new_debt_test
                     new_f.cred_id = cred_user.cred_id
                     new_f.save()
 
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Test added successfully.',
+                'Debt_Test added successfully.',
                 extra_tags='alert-success')
 
-            notifications_helper.notify_test_created(new_test)
+            notifications_helper.notify_debt_test_created(new_debt_test)
 
-            if '_Add Another Test' in request.POST:
+            if '_Add Another Debt_Test' in request.POST:
                 return HttpResponseRedirect(
-                    reverse('add_tests', args=(eng.id, )))
-            elif '_Add Findings' in request.POST:
+                    reverse('add_debt_tests', args=(eng.id, )))
+            elif '_Add Debt_Items' in request.POST:
                 return HttpResponseRedirect(
-                    reverse('add_findings', args=(new_test.id, )))
+                    reverse('add_debt_items', args=(new_debt_test.id, )))
             elif '_Finished' in request.POST:
                 return HttpResponseRedirect(
-                    reverse('view_engagement', args=(eng.id, )))
+                    reverse('view_debt_engagement', args=(eng.id, )))
     else:
-        form = TestForm(engagement=eng)
+        form = Debt_TestForm(debt_engagement=eng)
         form.initial['target_start'] = eng.target_start
         form.initial['target_end'] = eng.target_end
         form.initial['lead'] = request.user
     add_breadcrumb(
-        parent=eng, title="Add Tests", top_level=False, request=request)
-    product_tab = Product_Tab(eng.product, title="Add Tests", tab="engagements")
-    product_tab.setEngagement(eng)
-    return render(request, 'dojo/add_tests.html', {
-        'product_tab': product_tab,
+        parent=eng, title="Add Debt_Tests", top_level=False, request=request)
+    debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Add Debt_Tests", tab="debt_engagements")
+    debt_context_tab.setDebt_Engagement(eng)
+    return render(request, 'dojo/add_debt_tests.html', {
+        'debt_context_tab': debt_context_tab,
         'form': form,
         'cred_form': cred_form,
         'eid': eid,
@@ -576,34 +578,34 @@ def add_tests(request, eid):
 # Cant use the easy decorator because of the potential for either eid/pid being used
 def import_scan_results(request, eid=None, pid=None):
     environment = Development_Environment.objects.filter(name='Development').first()  # If 'Development' was removed, None is used
-    engagement = None
+    debt_engagement = None
     form = ImportScanForm(initial={'environment': environment})
     cred_form = CredMappingForm()
-    finding_count = 0
+    debt_item_count = 0
     jform = None
     user = request.user
 
     if eid:
-        engagement = get_object_or_404(Engagement, id=eid)
-        engagement_or_product = engagement
-        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(engagement=engagement).order_by('cred_id')
+        debt_engagement = get_object_or_404(Debt_Engagement, id=eid)
+        debt_engagement_or_debt_context = debt_engagement
+        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(debt_engagement=debt_engagement).order_by('cred_id')
     elif pid:
-        product = get_object_or_404(Product, id=pid)
-        engagement_or_product = product
+        debt_context = get_object_or_404(Debt_Context, id=pid)
+        debt_engagement_or_debt_context = debt_context
     else:
-        raise Exception('Either Engagement or Product has to be provided')
+        raise Exception('Either Debt_Engagement or Debt_Context has to be provided')
 
-    user_has_permission_or_403(user, engagement_or_product, Permissions.Import_Scan_Result)
+    user_has_permission_or_403(user, debt_engagement_or_debt_context, Permissions.Import_Scan_Result)
 
-    push_all_jira_issues = jira_helper.is_push_all_issues(engagement_or_product)
+    push_all_jira_issues = jira_helper.is_push_all_issues(debt_engagement_or_debt_context)
 
     if request.method == "POST":
         form = ImportScanForm(request.POST, request.FILES)
         cred_form = CredMappingForm(request.POST)
         cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
-            engagement=engagement).order_by('cred_id')
+            debt_engagement=debt_engagement).order_by('cred_id')
 
-        if jira_helper.get_jira_project(engagement_or_product):
+        if jira_helper.get_jira_project(debt_engagement_or_debt_context):
             jform = JIRAImportScanForm(request.POST, push_all=push_all_jira_issues, prefix='jiraform')
             logger.debug('jform valid: %s', jform.is_valid())
             logger.debug('jform errors: %s', jform.errors)
@@ -622,18 +624,18 @@ def import_scan_results(request, eid=None, pid=None):
             commit_hash = form.cleaned_data.get('commit_hash', None)
             api_scan_configuration = form.cleaned_data.get('api_scan_configuration', None)
             service = form.cleaned_data.get('service', None)
-            close_old_findings = form.cleaned_data.get('close_old_findings', None)
-            # close_old_findings_prodct_scope is a modifier of close_old_findings.
-            # If it is selected, close_old_findings should also be selected.
-            close_old_findings_product_scope = form.cleaned_data.get('close_old_findings_product_scope', None)
-            if close_old_findings_product_scope:
-                close_old_findings = True
+            close_old_debt_items = form.cleaned_data.get('close_old_debt_items', None)
+            # close_old_debt_items_prodct_scope is a modifier of close_old_debt_items.
+            # If it is selected, close_old_debt_items should also be selected.
+            close_old_debt_items_debt_context_scope = form.cleaned_data.get('close_old_debt_items_debt_context_scope', None)
+            if close_old_debt_items_debt_context_scope:
+                close_old_debt_items = True
             # Will save in the provided environment or in the `Development` one if absent
             environment_id = request.POST.get('environment', 'Development')
             environment = Development_Environment.objects.get(id=environment_id)
 
             group_by = form.cleaned_data.get('group_by', None)
-            create_finding_groups_for_all_findings = form.cleaned_data['create_finding_groups_for_all_findings']
+            create_debt_item_groups_for_all_debt_items = form.cleaned_data['create_debt_item_groups_for_all_debt_items']
 
             # TODO move to form validation?
             if scan and is_scan_file_too_large(scan):
@@ -641,34 +643,34 @@ def import_scan_results(request, eid=None, pid=None):
                                      messages.ERROR,
                                      "Report file is too large. Maximum supported size is {} MB".format(settings.SCAN_FILE_MAX_SIZE),
                                      extra_tags='alert-danger')
-                return HttpResponseRedirect(reverse('import_scan_results', args=(engagement,)))
+                return HttpResponseRedirect(reverse('import_scan_results', args=(debt_engagement,)))
 
-            # Allows for a test to be imported with an engagement created on the fly
-            if engagement is None:
-                engagement = Engagement()
-                engagement.name = "AdHoc Import - " + strftime("%a, %d %b %Y %X", timezone.now().timetuple())
-                engagement.threat_model = False
-                engagement.api_test = False
-                engagement.pen_test = False
-                engagement.check_list = False
-                engagement.target_start = timezone.now().date()
-                engagement.target_end = timezone.now().date()
-                engagement.product = product
-                engagement.active = True
-                engagement.status = 'In Progress'
-                engagement.version = version
-                engagement.branch_tag = branch_tag
-                engagement.build_id = build_id
-                engagement.commit_hash = commit_hash
-                engagement.save()
+            # Allows for a debt_test to be imported with an debt_engagement created on the fly
+            if debt_engagement is None:
+                debt_engagement = Debt_Engagement()
+                debt_engagement.name = "AdHoc Import - " + strftime("%a, %d %b %Y %X", timezone.now().timetuple())
+                debt_engagement.threat_model = False
+                debt_engagement.api_debt_test = False
+                debt_engagement.pen_debt_test = False
+                debt_engagement.check_list = False
+                debt_engagement.target_start = timezone.now().date()
+                debt_engagement.target_end = timezone.now().date()
+                debt_engagement.debt_context = debt_context
+                debt_engagement.active = True
+                debt_engagement.status = 'In Progress'
+                debt_engagement.version = version
+                debt_engagement.branch_tag = branch_tag
+                debt_engagement.build_id = build_id
+                debt_engagement.commit_hash = commit_hash
+                debt_engagement.save()
 
             # can't use helper as when push_all_jira_issues is True, the checkbox gets disabled and is always false
-            # push_to_jira = jira_helper.is_push_to_jira(new_finding, jform.cleaned_data.get('push_to_jira'))
+            # push_to_jira = jira_helper.is_push_to_jira(new_debt_item, jform.cleaned_data.get('push_to_jira'))
             push_to_jira = push_all_jira_issues or (jform and jform.cleaned_data.get('push_to_jira'))
             error = False
 
             # Save newly added endpoints
-            added_endpoints = save_endpoints_to_add(form.endpoints_to_add_list, engagement.product)
+            added_endpoints = save_endpoints_to_add(form.endpoints_to_add_list, debt_engagement.debt_context)
 
             active = None
             if activeChoice:
@@ -685,16 +687,16 @@ def import_scan_results(request, eid=None, pid=None):
 
             try:
                 importer = Importer()
-                test, finding_count, closed_finding_count, _ = importer.import_scan(scan, scan_type, engagement, user, environment, active=active, verified=verified, tags=tags,
+                debt_test, debt_item_count, closed_debt_item_count, _ = importer.import_scan(scan, scan_type, debt_engagement, user, environment, active=active, verified=verified, tags=tags,
                             minimum_severity=minimum_severity, endpoints_to_add=list(form.cleaned_data['endpoints']) + added_endpoints, scan_date=scan_date,
                             version=version, branch_tag=branch_tag, build_id=build_id, commit_hash=commit_hash, push_to_jira=push_to_jira,
-                            close_old_findings=close_old_findings, close_old_findings_product_scope=close_old_findings_product_scope, group_by=group_by, api_scan_configuration=api_scan_configuration, service=service,
-                            create_finding_groups_for_all_findings=create_finding_groups_for_all_findings)
+                            close_old_debt_items=close_old_debt_items, close_old_debt_items_debt_context_scope=close_old_debt_items_debt_context_scope, group_by=group_by, api_scan_configuration=api_scan_configuration, service=service,
+                            create_debt_item_groups_for_all_debt_items=create_debt_item_groups_for_all_debt_items)
 
-                message = f'{scan_type} processed a total of {finding_count} findings'
+                message = f'{scan_type} processed a total of {debt_item_count} debt_items'
 
-                if close_old_findings:
-                    message = message + ' and closed %d findings' % (closed_finding_count)
+                if close_old_debt_items:
+                    message = message + ' and closed %d debt_items' % (closed_debt_item_count)
 
                 message = message + "."
 
@@ -705,43 +707,43 @@ def import_scan_results(request, eid=None, pid=None):
                 add_error_message_to_response('An exception error occurred during the report import:%s' % str(e))
                 error = True
 
-            # Save the credential to the test
+            # Save the credential to the debt_test
             if cred_form.is_valid():
                 if cred_form.cleaned_data['cred_user']:
-                    # Select the credential mapping object from the selected list and only allow if the credential is associated with the product
+                    # Select the credential mapping object from the selected list and only allow if the credential is associated with the debt_context
                     cred_user = Cred_Mapping.objects.filter(
                         pk=cred_form.cleaned_data['cred_user'].id,
-                        engagement=eid).first()
+                        debt_engagement=eid).first()
 
                     new_f = cred_form.save(commit=False)
-                    new_f.test = test
+                    new_f.debt_test = debt_test
                     new_f.cred_id = cred_user.cred_id
                     new_f.save()
 
             if not error:
                 return HttpResponseRedirect(
-                    reverse('view_test', args=(test.id, )))
+                    reverse('view_debt_test', args=(debt_test.id, )))
 
     prod_id = None
     custom_breadcrumb = None
     title = "Import Scan Results"
-    if engagement:
-        product_tab = Product_Tab(engagement.product, title=title, tab="engagements")
-        product_tab.setEngagement(engagement)
+    if debt_engagement:
+        debt_context_tab = Debt_Context_Tab(debt_engagement.debt_context, title=title, tab="debt_engagements")
+        debt_context_tab.setDebt_Engagement(debt_engagement)
     else:
         custom_breadcrumb = {"", ""}
-        product_tab = Product_Tab(product, title=title, tab="findings")
+        debt_context_tab = Debt_Context_Tab(debt_context, title=title, tab="debt_items")
 
-    if jira_helper.get_jira_project(engagement_or_product):
+    if jira_helper.get_jira_project(debt_engagement_or_debt_context):
         jform = JIRAImportScanForm(push_all=push_all_jira_issues, prefix='jiraform')
 
-    form.fields['endpoints'].queryset = Endpoint.objects.filter(product__id=product_tab.product.id)
-    form.fields['api_scan_configuration'].queryset = Product_API_Scan_Configuration.objects.filter(product__id=product_tab.product.id)
+    form.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context__id=debt_context_tab.debt_context.id)
+    form.fields['api_scan_configuration'].queryset = Debt_Context_API_Scan_Configuration.objects.filter(debt_context__id=debt_context_tab.debt_context.id)
     return render(request,
         'dojo/import_scan_results.html',
         {'form': form,
-         'product_tab': product_tab,
-         'engagement_or_product': engagement_or_product,
+         'debt_context_tab': debt_context_tab,
+         'debt_engagement_or_debt_context': debt_engagement_or_debt_context,
          'custom_breadcrumb': custom_breadcrumb,
          'title': title,
          'cred_form': cred_form,
@@ -750,51 +752,51 @@ def import_scan_results(request, eid=None, pid=None):
          })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Edit, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Edit, 'eid')
 def close_eng(request, eid):
-    eng = Engagement.objects.get(id=eid)
-    close_engagement(eng)
+    eng = Debt_Engagement.objects.get(id=eid)
+    close_debt_engagement(eng)
     messages.add_message(
         request,
         messages.SUCCESS,
-        'Engagement closed successfully.',
+        'Debt_Engagement closed successfully.',
         extra_tags='alert-success')
-    create_notification(event='close_engagement',
+    create_notification(event='close_debt_engagement',
                         title='Closure of %s' % eng.name,
-                        description='The engagement "%s" was closed' % (eng.name),
-                        engagement=eng, url=reverse('engagement_all_findings', args=(eng.id, ))),
-    return HttpResponseRedirect(reverse("view_engagements", args=(eng.product.id, )))
+                        description='The debt_engagement "%s" was closed' % (eng.name),
+                        debt_engagement=eng, url=reverse('debt_engagement_all_debt_items', args=(eng.id, ))),
+    return HttpResponseRedirect(reverse("view_debt_engagements", args=(eng.debt_context.id, )))
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Edit, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Edit, 'eid')
 def reopen_eng(request, eid):
-    eng = Engagement.objects.get(id=eid)
-    reopen_engagement(eng)
+    eng = Debt_Engagement.objects.get(id=eid)
+    reopen_debt_engagement(eng)
     messages.add_message(
         request,
         messages.SUCCESS,
-        'Engagement reopened successfully.',
+        'Debt_Engagement reopened successfully.',
         extra_tags='alert-success')
     create_notification(event='other',
                         title='Reopening of %s' % eng.name,
-                        engagement=eng,
-                        description='The engagement "%s" was reopened' % (eng.name),
-                        url=reverse('view_engagement', args=(eng.id, ))),
-    return HttpResponseRedirect(reverse("view_engagements", args=(eng.product.id, )))
+                        debt_engagement=eng,
+                        description='The debt_engagement "%s" was reopened' % (eng.name),
+                        url=reverse('view_debt_engagement', args=(eng.id, ))),
+    return HttpResponseRedirect(reverse("view_debt_engagements", args=(eng.debt_context.id, )))
 
 
 """
 Greg:
-status: in production
-method to complete checklists from the engagement view
+status: in debt_contextion
+method to complete checklists from the debt_engagement view
 """
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Edit, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Edit, 'eid')
 def complete_checklist(request, eid):
-    eng = get_object_or_404(Engagement, id=eid)
+    eng = get_object_or_404(Debt_Engagement, id=eid)
     try:
-        checklist = Check_List.objects.get(engagement=eng)
+        checklist = Check_List.objects.get(debt_engagement=eng)
     except:
         checklist = None
         pass
@@ -805,18 +807,18 @@ def complete_checklist(request, eid):
         top_level=False,
         request=request)
     if request.method == 'POST':
-        tests = Test.objects.filter(engagement=eng)
-        findings = Finding.objects.filter(test__in=tests).all()
-        form = CheckForm(request.POST, instance=checklist, findings=findings)
+        debt_tests = Debt_Test.objects.filter(debt_engagement=eng)
+        debt_items = Debt_Item.objects.filter(debt_test__in=debt_tests).all()
+        form = CheckForm(request.POST, instance=checklist, debt_items=debt_items)
         if form.is_valid():
             cl = form.save(commit=False)
             try:
-                check_l = Check_List.objects.get(engagement=eng)
+                check_l = Check_List.objects.get(debt_engagement=eng)
                 cl.id = check_l.id
                 cl.save()
                 form.save_m2m()
             except:
-                cl.engagement = eng
+                cl.debt_engagement = eng
                 cl.save()
                 form.save_m2m()
                 pass
@@ -826,30 +828,30 @@ def complete_checklist(request, eid):
                 'Checklist saved.',
                 extra_tags='alert-success')
             return HttpResponseRedirect(
-                reverse('view_engagement', args=(eid, )))
+                reverse('view_debt_engagement', args=(eid, )))
     else:
-        tests = Test.objects.filter(engagement=eng)
-        findings = Finding.objects.filter(test__in=tests).all()
-        form = CheckForm(instance=checklist, findings=findings)
+        debt_tests = Debt_Test.objects.filter(debt_engagement=eng)
+        debt_items = Debt_Item.objects.filter(debt_test__in=debt_tests).all()
+        form = CheckForm(instance=checklist, debt_items=debt_items)
 
-    product_tab = Product_Tab(eng.product, title="Checklist", tab="engagements")
-    product_tab.setEngagement(eng)
+    debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Checklist", tab="debt_engagements")
+    debt_context_tab.setDebt_Engagement(eng)
     return render(request, 'dojo/checklist.html', {
         'form': form,
-        'product_tab': product_tab,
+        'debt_context_tab': debt_context_tab,
         'eid': eng.id,
-        'findings': findings,
+        'debt_items': debt_items,
     })
 
 
-@user_is_authorized(Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
 def add_risk_acceptance(request, eid, fid=None):
-    eng = get_object_or_404(Engagement, id=eid)
-    finding = None
+    eng = get_object_or_404(Debt_Engagement, id=eid)
+    debt_item = None
     if fid:
-        finding = get_object_or_404(Finding, id=fid)
+        debt_item = get_object_or_404(Debt_Item, id=fid)
 
-    if not eng.product.enable_full_risk_acceptance:
+    if not eng.debt_context.enable_full_risk_acceptance:
         raise PermissionDenied()
 
     if request.method == 'POST':
@@ -882,9 +884,9 @@ def add_risk_acceptance(request, eid, fid=None):
 
             eng.risk_acceptance.add(risk_acceptance)
 
-            findings = form.cleaned_data['accepted_findings']
+            debt_items = form.cleaned_data['accepted_debt_items']
 
-            risk_acceptance = ra_helper.add_findings_to_risk_acceptance(risk_acceptance, findings)
+            risk_acceptance = ra_helper.add_debt_items_to_risk_acceptance(risk_acceptance, debt_items)
 
             messages.add_message(
                 request,
@@ -892,32 +894,32 @@ def add_risk_acceptance(request, eid, fid=None):
                 'Risk acceptance saved.',
                 extra_tags='alert-success')
 
-            return redirect_to_return_url_or_else(request, reverse('view_engagement', args=(eid, )))
+            return redirect_to_return_url_or_else(request, reverse('view_debt_engagement', args=(eid, )))
     else:
-        risk_acceptance_title_suggestion = 'Accept: %s' % finding
+        risk_acceptance_title_suggestion = 'Accept: %s' % debt_item
         form = RiskAcceptanceForm(initial={'owner': request.user, 'name': risk_acceptance_title_suggestion})
 
-    finding_choices = Finding.objects.filter(duplicate=False, test__engagement=eng).filter(NOT_ACCEPTED_FINDINGS_QUERY).order_by('title')
+    debt_item_choices = Debt_Item.objects.filter(duplicate=False, debt_test__debt_engagement=eng).filter(NOT_ACCEPTED_DEBT_ITEMS_QUERY).order_by('title')
 
-    form.fields['accepted_findings'].queryset = finding_choices
+    form.fields['accepted_debt_items'].queryset = debt_item_choices
     if fid:
-        form.fields['accepted_findings'].initial = {fid}
-    product_tab = Product_Tab(eng.product, title="Risk Acceptance", tab="engagements")
-    product_tab.setEngagement(eng)
+        form.fields['accepted_debt_items'].initial = {fid}
+    debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Risk Acceptance", tab="debt_engagements")
+    debt_context_tab.setDebt_Engagement(eng)
 
     return render(request, 'dojo/add_risk_acceptance.html', {
                   'eng': eng,
-                  'product_tab': product_tab,
+                  'debt_context_tab': debt_context_tab,
                   'form': form
                   })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_View, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_View, 'eid')
 def view_risk_acceptance(request, eid, raid):
     return view_edit_risk_acceptance(request, eid=eid, raid=raid, edit_mode=False)
 
 
-@user_is_authorized(Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
 def edit_risk_acceptance(request, eid, raid):
     return view_edit_risk_acceptance(request, eid=eid, raid=raid, edit_mode=True)
 
@@ -925,9 +927,9 @@ def edit_risk_acceptance(request, eid, raid):
 # will only be called by view_risk_acceptance and edit_risk_acceptance
 def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
     risk_acceptance = get_object_or_404(Risk_Acceptance, pk=raid)
-    eng = get_object_or_404(Engagement, pk=eid)
+    eng = get_object_or_404(Debt_Engagement, pk=eid)
 
-    if edit_mode and not eng.product.enable_full_risk_acceptance:
+    if edit_mode and not eng.debt_context.enable_full_risk_acceptance:
         raise PermissionDenied()
 
     risk_acceptance_form = None
@@ -949,7 +951,7 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
                 risk_acceptance_form.save()
 
                 if risk_acceptance.expiration_date != old_expiration_date:
-                    # risk acceptance was changed, check if risk acceptance needs to be reinstated and findings made accepted again
+                    # risk acceptance was changed, check if risk acceptance needs to be reinstated and debt_items made accepted again
                     ra_helper.reinstate(risk_acceptance, old_expiration_date)
 
                 messages.add_message(
@@ -990,16 +992,16 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
                     "Since you are not the note's author, it was not deleted.",
                     extra_tags='alert-danger')
 
-        if 'remove_finding' in request.POST:
-            finding = get_object_or_404(
-                Finding, pk=request.POST['remove_finding_id'])
+        if 'remove_debt_item' in request.POST:
+            debt_item = get_object_or_404(
+                Debt_Item, pk=request.POST['remove_debt_item_id'])
 
-            ra_helper.remove_finding_from_risk_acceptance(risk_acceptance, finding)
+            ra_helper.remove_debt_item_from_risk_acceptance(risk_acceptance, debt_item)
 
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Finding removed successfully from risk acceptance.',
+                'Debt_Item removed successfully from risk acceptance.',
                 extra_tags='alert-success')
 
         if 'replace_file' in request.POST:
@@ -1018,20 +1020,20 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
             else:
                 logger.error(replace_form.errors)
 
-        if 'add_findings' in request.POST:
-            add_findings_form = AddFindingsRiskAcceptanceForm(
+        if 'add_debt_items' in request.POST:
+            add_debt_items_form = AddDebtItemsRiskAcceptanceForm(
                 request.POST, request.FILES, instance=risk_acceptance)
 
-            errors = errors or not add_findings_form.is_valid()
+            errors = errors or not add_debt_items_form.is_valid()
             if not errors:
-                findings = add_findings_form.cleaned_data['accepted_findings']
+                debt_items = add_debt_items_form.cleaned_data['accepted_debt_items']
 
-                ra_helper.add_findings_to_risk_acceptance(risk_acceptance, findings)
+                ra_helper.add_debt_items_to_risk_acceptance(risk_acceptance, debt_items)
 
                 messages.add_message(
                     request,
                     messages.SUCCESS,
-                    'Finding%s added successfully.' % ('s' if len(findings) > 1
+                    'Debt_Item%s added successfully.' % ('s' if len(debt_items) > 1
                                                        else ''),
                     extra_tags='alert-success')
 
@@ -1047,56 +1049,56 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
 
     note_form = NoteForm()
     replace_form = ReplaceRiskAcceptanceProofForm(instance=risk_acceptance)
-    add_findings_form = AddFindingsRiskAcceptanceForm(instance=risk_acceptance)
+    add_debt_items_form = AddDebtItemsRiskAcceptanceForm(instance=risk_acceptance)
 
-    accepted_findings = risk_acceptance.accepted_findings.order_by('numerical_severity')
-    fpage = get_page_items(request, accepted_findings, 15)
+    accepted_debt_items = risk_acceptance.accepted_debt_items.order_by('numerical_severity')
+    fpage = get_page_items(request, accepted_debt_items, 15)
 
-    unaccepted_findings = Finding.objects.filter(test__in=eng.test_set.all(), risk_accepted=False) \
-        .exclude(id__in=accepted_findings).order_by("title")
-    add_fpage = get_page_items(request, unaccepted_findings, 10, 'apage')
-    # on this page we need to add unaccepted findings as possible findings to add as accepted
-    add_findings_form.fields[
-        "accepted_findings"].queryset = add_fpage.object_list
+    unaccepted_debt_items = Debt_Item.objects.filter(debt_test__in=eng.debt_test_set.all(), risk_accepted=False) \
+        .exclude(id__in=accepted_debt_items).order_by("title")
+    add_fpage = get_page_items(request, unaccepted_debt_items, 10, 'apage')
+    # on this page we need to add unaccepted debt_items as possible debt_items to add as accepted
+    add_debt_items_form.fields[
+        "accepted_debt_items"].queryset = add_fpage.object_list
 
-    product_tab = Product_Tab(eng.product, title="Risk Acceptance", tab="engagements")
-    product_tab.setEngagement(eng)
+    debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Risk Acceptance", tab="debt_engagements")
+    debt_context_tab.setDebt_Engagement(eng)
     return render(
         request, 'dojo/view_risk_acceptance.html', {
             'risk_acceptance': risk_acceptance,
-            'engagement': eng,
-            'product_tab': product_tab,
-            'accepted_findings': fpage,
+            'debt_engagement': eng,
+            'debt_context_tab': debt_context_tab,
+            'accepted_debt_items': fpage,
             'notes': risk_acceptance.notes.all(),
             'eng': eng,
             'edit_mode': edit_mode,
             'risk_acceptance_form': risk_acceptance_form,
             'note_form': note_form,
             'replace_form': replace_form,
-            'add_findings_form': add_findings_form,
-            # 'show_add_findings_form': len(unaccepted_findings),
+            'add_debt_items_form': add_debt_items_form,
+            # 'show_add_debt_items_form': len(unaccepted_debt_items),
             'request': request,
-            'add_findings': add_fpage,
+            'add_debt_items': add_fpage,
             'return_url': get_return_url(request),
         })
 
 
-@user_is_authorized(Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
 def expire_risk_acceptance(request, eid, raid):
     risk_acceptance = get_object_or_404(prefetch_for_expiration(Risk_Acceptance.objects.all()), pk=raid)
-    eng = get_object_or_404(Engagement, pk=eid)
+    eng = get_object_or_404(Debt_Engagement, pk=eid)
 
     ra_helper.expire_now(risk_acceptance)
 
     return redirect_to_return_url_or_else(request, reverse("view_risk_acceptance", args=(eid, raid)))
 
 
-@user_is_authorized(Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
 def reinstate_risk_acceptance(request, eid, raid):
     risk_acceptance = get_object_or_404(prefetch_for_expiration(Risk_Acceptance.objects.all()), pk=raid)
-    eng = get_object_or_404(Engagement, pk=eid)
+    eng = get_object_or_404(Debt_Engagement, pk=eid)
 
-    if not eng.product.enable_full_risk_acceptance:
+    if not eng.debt_context.enable_full_risk_acceptance:
         raise PermissionDenied()
 
     ra_helper.reinstate(risk_acceptance, risk_acceptance.expiration_date)
@@ -1104,10 +1106,10 @@ def reinstate_risk_acceptance(request, eid, raid):
     return redirect_to_return_url_or_else(request, reverse("view_risk_acceptance", args=(eid, raid)))
 
 
-@user_is_authorized(Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
 def delete_risk_acceptance(request, eid, raid):
     risk_acceptance = get_object_or_404(Risk_Acceptance, pk=raid)
-    eng = get_object_or_404(Engagement, pk=eid)
+    eng = get_object_or_404(Debt_Engagement, pk=eid)
 
     ra_helper.delete(eng, risk_acceptance)
 
@@ -1116,10 +1118,10 @@ def delete_risk_acceptance(request, eid, raid):
         messages.SUCCESS,
         'Risk acceptance deleted successfully.',
         extra_tags='alert-success')
-    return HttpResponseRedirect(reverse("view_engagement", args=(eng.id, )))
+    return HttpResponseRedirect(reverse("view_debt_engagement", args=(eng.id, )))
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_View, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_View, 'eid')
 def download_risk_acceptance(request, eid, raid):
     import mimetypes
 
@@ -1139,15 +1141,15 @@ def download_risk_acceptance(request, eid, raid):
 
 """
 Greg
-status: in production
-Upload a threat model at the engagement level. Threat models are stored
+status: in debt_contextion
+Upload a threat model at the debt_engagement level. Threat models are stored
 under media folder
 """
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_Edit, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_Edit, 'eid')
 def upload_threatmodel(request, eid):
-    eng = Engagement.objects.get(id=eid)
+    eng = Debt_Engagement.objects.get(id=eid)
     add_breadcrumb(
         parent=eng,
         title="Upload a threat model",
@@ -1167,37 +1169,37 @@ def upload_threatmodel(request, eid):
                 'Threat model saved.',
                 extra_tags='alert-success')
             return HttpResponseRedirect(
-                reverse('view_engagement', args=(eid, )))
+                reverse('view_debt_engagement', args=(eid, )))
     else:
         form = UploadThreatForm()
-    product_tab = Product_Tab(eng.product, title="Upload Threat Model", tab="engagements")
+    debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Upload Threat Model", tab="debt_engagements")
     return render(request, 'dojo/up_threat.html', {
         'form': form,
-        'product_tab': product_tab,
+        'debt_context_tab': debt_context_tab,
         'eng': eng,
     })
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_View, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_View, 'eid')
 def view_threatmodel(request, eid):
-    eng = get_object_or_404(Engagement, pk=eid)
+    eng = get_object_or_404(Debt_Engagement, pk=eid)
     response = FileResponse(open(eng.tmodel_path, 'rb'))
     return response
 
 
-@user_is_authorized(Engagement, Permissions.Engagement_View, 'eid')
-def engagement_ics(request, eid):
-    eng = get_object_or_404(Engagement, id=eid)
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_View, 'eid')
+def debt_engagement_ics(request, eid):
+    eng = get_object_or_404(Debt_Engagement, id=eid)
     start_date = datetime.combine(eng.target_start, datetime.min.time())
     end_date = datetime.combine(eng.target_end, datetime.max.time())
-    uid = "dojo_eng_%d_%d" % (eng.id, eng.product.id)
+    uid = "dojo_eng_%d_%d" % (eng.id, eng.debt_context.id)
     cal = get_cal_event(
         start_date, end_date,
-        "Engagement: %s (%s)" % (eng.name, eng.product.name),
-        "Set aside for engagement %s, on product %s.  Additional detail can be found at %s"
-        % (eng.name, eng.product.name,
+        "Debt_Engagement: %s (%s)" % (eng.name, eng.debt_context.name),
+        "Set aside for debt_engagement %s, on debt_context %s.  Additional detail can be found at %s"
+        % (eng.name, eng.debt_context.name,
            request.build_absolute_uri(
-               (reverse("view_engagement", args=(eng.id, ))))), uid)
+               (reverse("view_debt_engagement", args=(eng.id, ))))), uid)
     output = cal.serialize()
     response = HttpResponse(content=output)
     response['Content-Type'] = 'text/calendar'
@@ -1213,18 +1215,18 @@ def get_list_index(list, index):
     return element
 
 
-def get_engagements(request):
+def get_debt_engagements(request):
     url = request.META.get('QUERY_STRING')
     if not url:
-        raise ValidationError('Please use the export button when exporting engagements')
+        raise ValidationError('Please use the export button when exporting debt_engagements')
     else:
         if url.startswith('url='):
             url = url[4:]
 
     path_items = list(filter(None, re.split(r'/|\?', url)))
 
-    if not path_items or path_items[0] != 'engagement':
-        raise ValidationError('URL is not an engagement view')
+    if not path_items or path_items[0] != 'debt_engagement':
+        raise ValidationError('URL is not an debt_engagement view')
 
     view = query = None
     if get_list_index(path_items, 1) in ['active', 'all']:
@@ -1235,52 +1237,52 @@ def get_engagements(request):
         query = get_list_index(path_items, 1)
 
     request.GET = QueryDict(query)
-    engagements = get_filtered_engagements(request, view).qs
-    test_counts = get_test_counts(engagements)
+    debt_engagements = get_filtered_debt_engagements(request, view).qs
+    debt_test_counts = get_debt_test_counts(debt_engagements)
 
-    return engagements, test_counts
+    return debt_engagements, debt_test_counts
 
 
 def get_excludes():
-    return ['is_ci_cd', 'jira_issue', 'jira_project', 'objects', 'unaccepted_open_findings']
+    return ['is_ci_cd', 'jira_issue', 'jira_project', 'objects', 'unaccepted_open_debt_items']
 
 
 def get_foreign_keys():
-    return ['build_server', 'lead', 'orchestration_engine', 'preset', 'product',
+    return ['build_server', 'lead', 'orchestration_engine', 'preset', 'debt_context',
         'report_type', 'requester', 'source_code_management_server']
 
 
 def csv_export(request):
-    engagements, test_counts = get_engagements(request)
+    debt_engagements, debt_test_counts = get_debt_engagements(request)
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename=engagements.csv'
+    response['Content-Disposition'] = 'attachment; filename=debt_engagements.csv'
 
     writer = csv.writer(response)
 
     first_row = True
-    for engagement in engagements:
+    for debt_engagement in debt_engagements:
         if first_row:
             fields = []
-            for key in dir(engagement):
-                if key not in get_excludes() and not callable(getattr(engagement, key)) and not key.startswith('_'):
+            for key in dir(debt_engagement):
+                if key not in get_excludes() and not callable(getattr(debt_engagement, key)) and not key.startswith('_'):
                     fields.append(key)
-            fields.append('tests')
+            fields.append('debt_tests')
 
             writer.writerow(fields)
 
             first_row = False
         if not first_row:
             fields = []
-            for key in dir(engagement):
-                if key not in get_excludes() and not callable(getattr(engagement, key)) and not key.startswith('_'):
-                    value = engagement.__dict__.get(key)
-                    if key in get_foreign_keys() and getattr(engagement, key):
-                        value = str(getattr(engagement, key))
+            for key in dir(debt_engagement):
+                if key not in get_excludes() and not callable(getattr(debt_engagement, key)) and not key.startswith('_'):
+                    value = debt_engagement.__dict__.get(key)
+                    if key in get_foreign_keys() and getattr(debt_engagement, key):
+                        value = str(getattr(debt_engagement, key))
                     if value and isinstance(value, str):
                         value = value.replace('\n', ' NEWLINE ').replace('\r', '')
                     fields.append(value)
-            fields.append(test_counts.get(engagement.id, 0))
+            fields.append(debt_test_counts.get(debt_engagement.id, 0))
 
             writer.writerow(fields)
 
@@ -1288,39 +1290,39 @@ def csv_export(request):
 
 
 def excel_export(request):
-    engagements, test_counts = get_engagements(request)
+    debt_engagements, debt_test_counts = get_debt_engagements(request)
 
     workbook = Workbook()
     workbook.iso_dates = True
     worksheet = workbook.active
-    worksheet.title = 'Engagements'
+    worksheet.title = 'Debt_Engagements'
 
     font_bold = Font(bold=True)
 
     row_num = 1
-    for engagement in engagements:
+    for debt_engagement in debt_engagements:
         if row_num == 1:
             col_num = 1
-            for key in dir(engagement):
-                if key not in get_excludes() and not callable(getattr(engagement, key)) and not key.startswith('_'):
+            for key in dir(debt_engagement):
+                if key not in get_excludes() and not callable(getattr(debt_engagement, key)) and not key.startswith('_'):
                     cell = worksheet.cell(row=row_num, column=col_num, value=key)
                     cell.font = font_bold
                     col_num += 1
-            cell = worksheet.cell(row=row_num, column=col_num, value='tests')
+            cell = worksheet.cell(row=row_num, column=col_num, value='debt_tests')
             cell.font = font_bold
             row_num = 2
         if row_num > 1:
             col_num = 1
-            for key in dir(engagement):
-                if key not in get_excludes() and not callable(getattr(engagement, key)) and not key.startswith('_'):
-                    value = engagement.__dict__.get(key)
-                    if key in get_foreign_keys() and getattr(engagement, key):
-                        value = str(getattr(engagement, key))
+            for key in dir(debt_engagement):
+                if key not in get_excludes() and not callable(getattr(debt_engagement, key)) and not key.startswith('_'):
+                    value = debt_engagement.__dict__.get(key)
+                    if key in get_foreign_keys() and getattr(debt_engagement, key):
+                        value = str(getattr(debt_engagement, key))
                     if value and isinstance(value, datetime):
                         value = value.replace(tzinfo=None)
                     worksheet.cell(row=row_num, column=col_num, value=value)
                     col_num += 1
-            worksheet.cell(row=row_num, column=col_num, value=test_counts.get(engagement.id, 0))
+            worksheet.cell(row=row_num, column=col_num, value=debt_test_counts.get(debt_engagement.id, 0))
         row_num += 1
 
     with NamedTemporaryFile() as tmp:
@@ -1332,5 +1334,5 @@ def excel_export(request):
         content=stream,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename=engagements.xlsx'
+    response['Content-Disposition'] = 'attachment; filename=debt_engagements.xlsx'
     return response
