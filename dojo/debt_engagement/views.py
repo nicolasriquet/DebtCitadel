@@ -104,7 +104,7 @@ def get_filtered_debt_engagements(request, view):
     if view == 'active':
         debt_engagements = debt_engagements.filter(active=True)
 
-    debt_engagements = debt_engagements.select_related('debt_context', 'debt_context__prod_type') \
+    debt_engagements = debt_engagements.select_related('debt_context', 'debt_context__debt_context_type') \
         .prefetch_related('lead', 'tags', 'debt_context__tags')
 
     if System_Settings.objects.get().enable_jira:
@@ -173,7 +173,7 @@ def debt_engagements_all(request):
 
     filter_qs = filter_qs.prefetch_related(
         'debt_engagement_set__tags',
-        'prod_type',
+        'debt_context_type',
         'debt_engagement_set__lead',
         'tags',
     )
@@ -188,7 +188,7 @@ def debt_engagements_all(request):
         queryset=filter_qs
     )
 
-    prods = get_page_items(request, filtered.qs, 25)
+    debt_contexts = get_page_items(request, filtered.qs, 25)
 
     name_words = debt_contexts_with_debt_engagements.values_list('name', flat=True)
     eng_words = get_authorized_debt_engagements(Permissions.Debt_Engagement_View).values_list('name', flat=True).distinct()
@@ -200,7 +200,7 @@ def debt_engagements_all(request):
 
     return render(
         request, 'dojo/debt_engagements_all.html', {
-            'debt_contexts': prods,
+            'debt_contexts': debt_contexts,
             'filter_form': filtered.form,
             'name_words': sorted(set(name_words)),
             'eng_words': sorted(set(eng_words)),
@@ -389,7 +389,7 @@ def view_debt_engagement(request, eid):
     # prefetch only after creating the filters to avoid https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
     paged_debt_tests.object_list = prefetch_for_view_debt_tests(paged_debt_tests.object_list)
 
-    prod = eng.debt_context
+    debt_context = eng.debt_context
     risks_accepted = eng.risk_acceptance.all().select_related('owner').annotate(accepted_debt_items_count=Count('accepted_debt_items__id'))
     preset_debt_test_type = None
     network = None
@@ -453,7 +453,7 @@ def view_debt_engagement(request, eid):
     title = ""
     if eng.debt_engagement_type == "CI/CD":
         title = " CI/CD"
-    debt_context_tab = Debt_Context_Tab(prod, title="View" + title + " Debt_Engagement", tab="debt_engagements")
+    debt_context_tab = Debt_Context_Tab(debt_context, title="View" + title + " Debt_Engagement", tab="debt_engagements")
     debt_context_tab.setDebt_Engagement(eng)
     return render(
         request, 'dojo/view_eng.html', {
@@ -480,7 +480,7 @@ def view_debt_engagement(request, eid):
 def prefetch_for_view_debt_tests(debt_tests):
     prefetched = debt_tests
     if isinstance(debt_tests,
-                  QuerySet):  # old code can arrive here with prods being a list because the query was already executed
+                  QuerySet):  # old code can arrive here with debt_contexts being a list because the query was already executed
 
         prefetched = prefetched.select_related('lead')
         prefetched = prefetched.prefetch_related('tags', 'debt_test_type', 'notes')
@@ -625,7 +625,7 @@ def import_scan_results(request, eid=None, pid=None):
             api_scan_configuration = form.cleaned_data.get('api_scan_configuration', None)
             service = form.cleaned_data.get('service', None)
             close_old_debt_items = form.cleaned_data.get('close_old_debt_items', None)
-            # close_old_debt_items_prodct_scope is a modifier of close_old_debt_items.
+            # close_old_debt_items_debt_contextct_scope is a modifier of close_old_debt_items.
             # If it is selected, close_old_debt_items should also be selected.
             close_old_debt_items_debt_context_scope = form.cleaned_data.get('close_old_debt_items_debt_context_scope', None)
             if close_old_debt_items_debt_context_scope:
@@ -724,7 +724,7 @@ def import_scan_results(request, eid=None, pid=None):
                 return HttpResponseRedirect(
                     reverse('view_debt_test', args=(debt_test.id, )))
 
-    prod_id = None
+    debt_context_id = None
     custom_breadcrumb = None
     title = "Import Scan Results"
     if debt_engagement:
@@ -869,7 +869,7 @@ def add_risk_acceptance(request, eid, fid=None):
             del form.cleaned_data['notes']
 
             try:
-                # we sometimes see a weird exception here, but are unable to reproduce.
+                # we sometimes see a weird exception here, but are unable to redebt_contextuce.
                 # we add some logging in case it happens
                 risk_acceptance = form.save()
             except Exception as e:
