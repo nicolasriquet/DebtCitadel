@@ -34,7 +34,7 @@ from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMeta
     DeleteAppAnalysisForm, Debt_Context_API_Scan_ConfigurationForm, DeleteDebt_Context_API_Scan_ConfigurationForm
 from dojo.models import Debt_Context_Type, Note_Type, Debt_Item, Debt_Context, Engagement, Test, GITHUB_PKey, \
     Test_Type, System_Settings, Languages, App_Analysis, Benchmark_Debt_Context_Summary, Endpoint_Status, \
-    Endpoint, Engagement_Presets, DojoMeta, Notifications, BurpRawRequestResponse, Debt_Context_Member, \
+    Endpoint, Debt_Endpoint, Engagement_Presets, DojoMeta, Notifications, BurpRawRequestResponse, Debt_Context_Member, \
     Debt_Context_Group, Debt_Context_API_Scan_Configuration
 from dojo.utils import add_external_issue, add_error_message_to_response, add_field_errors_to_response, get_page_items, \
     add_breadcrumb, async_delete, \
@@ -117,7 +117,7 @@ def prefetch_for_debt_context(debt_contexts):
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('jira_project_set__jira_instance')
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('members')
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('debt_context_type__members')
-        active_endpoint_query = Endpoint.objects.filter(
+        active_endpoint_query = Debt_Endpoint.objects.filter(
             debt_item__active=True,
             debt_item__mitigated__isnull=True).distinct()
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related(

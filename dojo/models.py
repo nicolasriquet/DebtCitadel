@@ -2087,8 +2087,8 @@ class Debt_Endpoint_Status(models.Model):
     false_positive = models.BooleanField(default=False, blank=True)
     out_of_scope = models.BooleanField(default=False, blank=True)
     risk_accepted = models.BooleanField(default=False, blank=True)
-    endpoint = models.ForeignKey('Endpoint', null=False, blank=False, on_delete=models.CASCADE, related_name='debt_status_endpoint')
-    debt_item = models.ForeignKey('Debt_Item', null=False, blank=False, on_delete=models.CASCADE, related_name='debt_status_debt_item')
+    endpoint = models.ForeignKey('Debt_Endpoint', null=False, blank=False, on_delete=models.CASCADE, related_name='status_debt_endpoint')
+    debt_item = models.ForeignKey('Debt_Item', null=False, blank=False, on_delete=models.CASCADE, related_name='status_debt_item')
 
     @property
     def age(self):
@@ -2484,6 +2484,368 @@ class Endpoint(models.Model):
     def inherit_tags(self, potentially_existing_tags):
         # get a copy of the tags to be inherited
         incoming_inherited_tags = [tag.name for tag in self.product.tags.all()]
+        _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
+
+
+class Debt_Endpoint(models.Model):
+    protocol = models.CharField(null=True, blank=True, max_length=20,
+                                help_text=_("The communication protocol/scheme such as 'http', 'ftp', 'dns', etc."))
+    userinfo = models.CharField(null=True, blank=True, max_length=500,
+                                help_text=_("User info as 'alice', 'bob', etc."))
+    host = models.CharField(null=True, blank=True, max_length=500,
+                            help_text=_("The host name or IP address. It must not include the port number. "
+                                        "For example '127.0.0.1', 'localhost', 'yourdomain.com'."))
+    port = models.IntegerField(null=True, blank=True,
+                               help_text=_("The network port associated with the debt_endpoint."))
+    path = models.CharField(null=True, blank=True, max_length=500,
+                            help_text=_("The location of the resource, it must not start with a '/'. For example "
+                                        "debt_endpoint/420/edit"))
+    query = models.CharField(null=True, blank=True, max_length=1000,
+                             help_text=_("The query string, the question mark should be omitted."
+                                         "For example 'group=4&team=8'"))
+    fragment = models.CharField(null=True, blank=True, max_length=500,
+                                help_text=_("The fragment identifier which follows the hash mark. The hash mark should "
+                                            "be omitted. For example 'section-13', 'paragraph-2'."))
+    debt_context = models.ForeignKey(Debt_Context, null=True, blank=True, on_delete=models.CASCADE)
+    debt_endpoint_params = models.ManyToManyField(Endpoint_Params, blank=True, editable=False)
+    debt_items = models.ManyToManyField("Debt_Item",
+                                        blank=True,
+                                        verbose_name=_('Debt_Items'),
+                                        through=Debt_Endpoint_Status)
+
+    tags = TagField(blank=True, force_lowercase=True, help_text=_("Add tags that help describe this debt_endpoint. Choose from the list or add new tags. Press Enter key to add."))
+    inherited_tags = TagField(blank=True, force_lowercase=True, help_text=_("Internal use tags sepcifically for maintaining parity with debt_context. This field will be present as a subset in the tags field"))
+
+    class Meta:
+        ordering = ['debt_context', 'host', 'protocol', 'port', 'userinfo', 'path', 'query', 'fragment']
+        indexes = [
+            models.Index(fields=['debt_context']),
+        ]
+
+    def clean(self):
+        errors = []
+        null_char_list = ["0x00", "\x00"]
+        db_type = connection.vendor
+        if self.protocol or self.protocol == '':
+            if not re.match(r'^[A-Za-z][A-Za-z0-9\.\-\+]+$', self.protocol):  # https://tools.ietf.org/html/rfc3986#section-3.1
+                errors.append(ValidationError('Protocol "{}" has invalid format'.format(self.protocol)))
+            if self.protocol == '':
+                self.protocol = None
+
+        if self.userinfo or self.userinfo == '':
+            if not re.match(r'^[A-Za-z0-9\.\-_~%\!\$&\'\(\)\*\+,;=:]+$', self.userinfo):  # https://tools.ietf.org/html/rfc3986#section-3.2.1
+                errors.append(ValidationError('Userinfo "{}" has invalid format'.format(self.userinfo)))
+            if self.userinfo == '':
+                self.userinfo = None
+
+        if self.host:
+            if not re.match(r'^[A-Za-z0-9_\-\+][A-Za-z0-9_\.\-\+]+$', self.host):
+                try:
+                    validate_ipv46_address(self.host)
+                except ValidationError:
+                    errors.append(ValidationError('Host "{}" has invalid format'.format(self.host)))
+        else:
+            errors.append(ValidationError('Host must not be empty'))
+
+        if self.port or self.port == 0:
+            try:
+                int_port = int(self.port)
+                if not (0 <= int_port < 65536):
+                    errors.append(ValidationError('Port "{}" has invalid format - out of range'.format(self.port)))
+                self.port = int_port
+            except ValueError:
+                errors.append(ValidationError('Port "{}" has invalid format - it is not a number'.format(self.port)))
+
+        if self.path or self.path == '':
+            while len(self.path) > 0 and self.path[0] == "/":  # Debt_Endpoint store "root-less" path
+                self.path = self.path[1:]
+            if any([null_char in self.path for null_char in null_char_list]):
+                old_value = self.path
+                if 'postgres' in db_type:
+                    action_string = 'Postgres does not accept NULL character. Attempting to replace with %00...'
+                    for remove_str in null_char_list:
+                        self.path = self.path.replace(remove_str, '%00')
+                    errors.append(ValidationError('Path "{}" has invalid format - It contains the NULL character. The following action was taken: {}'.format(old_value, action_string)))
+            if self.path == '':
+                self.path = None
+
+        if self.query or self.query == '':
+            if len(self.query) > 0 and self.query[0] == "?":
+                self.query = self.query[1:]
+            if any([null_char in self.query for null_char in null_char_list]):
+                old_value = self.query
+                if 'postgres' in db_type:
+                    action_string = 'Postgres does not accept NULL character. Attempting to replace with %00...'
+                    for remove_str in null_char_list:
+                        self.query = self.query.replace(remove_str, '%00')
+                    errors.append(ValidationError('Query "{}" has invalid format - It contains the NULL character. The following action was taken: {}'.format(old_value, action_string)))
+            if self.query == '':
+                self.query = None
+
+        if self.fragment or self.fragment == '':
+            if len(self.fragment) > 0 and self.fragment[0] == "#":
+                self.fragment = self.fragment[1:]
+            if any([null_char in self.fragment for null_char in null_char_list]):
+                old_value = self.fragment
+                if 'postgres' in db_type:
+                    action_string = 'Postgres does not accept NULL character. Attempting to replace with %00...'
+                    for remove_str in null_char_list:
+                        self.fragment = self.fragment.replace(remove_str, '%00')
+                    errors.append(ValidationError('Fragment "{}" has invalid format - It contains the NULL character. The following action was taken: {}'.format(old_value, action_string)))
+            if self.fragment == '':
+                self.fragment = None
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        try:
+            if self.host:
+                dummy_scheme = 'dummy-scheme'  # workaround for https://github.com/python-hyper/hyperlink/blob/b8c9152cd826bbe8e6cc125648f3738235019705/src/hyperlink/_url.py#L988
+                url = hyperlink.EncodedURL(
+                    scheme=self.protocol if self.protocol else dummy_scheme,
+                    userinfo=self.userinfo or '',
+                    host=self.host,
+                    port=self.port,
+                    path=tuple(self.path.split('/')) if self.path else (),
+                    query=tuple(
+                        (
+                            qe.split(u"=", 1)
+                            if u"=" in qe
+                            else (qe, None)
+                        )
+                        for qe in self.query.split(u"&")
+                    ) if self.query else (),  # inspired by https://github.com/python-hyper/hyperlink/blob/b8c9152cd826bbe8e6cc125648f3738235019705/src/hyperlink/_url.py#L1427
+                    fragment=self.fragment or ''
+                )
+                # Return a normalized version of the URL to avoid differences where there shouldn't be any difference.
+                # Example: https://google.com and https://google.com:443
+                normalize_path = self.path  # it used to add '/' at the end of host
+                clean_url = url.normalize(scheme=True, host=True, path=normalize_path, query=True, fragment=True, userinfo=True, percents=True).to_uri().to_text()
+                if not self.protocol:
+                    if clean_url[:len(dummy_scheme) + 3] == (dummy_scheme + '://'):
+                        clean_url = clean_url[len(dummy_scheme) + 3:]
+                    else:
+                        raise ValueError('hyperlink lib did not create URL as was expected')
+                return clean_url
+            else:
+                raise ValueError('Missing host')
+        except:
+            url = ''
+            if self.protocol:
+                url += '{}://'.format(self.protocol)
+            if self.userinfo:
+                url += '{}@'.format(self.userinfo)
+            if self.host:
+                url += self.host
+            if self.port:
+                url += ':{}'.format(self.port)
+            if self.path:
+                url += '{}{}'.format('/' if self.path[0] != '/' else '', self.path)
+            if self.query:
+                url += '?{}'.format(self.query)
+            if self.fragment:
+                url += '#{}'.format(self.fragment)
+            return url
+
+    def __hash__(self):
+        return self.__str__().__hash__()
+
+    def __eq__(self, other):
+        if isinstance(other, Debt_Endpoint):
+            # Check if the contents of the debt_endpoint match
+            contents_match = str(self) == str(other)
+            # Determine if debt_contexts should be used in the equation
+            if self.debt_context is not None and other.debt_context is not None:
+                # Check if the debt_contexts are the same
+                debt_contexts_match = (self.debt_context) == other.debt_context
+                # Check if the contents match
+                return debt_contexts_match and contents_match
+            else:
+                return contents_match
+
+        else:
+            return NotImplemented
+
+    @property
+    def is_broken(self):
+        try:
+            self.clean()
+        except:
+            return True
+        else:
+            if self.debt_context:
+                return False
+            else:
+                return True
+
+    @property
+    def mitigated(self):
+        return not self.vulnerable
+
+    @property
+    def vulnerable(self):
+        return self.active_debt_items_count > 0
+
+    @property
+    def debt_items_count(self):
+        return self.debt_items.all().count()
+
+    def active_debt_items(self):
+        debt_items = self.debt_items.filter(
+            active=True,
+            out_of_scope=False,
+            mitigated__isnull=True,
+            false_p=False,
+            duplicate=False,
+            status_debt_item__mitigated=False,
+            status_debt_item__false_positive=False,
+            status_debt_item__out_of_scope=False,
+            status_debt_item__risk_accepted=False
+        ).order_by('numerical_severity')
+        return debt_items
+
+    def active_verified_debt_items(self):
+        debt_items = self.debt_items.filter(
+            active=True,
+            verified=True,
+            out_of_scope=False,
+            mitigated__isnull=True,
+            false_p=False,
+            duplicate=False,
+            status_debt_item__mitigated=False,
+            status_debt_item__false_positive=False,
+            status_debt_item__out_of_scope=False,
+            status_debt_item__risk_accepted=False
+        ).order_by('numerical_severity')
+        return debt_items
+
+    @property
+    def active_debt_items_count(self):
+        return self.active_debt_items().count()
+
+    @property
+    def active_verified_debt_items_count(self):
+        return self.active_verified_debt_items().count()
+
+    def host_debt_endpoints(self):
+        return Debt_Endpoint.objects.filter(host=self.host,
+                                            debt_context=self.debt_context).distinct()
+
+    @property
+    def host_debt_endpoints_count(self):
+        return self.host_debt_endpoints().count()
+
+    def host_mitigated_debt_endpoints(self):
+        meps = Debt_Endpoint_Status.objects \
+            .filter(debt_endpoint__in=self.host_debt_endpoints()) \
+            .filter(Q(mitigated=True) |
+                    Q(false_positive=True) |
+                    Q(out_of_scope=True) |
+                    Q(risk_accepted=True) |
+                    Q(debt_item__out_of_scope=True) |
+                    Q(debt_item__mitigated__isnull=False) |
+                    Q(debt_item__false_p=True) |
+                    Q(debt_item__duplicate=True) |
+                    Q(debt_item__active=False))
+        return Debt_Endpoint.objects.filter(status_debt_endpoint__in=meps).distinct()
+
+    @property
+    def host_mitigated_debt_endpoints_count(self):
+        return self.host_mitigated_debt_endpoints().count()
+
+    def host_debt_items(self):
+        return Debt_Item.objects.filter(debt_endpoints__in=self.host_debt_endpoints()).distinct()
+
+    @property
+    def host_debt_items_count(self):
+        return self.host_debt_items().count()
+
+    def host_active_debt_items(self):
+        debt_items = Debt_Item.objects.filter(
+            active=True,
+            out_of_scope=False,
+            mitigated__isnull=True,
+            false_p=False,
+            duplicate=False,
+            status_debt_item__mitigated=False,
+            status_debt_item__false_positive=False,
+            status_debt_item__out_of_scope=False,
+            status_debt_item__risk_accepted=False,
+            debt_endpoints__in=self.host_debt_endpoints()
+        ).order_by('numerical_severity')
+        return debt_items
+
+    def host_active_verified_debt_items(self):
+        debt_items = Debt_Item.objects.filter(
+            active=True,
+            verified=True,
+            out_of_scope=False,
+            mitigated__isnull=True,
+            false_p=False,
+            duplicate=False,
+            status_debt_item__mitigated=False,
+            status_debt_item__false_positive=False,
+            status_debt_item__out_of_scope=False,
+            status_debt_item__risk_accepted=False,
+            debt_endpoints__in=self.host_debt_endpoints()
+        ).order_by('numerical_severity')
+        return debt_items
+
+    @property
+    def host_active_debt_items_count(self):
+        return self.host_active_debt_items().count()
+
+    @property
+    def host_active_verified_debt_items_count(self):
+        return self.host_active_verified_debt_items().count()
+
+    def get_breadcrumbs(self):
+        bc = self.debt_context.get_breadcrumbs()
+        bc += [{'title': self.host,
+                'url': reverse('view_debt_endpoint', args=(self.id,))}]
+        return bc
+
+    @staticmethod
+    def from_uri(uri):
+        try:
+            url = hyperlink.parse(url=uri)
+        except hyperlink.URLParseError as e:
+            raise ValidationError('Invalid URL format: {}'.format(e))
+
+        query_parts = []  # inspired by https://github.com/python-hyper/hyperlink/blob/b8c9152cd826bbe8e6cc125648f3738235019705/src/hyperlink/_url.py#L1768
+        for k, v in url.query:
+            if v is None:
+                query_parts.append(k)
+            else:
+                query_parts.append(u"=".join([k, v]))
+        query_string = u"&".join(query_parts)
+
+        protocol = url.scheme if url.scheme != '' else None
+        userinfo = ':'.join(url.userinfo) if url.userinfo not in [(), ('',)] else None
+        host = url.host if url.host != '' else None
+        port = url.port
+        path = '/'.join(url.path)[:500] if url.path not in [None, (), ('',)] else None
+        query = query_string[:1000] if query_string is not None and query_string != '' else None
+        fragment = url.fragment[:500] if url.fragment is not None and url.fragment != '' else None
+
+        return Debt_Endpoint(
+            protocol=protocol,
+            userinfo=userinfo,
+            host=host,
+            port=port,
+            path=path,
+            query=query,
+            fragment=fragment,
+        )
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('view_debt_endpoint', args=[str(self.id)])
+
+    def inherit_tags(self, potentially_existing_tags):
+        # get a copy of the tags to be inherited
+        incoming_inherited_tags = [tag.name for tag in self.debt_context.tags.all()]
         _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
 
 
@@ -3942,11 +4304,11 @@ class Debt_Item(models.Model):
                                               blank=True,
                                               verbose_name=_('Severity Justification'),
                                               help_text=_("Text describing why a certain severity was associated with this flaw."))
-    endpoints = models.ManyToManyField(Endpoint,
-                                       blank=True,
-                                       verbose_name=_('Endpoints'),
-                                       help_text=_("The hosts within the debt_context that are susceptible to this flaw. + The status of the endpoint associated with this flaw (Vulnerable, Mitigated, ...)."),
-                                       through=Debt_Endpoint_Status)
+    debt_endpoints = models.ManyToManyField(Debt_Endpoint,
+                                            blank=True,
+                                            verbose_name=_('Debt_Endpoints'),
+                                            help_text=_("The hosts within the debt_context that are susceptible to this flaw. + The status of the debt_endpoint associated with this flaw (Vulnerable, Mitigated, ...)."),
+                                            through=Debt_Endpoint_Status)
     references = models.TextField(null=True,
                                   blank=True,
                                   db_column="refs",
@@ -4236,7 +4598,7 @@ class Debt_Item(models.Model):
     def __init__(self, *args, **kwargs):
         super(Debt_Item, self).__init__(*args, **kwargs)
 
-        self.unsaved_endpoints = []
+        self.unsaved_debt_endpoints = []
         self.unsaved_request = None
         self.unsaved_response = None
         self.unsaved_tags = None
@@ -4265,9 +4627,9 @@ class Debt_Item(models.Model):
         # Copy the files
         for files in old_files:
             copy.files.add(files.copy())
-        # Copy the endpoint_status
-        for endpoint_status in old_status_debt_items:
-            endpoint_status.copy(debt_item=copy)  # adding or setting is not necessary, link is created by Endpoint_Status.copy()
+        # Copy the debt_endpoint_status
+        for debt_endpoint_status in old_status_debt_items:
+            debt_endpoint_status.copy(debt_item=copy)  # adding or setting is not necessary, link is created by Debt_Endpoint_Status.copy()
         # Assign any reviewers
         copy.reviewers.set(old_reviewers)
         # Assign any found_by
@@ -4334,11 +4696,11 @@ class Debt_Item(models.Model):
 
         fields_to_hash = ''
         for hashcodeField in hash_code_fields:
-            if hashcodeField == 'endpoints':
-                # For endpoints, need to compute the field
-                myEndpoints = self.get_endpoints()
-                fields_to_hash = fields_to_hash + myEndpoints
-                deduplicationLogger.debug(hashcodeField + ' : ' + myEndpoints)
+            if hashcodeField == 'debt_endpoints':
+                # For debt_endpoints, need to compute the field
+                myDebt_Endpoints = self.get_debt_endpoints()
+                fields_to_hash = fields_to_hash + myDebt_Endpoints
+                deduplicationLogger.debug(hashcodeField + ' : ' + myDebt_Endpoints)
             elif hashcodeField == 'vulnerability_ids':
                 # For vulnerability_ids, need to compute the field
                 my_vulnerability_ids = self.get_vulnerability_ids()
@@ -4368,7 +4730,7 @@ class Debt_Item(models.Model):
                         lambda vulnerability_id: str(vulnerability_id),
                         self.unsaved_vulnerability_ids
                     ))
-                # deduplicate (usually done upon saving debt_item) and sort endpoints
+                # deduplicate (usually done upon saving debt_item) and sort debt_endpoints
                 vulnerability_id_str = ''.join(sorted(list(dict.fromkeys(vulnerability_id_str_list))))
             else:
                 deduplicationLogger.debug("debt_item has no unsaved vulnerability references")
@@ -4385,44 +4747,44 @@ class Debt_Item(models.Model):
             vulnerability_id_str = ''.join(sorted(vulnerability_id_str_list))
         return vulnerability_id_str
 
-    # Get endpoints to use for hash_code computation
+    # Get debt_endpoints to use for hash_code computation
     # (This sometimes reports "None")
-    def get_endpoints(self):
-        endpoint_str = ''
+    def get_debt_endpoints(self):
+        debt_endpoint_str = ''
         if (self.id is None):
-            if len(self.unsaved_endpoints) > 0:
-                deduplicationLogger.debug("get_endpoints before the debt_item was saved")
-                # convert list of unsaved endpoints to the list of their canonical representation
-                endpoint_str_list = list(
+            if len(self.unsaved_debt_endpoints) > 0:
+                deduplicationLogger.debug("get_debt_endpoints before the debt_item was saved")
+                # convert list of unsaved debt_endpoints to the list of their canonical representation
+                debt_endpoint_str_list = list(
                     map(
-                        lambda endpoint: str(endpoint),
-                        self.unsaved_endpoints
+                        lambda debt_endpoint: str(debt_endpoint),
+                        self.unsaved_debt_endpoints
                     ))
-                # deduplicate (usually done upon saving debt_item) and sort endpoints
-                endpoint_str = ''.join(
+                # deduplicate (usually done upon saving debt_item) and sort debt_endpoints
+                debt_endpoint_str = ''.join(
                     sorted(
                         list(
-                            dict.fromkeys(endpoint_str_list)
+                            dict.fromkeys(debt_endpoint_str_list)
                         )))
             else:
                 # we can get here when the parser defines static_debt_item=True but leaves dynamic_debt_item defaulted
                 # In this case, before saving the debt_item, both static_debt_item and dynamic_debt_item are True
                 # After saving dynamic_debt_item may be set to False probably during the saving process (observed on Bandit scan before forcing dynamic_debt_item=False at parser level)
-                deduplicationLogger.debug("trying to get endpoints on a debt_item before it was saved but no endpoints found (static parser wrongly identified as dynamic?")
+                deduplicationLogger.debug("trying to get debt_endpoints on a debt_item before it was saved but no debt_endpoints found (static parser wrongly identified as dynamic?")
         else:
-            deduplicationLogger.debug("get_endpoints: after the debt_item was saved. Endpoints count: " + str(self.endpoints.count()))
-            # convert list of endpoints to the list of their canonical representation
-            endpoint_str_list = list(
+            deduplicationLogger.debug("get_debt_endpoints: after the debt_item was saved. Debt_Endpoints count: " + str(self.debt_endpoints.count()))
+            # convert list of debt_endpoints to the list of their canonical representation
+            debt_endpoint_str_list = list(
                 map(
-                    lambda endpoint: str(endpoint),
-                    self.endpoints.all()
+                    lambda debt_endpoint: str(debt_endpoint),
+                    self.debt_endpoints.all()
                 ))
-            # sort endpoints strings
-            endpoint_str = ''.join(
+            # sort debt_endpoints strings
+            debt_endpoint_str = ''.join(
                 sorted(
-                    endpoint_str_list
+                    debt_endpoint_str_list
                 ))
-        return endpoint_str
+        return debt_endpoint_str
 
     # Compute the hash_code from the fields to hash
     def hash_fields(self, fields_to_hash):
@@ -4662,7 +5024,7 @@ class Debt_Item(models.Model):
             except Exception as ex:
                 logger.error("Can't compute cvssv3 score for debt_item id %i. Invalid cvssv3 vector found: '%s'. Exception: %s", self.id, self.cvssv3, ex)
 
-        # Debt_Item.save is called once from serializers.py with dedupe_option=False because the debt_item is not ready yet, for example the endpoints are not built
+        # Debt_Item.save is called once from serializers.py with dedupe_option=False because the debt_item is not ready yet, for example the debt_endpoints are not built
         # It is then called a second time with dedupe_option defaulted to true; now we can compute the hash_code and run the deduplication
         if dedupe_option:
             if (self.hash_code is not None):
@@ -4676,7 +5038,7 @@ class Debt_Item(models.Model):
             from dojo.utils import apply_cwe_to_template
             self = apply_cwe_to_template(self)
 
-            if (self.file_path is not None) and (len(self.unsaved_endpoints) == 0):
+            if (self.file_path is not None) and (len(self.unsaved_debt_endpoints) == 0):
                 self.static_debt_item = True
                 self.dynamic_debt_item = False
             elif (self.file_path is not None):
@@ -4688,8 +5050,8 @@ class Debt_Item(models.Model):
 
         else:
             # logger.debug('setting static / dynamic in save')
-            # need to have an id/pk before we can access endpoints
-            if (self.file_path is not None) and (self.endpoints.count() == 0):
+            # need to have an id/pk before we can access debt_endpoints
+            if (self.file_path is not None) and (self.debt_endpoints.count() == 0):
                 self.static_debt_item = True
                 self.dynamic_debt_item = False
             elif (self.file_path is not None):
@@ -4861,7 +5223,7 @@ class DebtItemAdmin(admin.ModelAdmin):
     # For efficiency with large databases, display many-to-many fields with raw
     # IDs rather than multi-select
     raw_id_fields = (
-        'endpoints',
+        'debt_endpoints',
     )
 
 class Vulnerability_Id(models.Model):

@@ -11,7 +11,7 @@
             <div class="panel panel-default">
                 <div class="panel-heading tight">
                     <h3 class="has-filters">
-                        {{ view }} Debt_Engagements
+                        {{ view }} Debt Engagements
                         <div class="dropdown pull-right">
                             &nbsp;
                             <button class="btn btn-primary dropdown-toggle" type="button" id="downloadMenu"
@@ -129,14 +129,14 @@
                                                 <li class="divider"></li>
                                                 <li role="presentation">
                                                     <a href="{% url 'debt_engagement_report' e.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
-                                                        <i class="fa-solid fa-file-lines"></i> Debt_Engagement Report
+                                                        <i class="fa-solid fa-file-lines"></i> Debt Engagement Report
                                                     </a>
                                                 </li>
                                                 {% if e|has_object_permission:"Debt_Engagement_Delete" %}
                                                 <li class="divider"></li>
                                                 <li>
                                                     <a class="text-danger" href="{% url 'delete_debt_engagement' e.id %}">
-                                                        <i class="fa-solid fa-trash"></i> Delete Debt_Engagement
+                                                        <i class="fa-solid fa-trash"></i> Delete Debt Engagement
                                                     </a>
                                                 </li>
                                                 {% endif %}
@@ -191,7 +191,7 @@
                     {% include "dojo/paging_snippet.html" with page=debt_engagements page_size=True %}
                 </div>
             {% else %}
-                <div id="no_debt_engagements"><h5 class="text-center"> No active debt_engagements </h5></div>
+                <div id="no_debt_engagements"><h5 class="text-center"> No active debt engagements </h5></div>
             {% endif %}
         </div>
     </div>

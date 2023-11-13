@@ -19,7 +19,7 @@
             {% elif product_tab.title %}
                 {{ product_tab.title }} |
             {% endif %}
-            DefectDojo
+            DebtDojoTool
         </title>
         {% block add_css_before %}
         {% endblock %}
@@ -223,6 +223,40 @@
                                                 <span>{% trans "Dashboard" %}</span>
                                             </a>
                                         </li>
+                                        <!--<li>
+                                            <a id="product-side-menu" href="{% url 'product' %}" aria-expanded="false" aria-label="Products">
+                                                <i class="fa-solid fa-list-ul fa-fw"></i>
+                                                <span>{% trans "Products" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <li>
+                                                    <a href="{% url 'product' %}">
+                                                        {% trans "All Products" %}
+                                                    </a>
+                                                </li>
+                                                {% if request.user|can_add_product %}
+                                                    <li>
+                                                        <a href="{% url 'new_product' %}">
+                                                            {% trans "Add Product" %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                                <li>
+                                                    <a href="{% url 'product_type' %}">
+                                                        {% trans "All Product Types" %}
+                                                    </a>
+                                                </li>
+                                                {% if "Product_Type_Add"|has_global_permission %}
+                                                    <li>
+                                                        <a id="pop-out-add-product-type" href="{% url 'add_product_type' %}">
+                                                            {% trans "Add Product Type" %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>-->
+                                            <!-- /.nav-second-level -->
+                                        <!--</li>-->
                                         <li>
                                             <a id="debt-context-side-menu" href="{% url 'debt_context' %}" aria-expanded="false" aria-label="Debt Context">
                                                 <i class="fa-solid fa-list-ul fa-fw"></i>
@@ -257,40 +291,41 @@
                                             </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
-                                        <li>
-                                            <a id="product-side-menu" href="{% url 'product' %}" aria-expanded="false" aria-label="Products">
-                                                <i class="fa-solid fa-list-ul fa-fw"></i>
-                                                <span>{% trans "Products" %}</span>
+                                        <!--<li>
+                                            <a href="{% url 'engagement' %}" aria-expanded="false" aria-label="Engagements">
+                                                <i class="fa-solid fa-inbox fa-fw"></i>
+                                                <span>{% trans "Engagements" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
                                             <ul class="nav nav-second-level">
                                                 <li>
-                                                    <a href="{% url 'product' %}">
-                                                        {% trans "All Products" %}
+                                                    <a href="{% url 'active_engagements' %}">
+                                                        {% trans "Active Engagements" %}
                                                     </a>
                                                 </li>
-                                                {% if request.user|can_add_product %}
-                                                    <li>
-                                                        <a href="{% url 'new_product' %}">
-                                                            {% trans "Add Product" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
                                                 <li>
-                                                    <a href="{% url 'product_type' %}">
-                                                        {% trans "All Product Types" %}
+                                                    <a href="{% url 'all_engagements' %}">
+                                                        {% trans "All Engagements" %}
                                                     </a>
                                                 </li>
-                                                {% if "Product_Type_Add"|has_global_permission %}
-                                                    <li>
-                                                        <a id="pop-out-add-product-type" href="{% url 'add_product_type' %}">
-                                                            {% trans "Add Product Type" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
-                                            </ul>
+                                                <li>
+                                                    <a href="{% url 'engagements_all' %}">
+                                                        {% trans "Engagements by Product" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'test_type' %}">
+                                                        {% trans "Test Types" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'dev_env' %}">
+                                                        {% trans "Environments" %}
+                                                    </a>
+                                                </li>
+                                            </ul>-->
                                             <!-- /.nav-second-level -->
-                                        </li>
+                                        <!--</li>-->
                                         <li>
                                             <a href="{% url 'debt_engagement' %}" aria-expanded="false" aria-label="Debt Engagements">
                                                 <i class="fa-solid fa-inbox fa-fw"></i>
@@ -326,42 +361,7 @@
                                             </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
-                                        <li>
-                                            <a href="{% url 'engagement' %}" aria-expanded="false" aria-label="Engagements">
-                                                <i class="fa-solid fa-inbox fa-fw"></i>
-                                                <span>{% trans "Engagements" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <li>
-                                                    <a href="{% url 'active_engagements' %}">
-                                                        {% trans "Active Engagements" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'all_engagements' %}">
-                                                        {% trans "All Engagements" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'engagements_all' %}">
-                                                        {% trans "Engagements by Product" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'test_type' %}">
-                                                        {% trans "Test Types" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'dev_env' %}">
-                                                        {% trans "Environments" %}
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                            <!-- /.nav-second-level -->
-                                        </li>
-                                        <li>
+                                        <!--<li>
                                             <a href="{% url 'open_findings' %}" aria-expanded="false" aria-label="Findings">
                                                 <i class="fa-solid fa-bug fa-fw"></i>
                                                 <span>{% trans "Findings" %}</span>
@@ -392,6 +392,43 @@
                                                     <li>
                                                         <a href="{% url 'templates' %}">
                                                             {% trans "Finding Templates" %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>-->
+                                            <!-- /.nav-second-level -->
+                                        <!--</li>-->
+                                        <li>
+                                            <a href="{% url 'open_debt_items' %}" aria-expanded="false" aria-label="Debt Items">
+                                                <i class="fa-solid fa-bug fa-fw"></i>
+                                                <span>{% trans "Debt Items" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <li>
+                                                    <a href="{% url 'open_debt_items' %}">
+                                                        {% trans "Open Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'all_debt_items' %}">
+                                                        {% trans "All Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'closed_debt_items' %}">
+                                                        {% trans "Closed Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'accepted_debt_items' %}">
+                                                        {% trans "Risk Accepted Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                {% if "Debt_Item_View"|has_global_permission %}
+                                                    <li>
+                                                        <a href="{% url 'templates' %}">
+                                                            {% trans "Debt Item Templates" %}
                                                         </a>
                                                     </li>
                                                 {% endif %}
@@ -1106,20 +1143,28 @@
                                     </a>
                                     <br/>
                                     <br/>
-                                    {% dojo_version %} ( {% dojo_current_hash %} )
                                 </p>
                                 <p>
+                                    DebtDojoTool
+                                </p>
+                                <p>
+                                    &copy; 2023-{% now "Y" %} Nicolas Riquet.
+                                </p>
+                                <p>
+                                    DebtDojoTool is licensed under the <a
+                                        href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD
+                                    License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
+                                </p>
+                                <p>
+                                    DebtDojoTool is based on DefectDojo {% dojo_version %} ( {% dojo_current_hash %} ), &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
+                                </p>
+                                <!--<p>
                                     Detailed DefectDojo documentation can be found in our <a
                                         href="{% dojo_docs_url %}">GitHub Pages</a>.
-                                </p>
-                                <p>
-                                    DefectDojo is licensed under the <a
-                                        href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD
-                            License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
-                                </p>
-                                <p>
+                                </p>-->
+                                <!--<p>
                                     &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
-                                </p>
+                                </p>-->
                             </div>
                         </div>
                     </div>

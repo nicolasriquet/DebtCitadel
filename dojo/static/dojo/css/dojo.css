@@ -1351,7 +1351,8 @@ div.custom-search-form {
     color: white;
     font-size: 16px;
     //background-color: rgba(32, 166, 216, 0.75);
-    background-color: rgba(163, 73, 164, 0.9);
+    background-color: rgba(163, 73, 164, 1);
+    //background-color: rgba(154, 14, 42, 1);
     border-color: #A1C0D7;
 }
 

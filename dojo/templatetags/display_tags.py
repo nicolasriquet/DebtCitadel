@@ -279,6 +279,38 @@ def finding_sla(finding):
     return mark_safe(title)
 
 
+@register.filter(name='debt_item_sla')
+def debt_item_sla(debt_item):
+    if not get_system_setting('enable_debt_item_sla'):
+        return ""
+
+    title = ""
+    severity = debt_item.severity
+    find_sla = debt_item.sla_days_remaining()
+    sla_age = getattr(debt_item.get_sla_periods(), severity.lower(), None)
+    if debt_item.mitigated:
+        status = "blue"
+        status_text = 'Remediated within SLA for ' + severity.lower() + ' debt_items (' + str(sla_age) + ' days since ' + debt_item.get_sla_start_date().strftime("%b %d, %Y") + ')'
+        if find_sla and find_sla < 0:
+            status = "orange"
+            find_sla = abs(find_sla)
+            status_text = 'Out of SLA: Remediated ' + str(
+                find_sla) + ' days past SLA for ' + severity.lower() + ' debt_items (' + str(sla_age) + ' days since ' + debt_item.get_sla_start_date().strftime("%b %d, %Y") + ')'
+    else:
+        status = "green"
+        status_text = 'Remediation for ' + severity.lower() + ' debt_items in ' + str(sla_age) + ' days or less since ' + debt_item.get_sla_start_date().strftime("%b %d, %Y")
+        if find_sla and find_sla < 0:
+            status = "red"
+            status_text = 'Overdue: Remediation for ' + severity.lower() + ' debt_items in ' + str(
+                sla_age) + ' days or less since ' + debt_item.get_sla_start_date().strftime("%b %d, %Y")
+
+    if find_sla is not None:
+        title = '<a class="has-popover" data-toggle="tooltip" data-placement="bottom" title="" href="#" data-content="' + status_text + '">' \
+                                                                                                                                        '<span class="label severity age-' + status + '">' + str(find_sla) + '</span></a>'
+
+    return mark_safe(title)
+
+
 @register.filter(name='product_grade')
 def product_grade(product):
     grade = ""
@@ -756,6 +788,39 @@ def finding_display_status(finding):
             url = reverse('view_finding', args=(finding.duplicate_finding.id,))
             name = finding.duplicate_finding.title + ', ' + \
                    finding.duplicate_finding.created.strftime('%b %d, %Y, %H:%M:%S')
+
+        link = '<a href="' + url + '" data-toggle="tooltip" data-placement="top" title="' + escape(
+            name) + '">Duplicate</a>'
+        display_status = display_status.replace('Duplicate', link)
+
+    return display_status
+
+
+@register.filter
+def debt_item_display_status(debt_item):
+    # add urls for some statuses
+    # outputs html, so make sure to escape user provided fields
+    display_status = debt_item.status()
+    if 'Risk Accepted' in display_status:
+        ra = debt_item.risk_acceptance
+        if ra:
+            url = reverse('view_risk_acceptance', args=(debt_item.test.debt_engagement.id, ra.id, ))
+            info = ra.name_and_expiration_info
+            link = '<a href="' + url + '" class="has-popover" data-trigger="hover" data-placement="right" data-content="' + escape(info) + '" data-container="body" data-original-title="Risk Acceptance">Risk Accepted</a>'
+            display_status = display_status.replace('Risk Accepted', link)
+
+    if debt_item.under_review:
+        url = reverse('defect_debt_item_review', args=(debt_item.id, ))
+        link = '<a href="' + url + '">Under Review</a>'
+        display_status = display_status.replace('Under Review', link)
+
+    if debt_item.duplicate:
+        url = '#'
+        name = 'unknown'
+        if debt_item.duplicate_debt_item:
+            url = reverse('view_debt_item', args=(debt_item.duplicate_debt_item.id,))
+            name = debt_item.duplicate_debt_item.title + ', ' + \
+                   debt_item.duplicate_debt_item.created.strftime('%b %d, %Y, %H:%M:%S')
 
         link = '<a href="' + url + '" data-toggle="tooltip" data-placement="top" title="' + escape(
             name) + '">Duplicate</a>'

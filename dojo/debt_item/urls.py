@@ -6,113 +6,113 @@ urlpatterns = [
     # CRUD operations
     re_path(
         r'^debt_item/(?P<debt_item_id>\d+)$',
-        views.Viewdebt_item.as_view(),
+        views.ViewDebtItem.as_view(),
         name='view_debt_item'
     ),
     re_path(
         r'^debt_item/(?P<debt_item_id>\d+)/edit$',
-        views.Editdebt_item.as_view(),
+        views.EditDebtItem.as_view(),
         name='edit_debt_item'
     ),
     re_path(
         r'^debt_item/(?P<debt_item_id>\d+)/delete$',
-        views.Deletedebt_item.as_view(),
+        views.DeleteDebtItem.as_view(),
         name='delete_debt_item'
     ),
     # Listing operations
     re_path(
         r'^debt_item$',
-        views.Listdebt_items.as_view(),
+        views.ListDebtItems.as_view(),
         name='all_debt_items'
     ),
     re_path(
         r'^debt_item/open$',
-        views.ListOpendebt_items.as_view(),
+        views.ListOpenDebtItems.as_view(),
         name='open_debt_items'
     ),
     re_path(
         r'^debt_item/verified$',
-        views.ListVerifieddebt_items.as_view(),
+        views.ListVerifiedDebtItems.as_view(),
         name='verified_debt_items'
     ),
     re_path(
         r'^debt_item/closed$',
-        views.ListCloseddebt_items.as_view(),
+        views.ListClosedDebtItems.as_view(),
         name='closed_debt_items'
     ),
     re_path(
         r'^debt_item/accepted$',
-        views.ListAccepteddebt_items.as_view(),
+        views.ListAcceptedDebtItems.as_view(),
         name='accepted_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/open$',
-        views.ListOpendebt_items.as_view(),
+        views.ListOpenDebtItems.as_view(),
         name='product_open_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_items$',
-        views.ListOpendebt_items.as_view(),
+        views.ListOpenDebtItems.as_view(),
         name='view_product_debt_items_old'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/verified$',
-        views.ListVerifieddebt_items.as_view(),
+        views.ListVerifiedDebtItems.as_view(),
         name='product_verified_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/out_of_scope$',
-        views.ListOutOfScopedebt_items.as_view(),
+        views.ListOutOfScopeDebtItems.as_view(),
         name='product_out_of_scope_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/inactive$',
-        views.ListInactivedebt_items.as_view(),
+        views.ListInactiveDebtItems.as_view(),
         name='product_inactive_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/all$',
-        views.Listdebt_items.as_view(),
+        views.ListDebtItems.as_view(),
         name='product_all_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/closed$',
-        views.ListCloseddebt_items.as_view(),
+        views.ListClosedDebtItems.as_view(),
         name='product_closed_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/false_positive$',
-        views.ListFalsePositivedebt_items.as_view(),
+        views.ListFalsePositiveDebtItems.as_view(),
         name='product_false_positive_debt_items'
     ),
     re_path(
         r'^product/(?P<product_id>\d+)/debt_item/accepted$',
-        views.ListAccepteddebt_items.as_view(),
+        views.ListAcceptedDebtItems.as_view(),
         name='product_accepted_debt_items'
     ),
     re_path(
         r'^engagement/(?P<engagement_id>\d+)/debt_item/open$',
-        views.ListOpendebt_items.as_view(),
+        views.ListOpenDebtItems.as_view(),
         name='engagement_open_debt_items'
     ),
     re_path(
         r'^engagement/(?P<engagement_id>\d+)/debt_item/closed$',
-        views.ListCloseddebt_items.as_view(),
+        views.ListClosedDebtItems.as_view(),
         name='engagement_closed_debt_items'
     ),
     re_path(
         r'^engagement/(?P<engagement_id>\d+)/debt_item/verified$',
-        views.ListVerifieddebt_items.as_view(),
+        views.ListVerifiedDebtItems.as_view(),
         name='engagement_verified_debt_items'
     ),
     re_path(
         r'^engagement/(?P<engagement_id>\d+)/debt_item/accepted$',
-        views.ListAccepteddebt_items.as_view(),
+        views.ListAcceptedDebtItems.as_view(),
         name='engagement_accepted_debt_items'
     ),
     re_path(
         r'^engagement/(?P<engagement_id>\d+)/debt_item/all$',
-        views.Listdebt_items.as_view(),
+        views.ListDebtItems.as_view(),
         name='engagement_all_debt_items'
     ),
     #  debt_items
