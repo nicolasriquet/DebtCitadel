@@ -5971,6 +5971,42 @@ class JIRA_Project(models.Model):
         return ('%s: ' + self.project_key + '(%s)') % (str(self.id), str(self.jira_instance.url) if self.jira_instance else 'None')
 
 
+class Debt_JIRA_Project(models.Model):
+    jira_instance = models.ForeignKey(JIRA_Instance, verbose_name=_('JIRA Instance'),
+                                      null=True, blank=True, on_delete=models.PROTECT)
+    project_key = models.CharField(max_length=200, blank=True)
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE, null=True)
+    issue_template_dir = models.CharField(max_length=255,
+                                          null=True,
+                                          blank=True,
+                                          help_text=_("Choose the folder containing the Django templates used to render the JIRA issue description. These are stored in dojo/templates/issue-trackers. Leave empty to use the default jira_full templates."))
+    debt_engagement = models.OneToOneField(Debt_Engagement, on_delete=models.CASCADE, null=True, blank=True)
+    component = models.CharField(max_length=200, blank=True)
+    custom_fields = models.JSONField(max_length=200, blank=True, null=True,
+                                     help_text=_("JIRA custom field JSON mapping of Id to value, e.g. {\"customfield_10122\": [{\"name\": \"8.0.1\"}]}"))
+    default_assignee = models.CharField(max_length=200, blank=True, null=True,
+                                        help_text=_("JIRA default assignee (name). If left blank then it defaults to whatever is configured in JIRA."))
+    jira_labels = models.CharField(max_length=200, blank=True, null=True,
+                                   help_text=_('JIRA issue labels space seperated'))
+    add_vulnerability_id_to_jira_label = models.BooleanField(default=False,
+                                                             verbose_name=_('Add vulnerability Id as a JIRA label'),
+                                                             blank=False)
+    push_all_issues = models.BooleanField(default=False, blank=True,
+                                          help_text=_("Automatically maintain parity with JIRA. Always create and update JIRA tickets for debt_items in this Debt_Context."))
+    enable_debt_engagement_epic_mapping = models.BooleanField(default=False,
+                                                              blank=True)
+    push_notes = models.BooleanField(default=False, blank=True)
+    debt_context_jira_sla_notification = models.BooleanField(default=False, blank=True, verbose_name=_("Send SLA notifications as comment?"))
+    risk_acceptance_expiration_notification = models.BooleanField(default=False, blank=True, verbose_name=_("Send Risk Acceptance expiration notifications as comment?"))
+
+    def clean(self):
+        if not self.jira_instance:
+            raise ValidationError('Cannot save JIRA Project Configuration without JIRA Instance')
+
+    def __str__(self):
+        return ('%s: ' + self.project_key + '(%s)') % (str(self.id), str(self.jira_instance.url) if self.jira_instance else 'None')
+
+
 # declare form here as we can't import forms.py due to circular imports not even locally
 class JIRAForm_Admin(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, required=True)

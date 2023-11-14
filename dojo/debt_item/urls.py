@@ -46,49 +46,49 @@ urlpatterns = [
         name='accepted_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/open$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/open$',
         views.ListOpenDebtItems.as_view(),
-        name='product_open_debt_items'
+        name='debt_context_open_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_items$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_items$',
         views.ListOpenDebtItems.as_view(),
-        name='view_product_debt_items_old'
+        name='view_debt_context_debt_items_old'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/verified$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/verified$',
         views.ListVerifiedDebtItems.as_view(),
-        name='product_verified_debt_items'
+        name='debt_context_verified_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/out_of_scope$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/out_of_scope$',
         views.ListOutOfScopeDebtItems.as_view(),
-        name='product_out_of_scope_debt_items'
+        name='debt_context_out_of_scope_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/inactive$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/inactive$',
         views.ListInactiveDebtItems.as_view(),
-        name='product_inactive_debt_items'
+        name='debt_context_inactive_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/all$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/all$',
         views.ListDebtItems.as_view(),
-        name='product_all_debt_items'
+        name='debt_context_all_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/closed$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/closed$',
         views.ListClosedDebtItems.as_view(),
-        name='product_closed_debt_items'
+        name='debt_context_closed_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/false_positive$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/false_positive$',
         views.ListFalsePositiveDebtItems.as_view(),
-        name='product_false_positive_debt_items'
+        name='debt_context_false_positive_debt_items'
     ),
     re_path(
-        r'^product/(?P<product_id>\d+)/debt_item/accepted$',
+        r'^debt_context/(?P<debt_context_id>\d+)/debt_item/accepted$',
         views.ListAcceptedDebtItems.as_view(),
-        name='product_accepted_debt_items'
+        name='debt_context_accepted_debt_items'
     ),
     re_path(
         r'^engagement/(?P<engagement_id>\d+)/debt_item/open$',
@@ -118,8 +118,8 @@ urlpatterns = [
     #  debt_items
     re_path(r'^debt_item/bulk$', views.debt_item_bulk_update_all,
         name='debt_item_bulk_update_all'),
-    re_path(r'^product/(?P<pid>\d+)/debt_item/bulk_product$', views.debt_item_bulk_update_all,
-        name='debt_item_bulk_update_all_product'),
+    re_path(r'^debt_context/(?P<pid>\d+)/debt_item/bulk_debt_context$', views.debt_item_bulk_update_all,
+        name='debt_item_bulk_update_all_debt_context'),
     # re_path(r'^test/(?P<tid>\d+)/bulk', views.debt_item_bulk_update_all,
     #     name='debt_item_bulk_update_all_test'),
     re_path(r'^debt_item/(?P<fid>\d+)/touch$',
@@ -154,7 +154,7 @@ urlpatterns = [
         name='download_debt_item_pic'),
     re_path(r'^debt_item/(?P<fid>\d+)/merge$',
         views.merge_debt_item_debt_context, name='merge_debt_item'),
-    re_path(r'^product/(?P<pid>\d+)/merge$', views.merge_debt_item_debt_context,
+    re_path(r'^debt_context/(?P<pid>\d+)/merge$', views.merge_debt_item_debt_context,
         name='merge_debt_item_debt_context'),
     re_path(r'^debt_item/(?P<duplicate_id>\d+)/duplicate/(?P<original_id>\d+)$',
         views.mark_debt_item_duplicate, name='mark_debt_item_duplicate'),

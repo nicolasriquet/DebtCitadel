@@ -39,9 +39,9 @@ urlpatterns = [
     re_path(r'^debt_context/(?P<pid>\d+)/edit_meta_data$', views.edit_meta_data,
         name='edit_meta_data'),
     re_path(
-        r'^debt_context/(?P<debt_context_id>\d+)/ad_hoc_finding$',
+        r'^debt_context/(?P<debt_context_id>\d+)/ad_hoc_debt_item$',
         views.AdHocDebtItemView.as_view(),
-        name='ad_hoc_finding'),
+        name='ad_hoc_debt_item'),
     re_path(r'^debt_context/(?P<pid>\d+)/engagement_presets$', views.debt_engagement_presets,
         name='engagement_presets'),
     re_path(r'^debt_context/(?P<pid>\d+)/engagement_presets/(?P<eid>\d+)/edit$', views.edit_debt_engagement_presets,

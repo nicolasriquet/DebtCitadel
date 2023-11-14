@@ -1,0 +1,44 @@
+[
+  {
+    "model": "dojo.debt_context_type",
+    "pk": 1,
+    "fields": {
+      "name": "Test Context_Type",
+      "description": null,
+      "critical_debt_context": false,
+      "key_debt_context": false,
+      "updated": null,
+      "created": null
+      }
+  },
+
+  {
+    "model": "dojo.debt_context",
+    "pk": 1,
+    "fields": {
+      "name": "Test Context",
+      "description": "Test Nico",
+      "debt_context_manager": 1,
+      "technical_contact": 1,
+      "team_manager": 1,
+      "created": null,
+      "debt_context_type": 1,
+      "updated": null,
+      "tid": 0,
+      "sla_configuration": 1,
+      "prod_numeric_grade": null,
+      "business_criticality": "medium",
+      "platform": "web",
+      "lifecycle": "construction",
+      "origin": "internal",
+      "user_records": null,
+      "revenue": null,
+      "external_audience": false,
+      "internet_accessible": false,
+      "enable_simple_risk_acceptance": false,
+      "enable_full_risk_acceptance": true,
+      "regulations": [],
+      "tags": []
+    }
+  }
+]

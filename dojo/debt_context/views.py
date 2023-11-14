@@ -26,8 +26,8 @@ from django.views import View
 from dojo.templatetags.display_tags import asvs_calc_level
 from dojo.filters import DebtContextEngagementFilter, DebtContextFilter, EngagementFilter, DebtEngagementFilter, \
     MetricsEndpointFilter, MetricsDebtItemFilter, DebtContextComponentFilter
-from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMetaDataForm, JIRAProjectForm, JIRADebtItemForm, \
-    AdHocDebtItemForm, EngagementPresetsForm, DeleteEngagementPresetsForm, DebtContextNotificationsForm, \
+from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMetaDataForm, JIRAProjectForm,DebtJIRAProjectForm, \
+    JIRADebtItemForm, AdHocDebtItemForm, EngagementPresetsForm, DeleteEngagementPresetsForm, DebtContextNotificationsForm, \
     GITHUBDebtItemForm, GITHUB_Debt_Context_Form, GITHUBDebtItemForm, AppAnalysisForm, JIRAEngagementForm, Add_Debt_Context_MemberForm, \
     Edit_Debt_Context_MemberForm, Delete_Debt_Context_MemberForm, Add_Debt_Context_GroupForm, Edit_Debt_Context_Group_Form, \
     Delete_Debt_Context_GroupForm, SLA_Configuration, \
@@ -114,14 +114,14 @@ def prefetch_for_debt_context(debt_contexts):
                                                 filter=Q(
                                                     debt_engagement__debt_test__debt_item__active=True,
                                                     debt_engagement__debt_test__debt_item__verified=True)))
-        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('jira_project_set__jira_instance')
+        prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('debt_jira_project_set__jira_instance')
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('members')
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('debt_context_type__members')
         active_endpoint_query = Debt_Endpoint.objects.filter(
             debt_item__active=True,
             debt_item__mitigated__isnull=True).distinct()
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related(
-            Prefetch('endpoint_set', queryset=active_endpoint_query, to_attr='active_endpoints'))
+            Prefetch('debt_endpoint_set', queryset=active_endpoint_query, to_attr='active_endpoints'))
         prefetched_debt_contexts = prefetched_debt_contexts.prefetch_related('tags')
 
         if get_system_setting('enable_github'):
@@ -850,7 +850,7 @@ def new_debt_context(request, ptid=None):
                 return HttpResponseRedirect(reverse('edit_debt_context', args=(debt_context.id,)))
     else:
         if get_system_setting('enable_jira'):
-            jira_project_form = JIRAProjectForm()
+            jira_project_form = DebtJIRAProjectForm()
 
         if get_system_setting('enable_github'):
             gform = GITHUB_Debt_Context_Form()
@@ -921,7 +921,7 @@ def edit_debt_context(request, pid):
 
         if jira_enabled:
             jira_project = jira_helper.get_jira_project(debt_context)
-            jform = JIRAProjectForm(instance=jira_project)
+            jform = DebtJIRAProjectForm(instance=jira_project)
         else:
             jform = None
 
@@ -1071,7 +1071,7 @@ def new_eng_for_app(request, pid, cicd=False):
         if get_system_setting('enable_jira'):
             jira_project = jira_helper.get_jira_project(debt_context)
             logger.debug('showing jira-project-form')
-            jira_project_form = JIRAProjectForm(target='debt_engagement', debt_context=debt_context)
+            jira_project_form = DebtJIRAProjectForm(target='debt_engagement', debt_context=debt_context)
             logger.debug('showing jira-epic-form')
             jira_epic_form = JIRAEngagementForm()
 

@@ -26,7 +26,7 @@ from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_It
     Product_Type, Debt_Context_Type, Product, Debt_Context, Note_Type, \
     Check_List, SLA_Configuration, User, Engagement, Debt_Engagement, Test, Debt_Test, Test_Type, Notes, Risk_Acceptance, \
     Development_Environment, Dojo_User, Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
-    JIRA_Issue, JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
+    JIRA_Issue, JIRA_Project, Debt_JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
     Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
     Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
     Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, DojoMeta, \
@@ -3896,6 +3896,129 @@ class JIRAProjectForm(forms.ModelForm):
 
             if self.target == 'engagement':
                 raise ValidationError('JIRA Project needs a JIRA Instance and JIRA Project Key, or choose to inherit settings from product')
+            else:
+                raise ValidationError('JIRA Project needs a JIRA Instance and JIRA Project Key, leave empty to have no JIRA integration setup')
+
+
+class DebtJIRAProjectForm(forms.ModelForm):
+    inherit_from_debt_context = forms.BooleanField(label='inherit JIRA settings from debt_context', required=False)
+    jira_instance = forms.ModelChoiceField(queryset=JIRA_Instance.objects.all(), label='JIRA Instance', required=False)
+    issue_template_dir = forms.ChoiceField(required=False,
+                                           choices=JIRA_TEMPLATE_CHOICES,
+                                           help_text='Choose the folder containing the Django templates used to render the JIRA issue description. These are stored in dojo/templates/issue-trackers. Leave empty to use the default jira_full templates.')
+
+    prefix = 'jira-project-form'
+
+    class Meta:
+        model = Debt_JIRA_Project
+        exclude = ['debt_context', 'debt_engagement']
+        fields = ['inherit_from_debt_context', 'jira_instance', 'project_key', 'issue_template_dir', 'component', 'custom_fields', 'jira_labels', 'default_assignee', 'add_vulnerability_id_to_jira_label', 'push_all_issues', 'enable_debt_engagement_epic_mapping', 'push_notes', 'debt_context_jira_sla_notification', 'risk_acceptance_expiration_notification']
+
+    def __init__(self, *args, **kwargs):
+        from dojo.jira_link import helper as jira_helper
+        # if the form is shown for an debt_engagement, we set a placeholder text around inherited settings from debt_context
+        self.target = kwargs.pop('target', 'debt_context')
+        self.debt_context = kwargs.pop('debt_context', None)
+        self.debt_engagement = kwargs.pop('debt_engagement', None)
+        super().__init__(*args, **kwargs)
+
+        logger.debug('self.target: %s, self.debt_context: %s, self.instance: %s', self.target, self.debt_context, self.instance)
+        logger.debug('data: %s', self.data)
+        if self.target == 'debt_engagement':
+            debt_context_name = self.debt_context.name if self.debt_context else self.debt_engagement.debt_context.name if self.debt_engagement.debt_context else ''
+
+            self.fields['project_key'].widget = forms.TextInput(attrs={'placeholder': 'JIRA settings inherited from debt_context ''%s''' % debt_context_name})
+            self.fields['project_key'].help_text = 'JIRA settings are inherited from debt_context ''%s'', unless configured differently here.' % debt_context_name
+            self.fields['jira_instance'].help_text = 'JIRA settings are inherited from debt_context ''%s'' , unless configured differently here.' % debt_context_name
+
+            # if we don't have an instance, django will insert a blank empty one :-(
+            # so we have to check for id to make sure we only trigger this when there is a real instance from db
+            if self.instance.id:
+                logger.debug('jira project instance found for debt_engagement, unchecking inherit checkbox')
+                self.fields['jira_instance'].required = True
+                self.fields['project_key'].required = True
+                self.initial['inherit_from_debt_context'] = False
+                # once a jira project config is attached to an debt_engagement, we can't go back to inheriting
+                # because the config needs to remain in place for the existing jira issues
+                self.fields['inherit_from_debt_context'].disabled = True
+                self.fields['inherit_from_debt_context'].help_text = 'Once an debt_engagement has a JIRA Project stored, you cannot switch back to inheritance to avoid breaking existing JIRA issues'
+                self.fields['jira_instance'].disabled = False
+                self.fields['project_key'].disabled = False
+                self.fields['issue_template_dir'].disabled = False
+                self.fields['component'].disabled = False
+                self.fields['custom_fields'].disabled = False
+                self.fields['default_assignee'].disabled = False
+                self.fields['jira_labels'].disabled = False
+                self.fields['add_vulnerability_id_to_jira_label'].disabled = False
+                self.fields['push_all_issues'].disabled = False
+                self.fields['enable_debt_engagement_epic_mapping'].disabled = False
+                self.fields['push_notes'].disabled = False
+                self.fields['debt_context_jira_sla_notification'].disabled = False
+                self.fields['risk_acceptance_expiration_notification'].disabled = False
+
+            elif self.debt_context:
+                logger.debug('setting jira project fields from debt_context1')
+                self.initial['inherit_from_debt_context'] = True
+                jira_project_debt_context = jira_helper.get_jira_project(self.debt_context)
+                # we have to check that we are not in a POST request where jira project config data is posted
+                # this is because initial values will overwrite the actual values entered by the user
+                # makes no sense, but seems to be accepted behaviour: https://code.djangoproject.com/ticket/30407
+                if jira_project_debt_context and not (self.prefix + '-jira_instance') in self.data:
+                    logger.debug('setting jira project fields from debt_context2')
+                    self.initial['jira_instance'] = jira_project_debt_context.jira_instance.id if jira_project_debt_context.jira_instance else None
+                    self.initial['project_key'] = jira_project_debt_context.project_key
+                    self.initial['issue_template_dir'] = jira_project_debt_context.issue_template_dir
+                    self.initial['component'] = jira_project_debt_context.component
+                    self.initial['custom_fields'] = jira_project_debt_context.custom_fields
+                    self.initial['default_assignee'] = jira_project_debt_context.default_assignee
+                    self.initial['jira_labels'] = jira_project_debt_context.jira_labels
+                    self.initial['add_vulnerability_id_to_jira_label'] = jira_project_debt_context.add_vulnerability_id_to_jira_label
+                    self.initial['push_all_issues'] = jira_project_debt_context.push_all_issues
+                    self.initial['enable_debt_engagement_epic_mapping'] = jira_project_debt_context.enable_debt_engagement_epic_mapping
+                    self.initial['push_notes'] = jira_project_debt_context.push_notes
+                    self.initial['debt_context_jira_sla_notification'] = jira_project_debt_context.debt_context_jira_sla_notification
+                    self.initial['risk_acceptance_expiration_notification'] = jira_project_debt_context.risk_acceptance_expiration_notification
+
+                    self.fields['jira_instance'].disabled = True
+                    self.fields['project_key'].disabled = True
+                    self.fields['issue_template_dir'].disabled = True
+                    self.fields['component'].disabled = True
+                    self.fields['custom_fields'].disabled = True
+                    self.fields['default_assignee'].disabled = True
+                    self.fields['jira_labels'].disabled = True
+                    self.fields['add_vulnerability_id_to_jira_label'].disabled = True
+                    self.fields['push_all_issues'].disabled = True
+                    self.fields['enable_debt_engagement_epic_mapping'].disabled = True
+                    self.fields['push_notes'].disabled = True
+                    self.fields['debt_context_jira_sla_notification'].disabled = True
+                    self.fields['risk_acceptance_expiration_notification'].disabled = True
+
+        else:
+            del self.fields['inherit_from_debt_context']
+
+        # if we don't have an instance, django will insert a blank empty one :-(
+        # so we have to check for id to make sure we only trigger this when there is a real instance from db
+        if self.instance.id:
+            self.fields['jira_instance'].required = True
+            self.fields['project_key'].required = True
+
+    def clean(self):
+        logger.debug('validating jira project form')
+        cleaned_data = super().clean()
+
+        logger.debug('clean: inherit: %s', self.cleaned_data.get('inherit_from_debt_context', False))
+        if not self.cleaned_data.get('inherit_from_debt_context', False):
+            jira_instance = self.cleaned_data.get('jira_instance')
+            project_key = self.cleaned_data.get('project_key')
+
+            if project_key and jira_instance:
+                return cleaned_data
+
+            if not project_key and not jira_instance:
+                return cleaned_data
+
+            if self.target == 'debt_engagement':
+                raise ValidationError('JIRA Project needs a JIRA Instance and JIRA Project Key, or choose to inherit settings from debt_context')
             else:
                 raise ValidationError('JIRA Project needs a JIRA Instance and JIRA Project Key, leave empty to have no JIRA integration setup')
 
