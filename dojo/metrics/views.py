@@ -458,6 +458,86 @@ def metrics(request, mtype):
     })
 
 
+@cache_page(60 * 5)  # cache for 5 minutes
+@vary_on_cookie
+def debt_metrics(request, mtype):
+    template = 'dojo/metrics.html'
+    show_pt_filter = True
+    view = identify_view(request)
+    page_name = _('Metrics')
+
+    if mtype != 'All':
+        pt = Debt_Context_Type.objects.filter(id=mtype)
+        request.GET._mutable = True
+        request.GET.appendlist('test__Debt_engagement__debt_context__debt_context_type', mtype)
+        request.GET._mutable = False
+        debt_context = pt[0].name
+        show_pt_filter = False
+        page_name = _('%(debt_context_type)s Metrics') % {'debt_context_type': mtype}
+        debt_context_type = pt
+    elif 'test__Debt_engagement__debt_context__debt_context_type' in request.GET:
+        debt_context_type = Debt_Context_Type.objects.filter(id__in=request.GET.getlist('test__Debt_engagement__debt_context__debt_context_type', []))
+    else:
+        debt_context_type = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+    # legacy code calls has 'debt_context_type' as 'related_name' for debt_context.... so weird looking prefetch
+    debt_context_type = debt_context_type.prefetch_related('debt_context_type')
+
+    filters = dict()
+    if view == 'Debt_Item':
+        page_name = _('Debt_Context Type Metrics by Debt_Items')
+        filters = debt_item_querys(debt_context_type, request)
+    elif view == 'Endpoint':
+        page_name = _('Debt_Context Type Metrics by Affected Endpoints')
+        filters = endpoint_querys(debt_context_type, request)
+
+    in_period_counts, in_period_details, age_detail = get_in_period_details([
+        obj.debt_item if view == 'Endpoint' else obj
+        for obj in queryset_check(filters['all'])
+    ])
+
+    accepted_in_period_details = get_accepted_in_period_details([
+        obj.debt_item if view == 'Endpoint' else obj
+        for obj in filters['accepted']
+    ])
+
+    closed_in_period_counts, closed_in_period_details = get_closed_in_period_details([
+        obj.debt_item if view == 'Endpoint' else obj
+        for obj in filters['closed']
+    ])
+
+    punchcard = list()
+    ticks = list()
+
+    if 'view' in request.GET and 'dashboard' == request.GET['view']:
+        punchcard, ticks = get_punchcard_data(queryset_check(filters['all']), filters['start_date'], filters['weeks_between'], view)
+        page_name = _('%(team_name)s Metrics') % {'team_name': get_system_setting('team_name')}
+        template = 'dojo/dashboard-metrics.html'
+
+    add_breadcrumb(title=page_name, top_level=not len(request.GET), request=request)
+
+    return render(request, template, {
+        'name': page_name,
+        'start_date': filters['start_date'],
+        'end_date': filters['end_date'],
+        'debt_items': filters['all'],
+        'opened_per_month': filters['monthly_counts']['opened_per_period'],
+        'active_per_month': filters['monthly_counts']['active_per_period'],
+        'opened_per_week': filters['weekly_counts']['opened_per_period'],
+        'accepted_per_month': filters['monthly_counts']['accepted_per_period'],
+        'accepted_per_week': filters['weekly_counts']['accepted_per_period'],
+        'top_ten_debt_contexts': filters['top_ten'],
+        'age_detail': age_detail,
+        'in_period_counts': in_period_counts,
+        'in_period_details': in_period_details,
+        'accepted_in_period_counts': filters['accepted_count'],
+        'accepted_in_period_details': accepted_in_period_details,
+        'closed_in_period_counts': closed_in_period_counts,
+        'closed_in_period_details': closed_in_period_details,
+        'punchcard': punchcard,
+        'ticks': ticks,
+        'show_pt_filter': show_pt_filter,
+    })
+
 """
 Jay
 status: in production

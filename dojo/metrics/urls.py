@@ -16,6 +16,8 @@ urlpatterns = [
         name='simple_metrics'),
     re_path(r'^metrics/product/type/(?P<mtype>\d+)$',
         views.metrics, name='product_type_metrics'),
+    re_path(r'^metrics/debt_context/type/(?P<mtype>\d+)$',
+            views.debt_metrics, name='debt_context_type_metrics'),
     re_path(r'^metrics/product/type/counts$',
         views.product_type_counts, name='product_type_counts'),
     re_path(r'^metrics/engineer$', views.engineer_metrics,

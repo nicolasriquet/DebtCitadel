@@ -185,6 +185,12 @@ def product_type_report(request, ptid):
     return generate_report(request, product_type)
 
 
+@user_is_authorized(Product_Type, Permissions.Debt_Context_Type_View, 'ptid')
+def debt_context_type_report(request, ptid):
+    debt_context_type = get_object_or_404(Debt_Context_Type, id=ptid)
+    return generate_report(request, debt_context_type)
+
+
 @user_is_authorized(Product, Permissions.Product_View, 'pid')
 def product_report(request, pid):
     product = get_object_or_404(Product, id=pid)

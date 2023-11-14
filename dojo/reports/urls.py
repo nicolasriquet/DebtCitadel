@@ -6,6 +6,8 @@ urlpatterns = [
     #  reports
     re_path(r'^product/type/(?P<ptid>\d+)/report$',
         views.product_type_report, name='product_type_report'),
+    re_path(r'^debt_context/type/(?P<ptid>\d+)/report$',
+            views.debt_context_type_report, name='debt_context_type_report'),
     re_path(r'^product/(?P<pid>\d+)/report$',
         views.product_report, name='product_report'),
     re_path(r'^debt_context/(?P<pid>\d+)/report$',
