@@ -16,7 +16,7 @@ from dojo.api_v2.views import EndPointViewSet, EngagementViewSet, DebtEngagement
     DebtContextMemberViewSet, DebtContextTypeGroupViewSet, DebtContextGroupViewSet, DebtContextAPIScanConfigurationViewSet, \
     JiraIssuesViewSet, JiraProjectViewSet, ProductViewSet, CredentialsViewSet, CredentialsMappingViewSet, \
     SLAConfigurationViewset, StubFindingsViewSet, TestImportViewSet, TestsViewSet, TestTypesViewSet, \
-    ToolConfigurationsViewSet, ToolProductSettingsViewSet, ToolTypesViewSet, \
+    DebtTestTypesViewSet, ToolConfigurationsViewSet, ToolProductSettingsViewSet, ToolTypesViewSet, \
     UsersViewSet, ImportScanView, ReImportScanView, ProductTypeViewSet, DojoMetaViewSet, \
     DevelopmentEnvironmentViewSet, NotesViewSet, NoteTypeViewSet, SystemSettingsViewSet, \
     AppAnalysisViewSet, EndpointStatusViewSet, SonarqubeIssueViewSet, SonarqubeIssueTransitionViewSet, \
@@ -47,6 +47,7 @@ from dojo.reports.urls import urlpatterns as reports_urls
 from dojo.search.urls import urlpatterns as search_urls
 from dojo.test.urls import urlpatterns as test_urls
 from dojo.test_type.urls import urlpatterns as test_type_urls
+from dojo.debt_test_type.urls import urlpatterns as debt_test_type_urls
 from dojo.user.urls import urlpatterns as user_urls
 from dojo.group.urls import urlpatterns as group_urls
 from dojo.jira_link.urls import urlpatterns as jira_urls
@@ -126,6 +127,7 @@ v2_api.register(r'stub_findings', StubFindingsViewSet)
 v2_api.register(r'stub_debt_items', StubDebtItemsViewSet)
 v2_api.register(r'tests', TestsViewSet)
 v2_api.register(r'test_types', TestTypesViewSet)
+v2_api.register(r'test_types', DebtTestTypesViewSet)
 v2_api.register(r'test_imports', TestImportViewSet)
 v2_api.register(r'tool_configurations', ToolConfigurationsViewSet)
 v2_api.register(r'tool_product_settings', ToolProductSettingsViewSet)
@@ -171,6 +173,7 @@ ur += debt_context_type_urls
 ur += reports_urls
 ur += search_urls
 ur += test_type_urls
+ur += debt_test_type_urls
 ur += test_urls
 ur += user_urls
 ur += group_urls

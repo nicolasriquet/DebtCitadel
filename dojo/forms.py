@@ -24,7 +24,7 @@ from dojo.endpoint.utils import endpoint_get_or_create, endpoint_filter, \
     validate_endpoints_to_add
 from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_Item_Group, \
     Product_Type, Debt_Context_Type, Product, Debt_Context, Note_Type, \
-    Check_List, SLA_Configuration, User, Engagement, Debt_Engagement, Test, Debt_Test, Test_Type, Notes, Risk_Acceptance, \
+    Check_List, SLA_Configuration, User, Engagement, Debt_Engagement, Test, Debt_Test, Test_Type, Debt_Test_Type, Notes, Risk_Acceptance, \
     Development_Environment, Dojo_User, Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
     JIRA_Issue, JIRA_Project, Debt_JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
     Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
@@ -300,6 +300,11 @@ class Test_TypeForm(forms.ModelForm):
         model = Test_Type
         exclude = ['']
 
+
+class Debt_Test_TypeForm(forms.ModelForm):
+    class Meta:
+        model = Debt_Test_Type
+        exclude = ['']
 
 class Development_EnvironmentForm(forms.ModelForm):
     class Meta:

@@ -935,6 +935,24 @@ class Test_Type(models.Model):
         return bc
 
 
+class Debt_Test_Type(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    static_tool = models.BooleanField(default=False)
+    dynamic_tool = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ('name',)
+
+    def get_breadcrumbs(self):
+        bc = [{'title': str(self),
+               'url': None}]
+        return bc
+
+
 class DojoMeta(models.Model):
     name = models.CharField(max_length=120)
     value = models.CharField(max_length=300)
@@ -1899,7 +1917,7 @@ class Debt_Engagement(models.Model):
                                 default='threat_model', editable=False)
     tmodel_path = models.CharField(max_length=1000, default='none',
                                    editable=False, blank=True, null=True)
-    risk_acceptance = models.ManyToManyField("Risk_Acceptance",
+    risk_acceptance = models.ManyToManyField("Debt_Risk_Acceptance",
                                              default=None,
                                              editable=False,
                                              blank=True)
@@ -3044,7 +3062,7 @@ class Test(models.Model):
 class Debt_Test(models.Model):
     debt_engagement = models.ForeignKey(Debt_Engagement, editable=False, on_delete=models.CASCADE)
     lead = models.ForeignKey(Dojo_User, editable=True, null=True, blank=True, on_delete=models.RESTRICT)
-    test_type = models.ForeignKey(Test_Type, on_delete=models.CASCADE)
+    test_type = models.ForeignKey(Debt_Test_Type, on_delete=models.CASCADE)
     scan_type = models.TextField(null=True)
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -3247,6 +3265,51 @@ class Test_Import(TimeStampedModel):
         return stats
 
 
+class Debt_Test_Import(TimeStampedModel):
+
+    IMPORT_TYPE = 'import'
+    REIMPORT_TYPE = 'reimport'
+
+    debt_test = models.ForeignKey(Debt_Test, editable=False, null=False, blank=False, on_delete=models.CASCADE)
+    debt_items_affected = models.ManyToManyField('Debt_Item', through='Debt_Test_Import_Debt_Item_Action')
+    import_settings = JSONField(null=True)
+    type = models.CharField(max_length=64, null=False, blank=False, default='unknown')
+
+    version = models.CharField(max_length=100, null=True, blank=True)
+    build_id = models.CharField(editable=True, max_length=150,
+                                null=True, blank=True, help_text=_("Build ID that was debt_tested, a reimport may update this field."), verbose_name=_('Build ID'))
+    commit_hash = models.CharField(editable=True, max_length=150,
+                                   null=True, blank=True, help_text=_("Commit hash debt_tested, a reimport may update this field."), verbose_name=_('Commit Hash'))
+    branch_tag = models.CharField(editable=True, max_length=150,
+                                  null=True, blank=True, help_text=_("Tag or branch that was debt_tested, a reimport may update this field."), verbose_name=_("Branch/Tag"))
+
+    def get_queryset(self):
+        logger.debug('prefetch debt_test_import counts')
+        super_query = super().get_queryset()
+        super_query = super_query.annotate(created_debt_items_count=Count('debt_items', filter=Q(debt_test_import_debt_item_action__action=IMPORT_CREATED_FINDING)))
+        super_query = super_query.annotate(closed_debt_items_count=Count('debt_items', filter=Q(debt_test_import_debt_item_action__action=IMPORT_CLOSED_FINDING)))
+        super_query = super_query.annotate(reactivated_debt_items_count=Count('debt_items', filter=Q(debt_test_import_debt_item_action__action=IMPORT_REACTIVATED_FINDING)))
+        super_query = super_query.annotate(untouched_debt_items_count=Count('debt_items', filter=Q(debt_test_import_debt_item_action__action=IMPORT_UNTOUCHED_FINDING)))
+        return super_query
+
+    class Meta:
+        ordering = ('-id',)
+        indexes = [
+            models.Index(fields=['created', 'debt_test', 'type']),
+        ]
+
+    def __str__(self):
+        return self.created.strftime("%Y-%m-%d %H:%M:%S")
+
+    @property
+    def statistics(self):
+        """ Queries the database, no prefetching, so could be slow for lists of model instances """
+        stats = {}
+        for action in IMPORT_ACTIONS:
+            stats[action[1].lower()] = _get_statistics_for_queryset(Debt_Item.objects.filter(debt_test_import_debt_item_action__debt_test_import=self, debt_test_import_debt_item_action__action=action[0]), _get_annotations_for_statistics)
+        return stats
+
+
 class Test_Import_Finding_Action(TimeStampedModel):
     test_import = models.ForeignKey(Test_Import, editable=False, null=False, blank=False, on_delete=models.CASCADE)
     finding = models.ForeignKey('Finding', editable=False, null=False, blank=False, on_delete=models.CASCADE)
@@ -3263,20 +3326,21 @@ class Test_Import_Finding_Action(TimeStampedModel):
         return '%i: %s' % (self.finding.id, self.action)
 
 
-class Test_Import_Debt_Item_Action(TimeStampedModel):
-    test_import = models.ForeignKey(Test_Import, editable=False, null=False, blank=False, on_delete=models.CASCADE)
-    debt_item = models.ForeignKey('Finding', editable=False, null=False, blank=False, on_delete=models.CASCADE)
+class Debt_Test_Import_Debt_Item_Action(TimeStampedModel):
+    debt_test_import = models.ForeignKey(Debt_Test_Import, editable=False, null=False, blank=False, on_delete=models.CASCADE)
+    debt_item = models.ForeignKey('Debt_Item', editable=False, null=False, blank=False, on_delete=models.CASCADE)
     action = models.CharField(max_length=100, null=True, blank=True, choices=IMPORT_ACTIONS)
 
     class Meta:
         indexes = [
-            models.Index(fields=['debt_item', 'action', 'test_import']),
+            models.Index(fields=['debt_item', 'action', 'debt_test_import']),
         ]
-        unique_together = (('test_import', 'debt_item'))
-        ordering = ('test_import', 'action', 'debt_item')
+        unique_together = (('debt_test_import', 'debt_item'))
+        ordering = ('debt_test_import', 'action', 'debt_item')
 
     def __str__(self):
         return '%i: %s' % (self.debt_item.id, self.action)
+
 
 class Finding(models.Model):
 
@@ -4314,11 +4378,11 @@ class Debt_Item(models.Model):
                                   db_column="refs",
                                   verbose_name=_('References'),
                                   help_text=_("The external documentation available for this flaw."))
-    test = models.ForeignKey(Debt_Test,
-                             editable=False,
-                             on_delete=models.CASCADE,
-                             verbose_name=_('Debt_Test'),
-                             help_text=_("The test that is associated with this flaw."))
+    debt_test = models.ForeignKey(Debt_Test,
+                                  editable=False,
+                                  on_delete=models.CASCADE,
+                                  verbose_name=_('Debt_Test'),
+                                  help_text=_("The debt_test that is associated with this flaw."))
     active = models.BooleanField(default=True,
                                  verbose_name=_('Active'),
                                  help_text=_("Denotes if this flaw is active or not."))
@@ -4326,10 +4390,10 @@ class Debt_Item(models.Model):
     # in defectdojo verified means: "we have verified the debt_item and it turns out that it's not a false positive"
     verified = models.BooleanField(default=False,
                                    verbose_name=_('Verified'),
-                                   help_text=_("Denotes if this flaw has been manually verified by the tester."))
+                                   help_text=_("Denotes if this flaw has been manually verified by the debt_tester."))
     false_p = models.BooleanField(default=False,
                                   verbose_name=_('False Positive'),
-                                  help_text=_("Denotes if this flaw has been deemed a false positive by the tester."))
+                                  help_text=_("Denotes if this flaw has been deemed a false positive by the debt_tester."))
     duplicate = models.BooleanField(default=False,
                                     verbose_name=_('Duplicate'),
                                     help_text=_("Denotes if this flaw is a duplicate of other flaws reported."))
@@ -4342,7 +4406,7 @@ class Debt_Item(models.Model):
                                             help_text=_("Link to the original debt item if this debt item is a duplicate."))
     out_of_scope = models.BooleanField(default=False,
                                        verbose_name=_('Out Of Scope'),
-                                       help_text=_("Denotes if this flaw falls outside the scope of the test and/or debt_engagement."))
+                                       help_text=_("Denotes if this flaw falls outside the scope of the debt_test and/or debt_engagement."))
     risk_accepted = models.BooleanField(default=False,
                                         verbose_name=_('Risk Accepted'),
                                         help_text=_("Denotes if this debt item has been marked as an accepted risk."))
@@ -4355,7 +4419,7 @@ class Debt_Item(models.Model):
                                               blank=True,
                                               auto_now_add=True,
                                               verbose_name=_('Last Status Update'),
-                                              help_text=_('Timestamp of latest status update (change in status related fields).'))
+                                              help_text=_('Timestamp of ladebt_test status update (change in status related fields).'))
 
     review_requested_by = models.ForeignKey(Dojo_User,
                                             null=True,
@@ -4416,7 +4480,7 @@ class Debt_Item(models.Model):
     last_reviewed = models.DateTimeField(null=True,
                                          editable=False,
                                          verbose_name=_('Last Reviewed'),
-                                         help_text=_("Provides the date the flaw was last 'touched' by a tester."))
+                                         help_text=_("Provides the date the flaw was last 'touched' by a debt_tester."))
     last_reviewed_by = models.ForeignKey(Dojo_User,
                                          null=True,
                                          editable=False,
@@ -4563,17 +4627,17 @@ class Debt_Item(models.Model):
     class Meta:
         ordering = ('numerical_severity', '-date', 'title')
         indexes = [
-            models.Index(fields=['test', 'active', 'verified']),
+            models.Index(fields=['debt_test', 'active', 'verified']),
 
-            models.Index(fields=['test', 'is_mitigated']),
-            models.Index(fields=['test', 'duplicate']),
-            models.Index(fields=['test', 'out_of_scope']),
-            models.Index(fields=['test', 'false_p']),
+            models.Index(fields=['debt_test', 'is_mitigated']),
+            models.Index(fields=['debt_test', 'duplicate']),
+            models.Index(fields=['debt_test', 'out_of_scope']),
+            models.Index(fields=['debt_test', 'false_p']),
 
-            models.Index(fields=['test', 'unique_id_from_tool', 'duplicate']),
-            models.Index(fields=['test', 'hash_code', 'duplicate']),
+            models.Index(fields=['debt_test', 'unique_id_from_tool', 'duplicate']),
+            models.Index(fields=['debt_test', 'hash_code', 'duplicate']),
 
-            models.Index(fields=['test', 'component_name']),
+            models.Index(fields=['debt_test', 'component_name']),
 
             models.Index(fields=['cve']),
             models.Index(fields=['cwe']),
@@ -4605,7 +4669,7 @@ class Debt_Item(models.Model):
         self.unsaved_files = None
         self.unsaved_vulnerability_ids = None
 
-    def copy(self, test=None):
+    def copy(self, debt_test=None):
         copy = self
         # Save the necessary ManyToMany relationships
         old_notes = list(self.notes.all())
@@ -4617,8 +4681,8 @@ class Debt_Item(models.Model):
         # Wipe the IDs of the new object
         copy.pk = None
         copy.id = None
-        if test:
-            copy.test = test
+        if debt_test:
+            copy.debt_test = debt_test
         # Save the object before setting any ManyToMany relationships
         copy.save()
         # Copy the notes
@@ -4648,7 +4712,7 @@ class Debt_Item(models.Model):
         import dojo.debt_item.helper as helper
         helper.debt_item_delete(self)
         super().delete(*args, **kwargs)
-        calculate_grade(self.test.debt_engagement.debt_context)
+        calculate_grade(self.debt_test.debt_engagement.debt_context)
 
     # only used by bulk risk acceptance api
     @classmethod
@@ -4657,7 +4721,7 @@ class Debt_Item(models.Model):
 
     @property
     def risk_acceptance(self):
-        ras = self.risk_acceptance_set.all()
+        ras = self.debt_risk_acceptance_set.all()
         if ras:
             return ras[0]
 
@@ -4670,7 +4734,7 @@ class Debt_Item(models.Model):
             deduplicationLogger.debug("no or incomplete configuration per hash_code found; using legacy algorithm")
             return self.compute_hash_code_legacy()
 
-        hash_code_fields = self.test.hash_code_fields
+        hash_code_fields = self.debt_test.hash_code_fields
 
         # Check if hash_code fields are found in the settings
         if not hash_code_fields:
@@ -4686,7 +4750,7 @@ class Debt_Item(models.Model):
             return self.compute_hash_code_legacy()
 
         # Make sure that we have a cwe if we need one
-        if self.cwe == 0 and not self.test.hash_code_allows_null_cwe:
+        if self.cwe == 0 and not self.debt_test.hash_code_allows_null_cwe:
             deduplicationLogger.warn(
                 "Cannot compute hash_code based on configured fields because cwe is 0 for debt_item of title '" + self.title + "' found in file '" + str(self.file_path) +
                 "'. Fallback to legacy mode for this debt_item.")
@@ -4908,7 +4972,7 @@ class Debt_Item(models.Model):
         return self._age(self.date)
 
     def get_sla_periods(self):
-        sla_configuration = SLA_Configuration.objects.filter(id=self.test.debt_engagement.debt_context.sla_configuration_id).first()
+        sla_configuration = SLA_Configuration.objects.filter(id=self.debt_test.debt_engagement.debt_context.sla_configuration_id).first()
         return sla_configuration
 
     def get_sla_start_date(self):
@@ -4952,7 +5016,7 @@ class Debt_Item(models.Model):
 
     def github_conf(self):
         try:
-            github_debt_context_key = GITHUB_PKey.objects.get(debt_context=self.test.debt_engagement.debt_context)
+            github_debt_context_key = GITHUB_PKey.objects.get(debt_context=self.debt_test.debt_engagement.debt_context)
             github_conf = github_debt_context_key.conf
         except:
             github_conf = None
@@ -4962,7 +5026,7 @@ class Debt_Item(models.Model):
     # newer version that can work with prefetching
     def github_conf_new(self):
         try:
-            return self.test.debt_engagement.debt_context.github_pkey_set.all()[0].git_conf
+            return self.debt_test.debt_engagement.debt_context.github_pkey_set.all()[0].git_conf
         except:
             return None
             pass
@@ -5060,7 +5124,7 @@ class Debt_Item(models.Model):
         logger.debug("Saving debt_item of id " + str(self.id) + " dedupe_option:" + str(dedupe_option) + " (self.pk is %s)", "None" if self.pk is None else "not None")
         super(Debt_Item, self).save(*args, **kwargs)
 
-        self.found_by.add(self.test.test_type)
+        self.found_by.add(self.debt_test.debt_test_type)
 
         # only perform post processing (in celery task) if needed. this check avoids submitting 1000s of tasks to celery that will do nothing
         if dedupe_option or issue_updater_option or debt_context_grading_option or push_to_jira:
@@ -5071,7 +5135,7 @@ class Debt_Item(models.Model):
 
     # Check if a mandatory field is empty. If it's the case, fill it with "no <fieldName> given"
     def clean(self):
-        no_check = ["test", "reporter"]
+        no_check = ["debt_test", "reporter"]
         bigfields = ["description"]
         for field_obj in self._meta.fields:
             field = field_obj.name
@@ -5086,7 +5150,7 @@ class Debt_Item(models.Model):
         return self.severity
 
     def get_breadcrumbs(self):
-        bc = self.test.get_breadcrumbs()
+        bc = self.debt_test.get_breadcrumbs()
         bc += [{'title': str(self),
                 'url': reverse('view_debt_item', args=(self.id,))}]
         return bc
@@ -5110,7 +5174,7 @@ class Debt_Item(models.Model):
         res = re.sub(r'\n\s*\n', '\n', res)
         return res
 
-    def latest_note(self):
+    def ladebt_test_note(self):
         if self.notes.all():
             note = self.notes.all()[0]
             return note.date.strftime("%Y-%m-%d %H:%M:%S") + ': ' + note.author.get_full_name() + ' : ' + note.entry
@@ -5121,9 +5185,9 @@ class Debt_Item(models.Model):
         from dojo.utils import create_bleached_link
         if self.sast_source_file_path is None:
             return None
-        if self.test.debt_engagement.source_code_management_uri is None:
+        if self.debt_test.debt_engagement.source_code_management_uri is None:
             return escape(self.sast_source_file_path)
-        link = self.test.debt_engagement.source_code_management_uri + '/' + self.sast_source_file_path
+        link = self.debt_test.debt_engagement.source_code_management_uri + '/' + self.sast_source_file_path
         if self.sast_source_line:
             link = link + '#L' + str(self.sast_source_line)
         return create_bleached_link(link, self.sast_source_file_path)
@@ -5132,7 +5196,7 @@ class Debt_Item(models.Model):
         from dojo.utils import create_bleached_link
         if self.file_path is None:
             return None
-        if self.test.debt_engagement.source_code_management_uri is None:
+        if self.debt_test.debt_engagement.source_code_management_uri is None:
             return escape(self.file_path)
         link = self.get_file_path_with_raw_link()
         return create_bleached_link(link, self.file_path)
@@ -5140,17 +5204,17 @@ class Debt_Item(models.Model):
     def get_file_path_with_raw_link(self):
         if self.file_path is None:
             return None
-        link = self.test.debt_engagement.source_code_management_uri
-        if (self.test.debt_engagement.source_code_management_uri is not None
-                and "https://github.com/" in self.test.debt_engagement.source_code_management_uri):
-            if self.test.commit_hash:
-                link += '/blob/' + self.test.commit_hash + '/' + self.file_path
-            elif self.test.debt_engagement.commit_hash:
-                link += '/blob/' + self.test.debt_engagement.commit_hash + '/' + self.file_path
-            elif self.test.branch_tag:
-                link += '/blob/' + self.test.branch_tag + '/' + self.file_path
-            elif self.test.debt_engagement.branch_tag:
-                link += '/blob/' + self.test.debt_engagement.branch_tag + '/' + self.file_path
+        link = self.debt_test.debt_engagement.source_code_management_uri
+        if (self.debt_test.debt_engagement.source_code_management_uri is not None
+                and "https://github.com/" in self.debt_test.debt_engagement.source_code_management_uri):
+            if self.debt_test.commit_hash:
+                link += '/blob/' + self.debt_test.commit_hash + '/' + self.file_path
+            elif self.debt_test.debt_engagement.commit_hash:
+                link += '/blob/' + self.debt_test.debt_engagement.commit_hash + '/' + self.file_path
+            elif self.debt_test.branch_tag:
+                link += '/blob/' + self.debt_test.branch_tag + '/' + self.file_path
+            elif self.debt_test.debt_engagement.branch_tag:
+                link += '/blob/' + self.debt_test.debt_engagement.branch_tag + '/' + self.file_path
             else:
                 link += '/' + self.file_path
         else:
@@ -5179,7 +5243,7 @@ class Debt_Item(models.Model):
     @cached_property
     def vulnerability_ids(self):
         # Get vulnerability ids from database and convert to list of strings
-        vulnerability_ids_model = self.vulnerability_id_set.all()
+        vulnerability_ids_model = self.debt_vulnerability_id_set.all()
         vulnerability_ids = list()
         for vulnerability_id in vulnerability_ids_model:
             vulnerability_ids.append(vulnerability_id.vulnerability_id)
@@ -5201,7 +5265,7 @@ class Debt_Item(models.Model):
 
     def inherit_tags(self, potentially_existing_tags):
         # get a copy of the tags to be inherited
-        incoming_inherited_tags = [tag.name for tag in self.test.debt_engagement.debt_context.tags.all()]
+        incoming_inherited_tags = [tag.name for tag in self.debt_test.debt_engagement.debt_context.tags.all()]
         _manage_inherited_tags(self, incoming_inherited_tags, potentially_existing_tags=potentially_existing_tags)
 
     @property
@@ -5236,6 +5300,18 @@ class Vulnerability_Id(models.Model):
     def get_absolute_url(self):
         from django.urls import reverse
         return reverse('view_finding', args=[str(self.finding.id)])
+
+
+class Debt_Vulnerability_Id(models.Model):
+    debt_item = models.ForeignKey(Debt_Item, editable=False, on_delete=models.CASCADE)
+    vulnerability_id = models.TextField(max_length=50, blank=False, null=False)
+
+    def __str__(self):
+        return self.vulnerability_id
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('view_debt_item', args=[str(self.debt_item.id)])
 
 
 class Stub_Finding(models.Model):
@@ -5754,6 +5830,111 @@ class Risk_Acceptance(models.Model):
         return copy
 
 
+class Debt_Risk_Acceptance(models.Model):
+    TREATMENT_ACCEPT = 'A'
+    TREATMENT_AVOID = 'V'
+    TREATMENT_MITIGATE = 'M'
+    TREATMENT_FIX = 'F'
+    TREATMENT_TRANSFER = 'T'
+
+    TREATMENT_CHOICES = [
+        (TREATMENT_ACCEPT, 'Accept (The risk is acknowledged, yet remains)'),
+        (TREATMENT_AVOID, 'Avoid (Do not engage with whatever creates the risk)'),
+        (TREATMENT_MITIGATE, 'Mitigate (The risk still exists, yet compensating controls make it less of a threat)'),
+        (TREATMENT_FIX, 'Fix (The risk is eradicated)'),
+        (TREATMENT_TRANSFER, 'Transfer (The risk is transferred to a 3rd party)'),
+    ]
+
+    TREATMENT_TRANSLATIONS = {
+        'A': 'Accept (The risk is acknowledged, yet remains)',
+        'V': 'Avoid (Do not engage with whatever creates the risk)',
+        'M': 'Mitigate (The risk still exists, yet compensating controls make it less of a threat)',
+        'F': 'Fix (The risk is eradicated)',
+        'T': 'Transfer (The risk is transferred to a 3rd party)',
+    }
+
+    name = models.CharField(max_length=300, null=False, blank=False, help_text=_("Descriptive name which in the future may also be used to group risk acceptances together across debt_engagements and debt_contexts"))
+
+    accepted_debt_items = models.ManyToManyField(Debt_Item)
+
+    recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_FIX, help_text=_("Recommendation from the security team."), verbose_name=_('Security Recommendation'))
+
+    recommendation_details = models.TextField(null=True,
+                                              blank=True,
+                                              help_text=_("Explanation of security recommendation"), verbose_name=_('Security Recommendation Details'))
+
+    decision = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_ACCEPT, help_text=_("Risk treatment decision by risk owner"))
+    decision_details = models.TextField(default=None, blank=True, null=True, help_text=_('If a compensating control exists to mitigate the debt_item or reduce risk, then list the compensating control(s).'))
+
+    accepted_by = models.CharField(max_length=200, default=None, null=True, blank=True, verbose_name=_('Accepted By'), help_text=_("The person that accepts the risk, can be outside of DefectDojo."))
+    path = models.FileField(upload_to='risk/%Y/%m/%d',
+                            editable=True, null=True,
+                            blank=True, verbose_name=_('Proof'))
+    owner = models.ForeignKey(Dojo_User, editable=True, on_delete=models.RESTRICT, help_text=_("User in DefectDojo owning this acceptance. Only the owner and staff users can edit the risk acceptance."))
+
+    expiration_date = models.DateTimeField(default=None, null=True, blank=True, help_text=_('When the risk acceptance expires, the debt_items will be reactivated (unless disabled below).'))
+    expiration_date_warned = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) Date at which notice about the risk acceptance expiration was sent.'))
+    expiration_date_handled = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) When the risk acceptance expiration was handled (manually or by the daily job).'))
+    reactivate_expired = models.BooleanField(null=False, blank=False, default=True, verbose_name=_('Reactivate debt_items on expiration'), help_text=_('Reactivate debt_items when risk acceptance expires?'))
+    restart_sla_expired = models.BooleanField(default=False, null=False, verbose_name=_('Restart SLA on expiration'), help_text=_("When enabled, the SLA for debt_items is restarted when the risk acceptance expires."))
+
+    notes = models.ManyToManyField(Notes, editable=False)
+    created = models.DateTimeField(auto_now_add=True, null=False)
+    updated = models.DateTimeField(auto_now=True, editable=False)
+
+    def __str__(self):
+        return str(self.name)
+
+    def filename(self):
+        # logger.debug('path: "%s"', self.path)
+        if not self.path:
+            return None
+        return os.path.basename(self.path.name)
+
+    @property
+    def name_and_expiration_info(self):
+        return str(self.name) + (' (expired ' if self.is_expired else ' (expires ') + (timezone.localtime(self.expiration_date).strftime("%b %d, %Y") if self.expiration_date else 'Never') + ')'
+
+    def get_breadcrumbs(self):
+        bc = self.debt_engagement_set.first().get_breadcrumbs()
+        bc += [{'title': str(self),
+                'url': reverse('view_risk_acceptance', args=(
+                    self.debt_engagement_set.first().debt_context.id, self.id,))}]
+        return bc
+
+    @property
+    def is_expired(self):
+        return self.expiration_date_handled is not None
+
+    # relationship is many to many, but we use it as one-to-many
+    @property
+    def debt_engagement(self):
+        engs = self.debt_engagement_set.all()
+        if engs:
+            return engs[0]
+
+        return None
+
+    def copy(self, debt_engagement=None):
+        copy = self
+        # Save the necessary ManyToMany relationships
+        old_notes = list(self.notes.all())
+        old_accepted_debt_items_hash_codes = [debt_item.hash_code for debt_item in self.accepted_debt_items.all()]
+        # Wipe the IDs of the new object
+        copy.pk = None
+        copy.id = None
+        # Save the object before setting any ManyToMany relationships
+        copy.save()
+        # Copy the notes
+        for notes in old_notes:
+            copy.notes.add(notes.copy())
+        # Assign any accepted debt_items
+        if debt_engagement:
+            new_accepted_debt_items = Debt_Item.objects.filter(debt_test__debt_engagement=debt_engagement, hash_code__in=old_accepted_debt_items_hash_codes, risk_accepted=True).distinct()
+            copy.accepted_debt_items.set(new_accepted_debt_items)
+        return copy
+
+
 class FileAccessToken(models.Model):
     """This will allow reports to request the images without exposing the
     media root to the world without
@@ -6066,6 +6247,50 @@ class JIRA_Issue(models.Model):
             text = self.finding.test.engagement.product.name + " | Finding: " + self.finding.title + ", ID: " + str(self.finding.id)
         elif self.engagement:
             text = self.engagement.product.name + " | Engagement: " + self.engagement.name + ", ID: " + str(self.engagement.id)
+        return text + " | Jira Key: " + str(self.jira_key)
+
+
+NOTIFICATION_CHOICES = (
+    ("slack", "slack"), ("msteams", "msteams"), ("mail", "mail"),
+    ("alert", "alert")
+)
+
+DEFAULT_NOTIFICATION = ("alert", "alert")
+
+
+class Debt_JIRA_Issue(models.Model):
+    jira_project = models.ForeignKey(Debt_JIRA_Project, on_delete=models.CASCADE, null=True)
+    jira_id = models.CharField(max_length=200)
+    jira_key = models.CharField(max_length=200)
+    debt_item = models.OneToOneField(Debt_Item, null=True, blank=True, on_delete=models.CASCADE)
+    debt_engagement = models.OneToOneField(Debt_Engagement, null=True, blank=True, on_delete=models.CASCADE)
+    debt_item_group = models.OneToOneField(Debt_Item_Group, null=True, blank=True, on_delete=models.CASCADE)
+
+    jira_creation = models.DateTimeField(editable=True,
+                                         null=True,
+                                         verbose_name=_('Jira creation'),
+                                         help_text=_("The date a Jira issue was created from this debt_item."))
+    jira_change = models.DateTimeField(editable=True,
+                                       null=True,
+                                       verbose_name=_('Jira last update'),
+                                       help_text=_("The date the linked Jira issue was last modified."))
+
+    def set_obj(self, obj):
+        if isinstance(obj, Debt_Item):
+            self.debt_item = obj
+        elif isinstance(obj, Debt_Item_Group):
+            self.debt_item_group = obj
+        elif isinstance(obj, Debt_Engagement):
+            self.debt_engagement = obj
+        else:
+            raise ValueError('unknown object type while creating JIRA_Issue: %s' % to_str_typed(obj))
+
+    def __str__(self):
+        text = ""
+        if self.debt_item:
+            text = self.debt_item.debt_test.debt_engagement.debt_context.name + " | Debt_Item: " + self.debt_item.title + ", ID: " + str(self.debt_item.id)
+        elif self.debt_engagement:
+            text = self.debt_engagement.debt_context.name + " | Debt_Engagement: " + self.debt_engagement.name + ", ID: " + str(self.debt_engagement.id)
         return text + " | Jira Key: " + str(self.jira_key)
 
 
@@ -6767,6 +6992,7 @@ def enable_disable_auditlog(enable=True):
         auditlog.register(Dojo_User, exclude_fields=['password'])
         auditlog.register(Endpoint)
         auditlog.register(Engagement)
+        auditlog.register(Debt_Engagement)
         auditlog.register(Finding)
         auditlog.register(Debt_Item)
         auditlog.register(Product_Type)
@@ -6774,7 +7000,9 @@ def enable_disable_auditlog(enable=True):
         auditlog.register(Debt_Context_Type)
         auditlog.register(Debt_Context)
         auditlog.register(Test)
+        auditlog.register(Debt_Test)
         auditlog.register(Risk_Acceptance)
+        auditlog.register(Debt_Risk_Acceptance)
         auditlog.register(Finding_Template)
         auditlog.register(Debt_Item_Template)
         auditlog.register(Cred_User, exclude_fields=['password'])
@@ -6783,6 +7011,7 @@ def enable_disable_auditlog(enable=True):
         auditlog.unregister(Dojo_User)
         auditlog.unregister(Endpoint)
         auditlog.unregister(Engagement)
+        auditlog.unregister(Debt_Engagement)
         auditlog.unregister(Finding)
         auditlog.unregister(Debt_Item)
         auditlog.unregister(Product_Type)
@@ -6790,7 +7019,9 @@ def enable_disable_auditlog(enable=True):
         auditlog.unregister(Debt_Context_Type)
         auditlog.unregister(Debt_Context)
         auditlog.unregister(Test)
+        auditlog.unregister(Debt_Test)
         auditlog.unregister(Risk_Acceptance)
+        auditlog.unregister(Debt_Risk_Acceptance)
         auditlog.unregister(Finding_Template)
         auditlog.unregister(Debt_Item_Template)
         auditlog.unregister(Cred_User)
@@ -6837,6 +7068,7 @@ admin.site.register(Languages)
 admin.site.register(Language_Type)
 admin.site.register(App_Analysis)
 admin.site.register(Test)
+admin.site.register(Debt_Test)
 admin.site.register(Finding, FindingAdmin)
 admin.site.register(Debt_Item, DebtItemAdmin)
 admin.site.register(FileUpload)
@@ -6844,9 +7076,12 @@ admin.site.register(FileAccessToken)
 admin.site.register(Stub_Finding)
 admin.site.register(Stub_Debt_Item)
 admin.site.register(Engagement)
+admin.site.register(Debt_Engagement)
 admin.site.register(Risk_Acceptance)
+admin.site.register(Debt_Risk_Acceptance)
 admin.site.register(Check_List)
 admin.site.register(Test_Type)
+admin.site.register(Debt_Test_Type)
 admin.site.register(Endpoint_Params)
 admin.site.register(Endpoint_Status)
 admin.site.register(Endpoint)
@@ -6859,8 +7094,10 @@ admin.site.register(Notes)
 admin.site.register(Note_Type)
 admin.site.register(Alerts)
 admin.site.register(JIRA_Issue)
+admin.site.register(Debt_JIRA_Issue)
 admin.site.register(JIRA_Instance, JIRA_Instance_Admin)
 admin.site.register(JIRA_Project)
+admin.site.register(Debt_JIRA_Project)
 admin.site.register(GITHUB_Conf)
 admin.site.register(GITHUB_Issue)
 admin.site.register(GITHUB_Clone)
@@ -6916,7 +7153,8 @@ admin.site.register(Tool_Product_History)
 admin.site.register(Tool_Debt_Context_History)
 admin.site.register(General_Survey)
 admin.site.register(Test_Import)
+admin.site.register(Debt_Test_Import)
 admin.site.register(Test_Import_Finding_Action)
-admin.site.register(Test_Import_Debt_Item_Action)
+admin.site.register(Debt_Test_Import_Debt_Item_Action)
 admin.site.register(Finding_Group)
 admin.site.register(Debt_Item_Group)

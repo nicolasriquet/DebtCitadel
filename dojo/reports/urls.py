@@ -18,6 +18,8 @@ urlpatterns = [
             views.debt_context_endpoint_report, name='debt_context_endpoint_report'),
     re_path(r'^engagement/(?P<eid>\d+)/report$', views.engagement_report,
         name='engagement_report'),
+    re_path(r'^debt_engagement/(?P<eid>\d+)/report$', views.debt_engagement_report,
+            name='debt_engagement_report'),
     re_path(r'^test/(?P<tid>\d+)/report$', views.test_report,
         name='test_report'),
     re_path(r'^endpoint/(?P<eid>\d+)/report$', views.endpoint_report,

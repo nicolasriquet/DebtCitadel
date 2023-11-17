@@ -218,6 +218,12 @@ def engagement_report(request, eid):
     return generate_report(request, engagement)
 
 
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Engagement_View, 'eid')
+def debt_engagement_report(request, eid):
+    debt_engagement = get_object_or_404(Debt_Engagement, id=eid)
+    return generate_report(request, debt_engagement)
+
+
 @user_is_authorized(Test, Permissions.Test_View, 'tid')
 def test_report(request, tid):
     test = get_object_or_404(Test, id=tid)

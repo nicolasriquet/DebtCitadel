@@ -1099,3 +1099,35 @@ def import_history(finding, autoescape=True):
         list_of_status_changes += '<b>' + status_change.created.strftime('%b %d, %Y, %H:%M:%S') + '</b>: ' + status_change.get_action_display() + '<br/>'
 
     return mark_safe(html % (list_of_status_changes))
+
+
+@register.filter(needs_autoescape=True)
+def debt_import_history(debt_item, autoescape=True):
+    if not debt_item or not settings.TRACK_IMPORT_HISTORY:
+        return ''
+
+    if autoescape:
+        esc = conditional_escape
+    else:
+        esc = lambda x: x
+
+    # prefetched, so no filtering here
+    status_changes = debt_item.debt_test_import_debt_item_action_set.all()
+
+    if not status_changes or len(status_changes) < 2:
+        # assumption is that the first status_change is the initial import
+        return ''
+
+    html = """
+
+    <i class="fa-solid fa-clock-rotate-left has-popover"
+        title="<i class='fa-solid fa-clock-rotate-left'></i> <b>Import History</b>" data-trigger="hover" data-container="body" data-html="true" data-placement="right"
+        data-content="%s<br/>Currently only showing status changes made by import/reimport."
+    </i>
+    """
+
+    list_of_status_changes = ''
+    for status_change in status_changes:
+        list_of_status_changes += '<b>' + status_change.created.strftime('%b %d, %Y, %H:%M:%S') + '</b>: ' + status_change.get_action_display() + '<br/>'
+
+    return mark_safe(html % (list_of_status_changes))

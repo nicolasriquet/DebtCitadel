@@ -91,29 +91,29 @@ urlpatterns = [
         name='debt_context_accepted_debt_items'
     ),
     re_path(
-        r'^engagement/(?P<engagement_id>\d+)/debt_item/open$',
+        r'^debt_engagement/(?P<engagement_id>\d+)/debt_item/open$',
         views.ListOpenDebtItems.as_view(),
-        name='engagement_open_debt_items'
+        name='debt_engagement_open_debt_items'
     ),
     re_path(
-        r'^engagement/(?P<engagement_id>\d+)/debt_item/closed$',
+        r'^debt_engagement/(?P<engagement_id>\d+)/debt_item/closed$',
         views.ListClosedDebtItems.as_view(),
-        name='engagement_closed_debt_items'
+        name='debt_engagement_closed_debt_items'
     ),
     re_path(
-        r'^engagement/(?P<engagement_id>\d+)/debt_item/verified$',
+        r'^debt_engagement/(?P<engagement_id>\d+)/debt_item/verified$',
         views.ListVerifiedDebtItems.as_view(),
-        name='engagement_verified_debt_items'
+        name='debt_engagement_verified_debt_items'
     ),
     re_path(
-        r'^engagement/(?P<engagement_id>\d+)/debt_item/accepted$',
+        r'^debt_engagement/(?P<engagement_id>\d+)/debt_item/accepted$',
         views.ListAcceptedDebtItems.as_view(),
-        name='engagement_accepted_debt_items'
+        name='debt_engagement_accepted_debt_items'
     ),
     re_path(
-        r'^engagement/(?P<engagement_id>\d+)/debt_item/all$',
+        r'^debt_engagement/(?P<engagement_id>\d+)/debt_item/all$',
         views.ListDebtItems.as_view(),
-        name='engagement_all_debt_items'
+        name='debt_engagement_all_debt_items'
     ),
     #  debt_items
     re_path(r'^debt_item/bulk$', views.debt_item_bulk_update_all,

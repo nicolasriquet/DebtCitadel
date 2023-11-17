@@ -308,7 +308,7 @@ def debt_item_querys(request, debt_context):
         # 'found_by',
         # 'test',
         # 'debt_testtest_type',
-        # 'risk_acceptance_set',
+        # 'debt_risk_acceptance_set',
         'reporter')
     debt_items = MetricsDebtItemFilter(request.GET, queryset=debt_items_query, pid=debt_context)
     debt_items_qs = queryset_check(debt_items)
@@ -419,7 +419,7 @@ def endpoint_querys(request, debt_context):
                                                          'Critical', 'High', 'Medium', 'Low', 'Info')).prefetch_related(
         'debt_item__debt_testdebt_engagement',
         'debt_item__debt_testdebt_engagement__risk_acceptance',
-        'debt_item__risk_acceptance_set',
+        'debt_item__debt_risk_acceptance_set',
         'debt_item__reporter').annotate(severity=F('debt_item__severity'))
     endpoints = MetricsEndpointFilter(request.GET, queryset=endpoints_query)
     endpoints_qs = queryset_check(endpoints)

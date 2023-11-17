@@ -51,14 +51,14 @@
                         <tr>
                             <th></th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
-                            <th>{% dojo_sort request 'Debt_Engagement' 'name' 'asc' %}</th>
+                            <th>{% dojo_sort request 'Debt Engagement' 'name' 'asc' %}</th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                             <th>{% dojo_sort request 'Period' 'target_start' 'asc' %}</th>
                             <th>Status</th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
-                            <th class="debt_context_name">{% dojo_sort request 'Debt_Context' 'debt_context__name' 'asc' %}</th>
+                            <th class="debt_context_name">{% dojo_sort request 'Debt Context' 'debt_context__name' 'asc' %}</th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
-                            <th class="debt_context_name">{% dojo_sort request 'Debt_Context Type' 'debt_context__debt_context_type__name' %}</th>
+                            <th class="debt_context_name">{% dojo_sort request 'Debt Context Type' 'debt_context__debt_context_type__name' %}</th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                             <th>{% dojo_sort request 'Lead' 'lead__first_name' %}</th>
                             <th>Tests</th>
@@ -173,7 +173,7 @@
                                 <td>{{ e.lead.first_name }} {{ e.lead.last_name }}</td>
                                 <td>
                                     <a class="eng_link" href="{%url 'view_debt_engagement' e.id %}#tests">
-                                        {% with test_count=debt_engagement_test_counts|dict_key:e.pk|default_if_none:0 %}
+                                        {% with test_count=debt_engagement_debt_test_counts|dict_key:e.pk|default_if_none:0 %}
                                             {{ test_count }}
                                         {% endwith %}
                                     </a>

@@ -369,7 +369,7 @@
                                     {% if show_debt_context_column and debt_context_tab is None %}
                                         <th class="nowrap">
                                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
-                                            {% dojo_sort request 'Debt_Context' 'test__debt_engagement__debt_context__name' %}
+                                            {% dojo_sort request 'Debt Context' 'test__debt_engagement__debt_context__name' %}
                                         </th>
                                     {% endif %}
                                     <th>
@@ -477,16 +477,16 @@
                                                                 </li>
                                                             {% else %}
                                                                 {% if not debt_item.duplicate %}
-                                                                    {% if debt_item.test.debt_engagement.debt_context.enable_simple_risk_acceptance %}
+                                                                    {% if debt_item.debt_test.debt_engagement.debt_context.enable_simple_risk_acceptance %}
                                                                         <li role="presentation">
                                                                             <a href="{% url 'simple_risk_accept_debt_item' debt_item.id %}?return_url={{ request.get_full_path|urlencode }}">
                                                                                 <i class="fa-solid fa-circle-exclamation"></i> {% trans "Accept Risk" %}
                                                                             </a>
                                                                         </li>
                                                                     {% endif %}
-                                                                    {% if debt_item.test.debt_engagement.debt_context.enable_full_risk_acceptance %}
+                                                                    {% if debt_item.debt_test.debt_engagement.debt_context.enable_full_risk_acceptance %}
                                                                         <li role="presentation">
-                                                                            <a href="{% url 'add_risk_acceptance' debt_item.test.debt_engagement.id debt_item.id %}">
+                                                                            <a href="{% url 'add_risk_acceptance' debt_item.debt_test.debt_engagement.id debt_item.id %}">
                                                                                 <i class="fa-solid fa-circle-exclamation"></i> {% trans "Add Risk Acceptance..." %}
                                                                             </a>
                                                                         </li>
@@ -619,10 +619,10 @@
                                             <a target="#"
                                             data-toggle="tooltip"
                                             data-placement="bottom"
-                                            title="Test: {{ debt_item.test }}">{{ debt_item.found_by.all|join:", " }}</a>
+                                            title="Test: {{ debt_item.debt_test }}">{{ debt_item.found_by.all|join:", " }}</a>
                                         </td>
                                         <td class="nowrap">
-                                            {{ debt_item|debt_item_display_status|safe }}&nbsp;{{ debt_item|import_history }}
+                                            {{ debt_item|debt_item_display_status|safe }}&nbsp;{{ debt_item|debt_import_history }}
                                         </td>
                                         {% if system_settings.enable_jira %}
                                             {% if jira_project and debt_context_tab or not debt_context_tab %}
@@ -668,9 +668,9 @@
                                         {% endif %}
                                         {% if show_debt_context_column and debt_context_tab is None %}
                                             <td>
-                                                <a href="{% url 'view_debt_context' debt_item.test.debt_engagement.debt_context.id %}"
-                                                title="{{ debt_item.test.debt_engagement }}"
-                                                alt="{{ debt_item.test.debt_engagement.debt_context }}">{{ debt_item.test.debt_engagement.debt_context }}</a>
+                                                <a href="{% url 'view_debt_context' debt_item.debt_test.debt_engagement.debt_context.id %}"
+                                                title="{{ debt_item.debt_test.debt_engagement }}"
+                                                alt="{{ debt_item.debt_test.debt_engagement.debt_context }}">{{ debt_item.debt_test.debt_engagement.debt_context }}</a>
                                             </td>
                                         {% endif %}
                                         <td>

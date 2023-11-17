@@ -41,6 +41,7 @@ from dojo.models import (
     Test,
     Test_Import,
     Test_Type,
+    Debt_Test_Type,
     Finding,
     Debt_Item,
     User,
@@ -4814,6 +4815,47 @@ class TestTypesViewSet(
 ):
     serializer_class = serializers.TestTypeSerializer
     queryset = Test_Type.objects.all()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = [
+        "name",
+    ]
+    permission_classes = (IsAuthenticated, DjangoModelPermissions)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "prefetch",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="List of fields for which to prefetch model instances and add those to the response",
+            ),
+        ],
+    ),
+)
+# Authorization: authenticated, configuration
+class DebtTestTypesViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = serializers.DebtTestTypeSerializer
+    queryset = Debt_Test_Type.objects.all()
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = [
         "name",

@@ -36,6 +36,7 @@ from dojo.models import (
     Finding_Template,
     Debt_Item_Template,
     Test_Type,
+    Debt_Test_Type,
     Development_Environment,
     NoteHistory,
     JIRA_Issue,
@@ -1729,6 +1730,13 @@ class TestTypeSerializer(TaggitSerializer, serializers.ModelSerializer):
         model = Test_Type
         fields = "__all__"
 
+
+class DebtTestTypeSerializer(TaggitSerializer, serializers.ModelSerializer):
+    tags = TagListSerializerField(required=False)
+
+    class Meta:
+        model = Debt_Test_Type
+        fields = "__all__"
 
 class TestToNotesSerializer(serializers.Serializer):
     test_id = serializers.PrimaryKeyRelatedField(

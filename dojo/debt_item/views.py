@@ -41,8 +41,9 @@ from dojo.filters import (
     SimilarDebtItemFilter,
     DebtItemFilter,
     AcceptedDebtItemFilter,
-    TestImportDebtItemActionFilter,
+    DebtTestImportDebtItemActionFilter,
     TestImportFilter,
+    DebtTestImportFilter
 )
 from dojo.forms import (
     EditPlannedRemediationDateDebtItemForm,
@@ -84,10 +85,10 @@ from dojo.models import (
     GITHUB_Issue,
     Dojo_User,
     Cred_Mapping,
-    Test,
+    Debt_Test,
     Product,
-    Test_Import,
-    Test_Import_Debt_Item_Action,
+    Debt_Test_Import,
+    Debt_Test_Import_Debt_Item_Action,
     User,
     Debt_Engagement,
     Vulnerability_Id_Template,
@@ -137,24 +138,24 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
     ):  # old code can arrive here with debt_contexts being a list because the query was already executed
         prefetched_debt_items = prefetched_debt_items.prefetch_related("reporter")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "jira_issue__jira_project__jira_instance"
+            "debt_jira_issue__debt_jira_project__jira_instance"
         )
-        prefetched_debt_items = prefetched_debt_items.prefetch_related("test__test_type")
+        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__test_type")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__debt_engagement__jira_project__jira_instance"
+            "debt_test__debt_engagement__debt_jira_project__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__debt_engagement__debt_context__jira_project_set__jira_instance"
+            "debt_test__debt_engagement__debt_context__debt_jira_project_set__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("found_by")
 
         # for open/active debt_items the following 4 prefetches are not needed
         if prefetch_type != "open":
             prefetched_debt_items = prefetched_debt_items.prefetch_related(
-                "risk_acceptance_set"
+                "debt_risk_acceptance_set"
             )
             prefetched_debt_items = prefetched_debt_items.prefetch_related(
-                "risk_acceptance_set__accepted_debt_items"
+                "debt_risk_acceptance_set__accepted_debt_items"
             )
             prefetched_debt_items = prefetched_debt_items.prefetch_related(
                 "original_debt_item"
@@ -167,15 +168,15 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
             # filter out noop reimport actions from debt_item status history
             prefetched_debt_items = prefetched_debt_items.prefetch_related(
                 Prefetch(
-                    "test_import_debt_item_action_set",
-                    queryset=Test_Import_Debt_Item_Action.objects.exclude(
+                    "debt_test_import_debt_item_action_set",
+                    queryset=Debt_Test_Import_Debt_Item_Action.objects.exclude(
                         action=IMPORT_UNTOUCHED_DEBT_ITEM
                     ),
                 )
             )
         else:
             prefetched_debt_items = prefetched_debt_items.prefetch_related(
-                "test_import_debt_item_action_set"
+                "debt_test_import_debt_item_action_set"
             )
         """
         we could try to prefetch only the latest note with SubQuery and OuterRef,
@@ -183,27 +184,27 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
         """
         prefetched_debt_items = prefetched_debt_items.prefetch_related("notes")
         prefetched_debt_items = prefetched_debt_items.prefetch_related("tags")
-        prefetched_debt_items = prefetched_debt_items.prefetch_related("endpoints")
+        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_endpoints")
         prefetched_debt_items = prefetched_debt_items.prefetch_related("status_debt_item")
         prefetched_debt_items = prefetched_debt_items.annotate(
-            active_endpoint_count=Count(
+            active_debt_endpoint_count=Count(
                 "status_debt_item__id", filter=Q(status_debt_item__mitigated=False)
             )
         )
         prefetched_debt_items = prefetched_debt_items.annotate(
-            mitigated_endpoint_count=Count(
+            mitigated_debt_endpoint_count=Count(
                 "status_debt_item__id", filter=Q(status_debt_item__mitigated=True)
             )
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_item_group_set")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__debt_engagement__debt_context__members"
+            "debt_test__debt_engagement__debt_context__members"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__debt_engagement__debt_context__debt_context_type__members"
+            "debt_test__debt_engagement__debt_context__debt_context_type__members"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "vulnerability_id_set"
+            "debt_vulnerability_id_set"
         )
     else:
         logger.debug("unable to prefetch because query was already executed")
@@ -218,29 +219,29 @@ def prefetch_for_similar_debt_items(debt_items):
     ):  # old code can arrive here with debt_contexts being a list because the query was already executed
         prefetched_debt_items = prefetched_debt_items.prefetch_related("reporter")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "jira_issue__jira_project__jira_instance"
+            "jira_issue__debt_jira_project__jira_instance"
         )
-        prefetched_debt_items = prefetched_debt_items.prefetch_related("test__test_type")
+        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__test_type")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__debt_engagement__jira_project__jira_instance"
+            "debt_test__debt_engagement__debt_jira_project__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "test__debt_engagement__debt_context__jira_project_set__jira_instance"
+            "debt_test__debt_engagement__debt_context__debt_jira_project_set__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("found_by")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "risk_acceptance_set"
+            "debt_risk_acceptance_set"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "risk_acceptance_set__accepted_debt_items"
+            "debt_risk_acceptance_set__accepted_debt_items"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("original_debt_item")
         prefetched_debt_items = prefetched_debt_items.prefetch_related("duplicate_debt_item")
         # filter out noop reimport actions from debt_item status history
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             Prefetch(
-                "test_import_debt_item_action_set",
-                queryset=Test_Import_Debt_Item_Action.objects.exclude(
+                "debt_test_import_debt_item_action_set",
+                queryset=Debt_Test_Import_Debt_Item_Action.objects.exclude(
                     action=IMPORT_UNTOUCHED_DEBT_ITEM
                 ),
             )
@@ -309,7 +310,7 @@ class BaseListDebtItems:
 
     def filter_debt_items_by_object(self, debt_items: QuerySet[Debt_Item]):
         if debt_context_id := self.get_debt_context_id():
-            return debt_items.filter(test__debt_engagement__debt_context__id=debt_context_id)
+            return debt_items.filter(debt_test__debt_engagement__debt_context__id=debt_context_id)
         elif debt_engagement_id := self.get_debt_engagement_id():
             return debt_items.filter(test__debt_engagement=debt_engagement_id)
         elif test_id := self.get_test_id():
@@ -370,7 +371,7 @@ class ListDebtItems(View, BaseListDebtItems):
             "show_debt_context_column": True,
             "custom_breadcrumb": None,
             "debt_context_tab": None,
-            "jira_project": None,
+            "debt_jira_project": None,
             "github_config": None,
             "bulk_edit_form": DebtItemBulkUpdateForm(request.GET),
             "title_words": get_words_for_field(Debt_Item, "title"),
@@ -382,7 +383,7 @@ class ListDebtItems(View, BaseListDebtItems):
             user_has_permission_or_403(request.user, debt_context, Permissions.Product_View)
             context["show_debt_context_column"] = False
             context["debt_context_tab"] = Product_Tab(debt_context, title="debt_items", tab="debt_items")
-            context["jira_project"] = jira_helper.get_jira_project(debt_context)
+            context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_context)
             if github_config := GITHUB_PKey.objects.filter(debt_context=debt_context).first():
                 context["github_config"] = github_config.git_conf_id
         elif debt_engagement_id := self.get_debt_engagement_id():
@@ -390,7 +391,7 @@ class ListDebtItems(View, BaseListDebtItems):
             user_has_permission_or_403(request.user, debt_engagement, Permissions.Debt_Engagement_View)
             context["show_debt_context_column"] = False
             context["debt_context_tab"] = Product_Tab(debt_engagement.debt_context, title=debt_engagement.name, tab="debt_engagements")
-            context["jira_project"] = jira_helper.get_jira_project(debt_engagement)
+            context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_engagement)
             if github_config := GITHUB_PKey.objects.filter(debt_context__debt_engagement=debt_engagement).first():
                 context["github_config"] = github_config.git_conf_id
 
@@ -400,17 +401,17 @@ class ListDebtItems(View, BaseListDebtItems):
         return "dojo/debt_items_list.html"
 
     def add_breadcrumbs(self, request: HttpRequest, context: dict):
-        # show custom breadcrumb if user has filtered by exactly 1 endpoint
-        if "endpoints" in request.GET:
-            endpoint_ids = request.GET.getlist("endpoints", [])
-            if len(endpoint_ids) == 1 and endpoint_ids[0] != '':
-                endpoint_id = endpoint_ids[0]
-                endpoint = get_object_or_404(Endpoint, id=endpoint_id)
+        # show custom breadcrumb if user has filtered by exactly 1 debt_endpoint
+        if "debt_endpoints" in request.GET:
+            debt_endpoint_ids = request.GET.getlist("debt_endpoints", [])
+            if len(debt_endpoint_ids) == 1 and debt_endpoint_ids[0] != '':
+                debt_endpoint_id = debt_endpoint_ids[0]
+                debt_endpoint = get_object_or_404(Endpoint, id=debt_endpoint_id)
                 context["filter_name"] = "Vulnerable Endpoints"
                 context["custom_breadcrumb"] = OrderedDict(
                     [
-                        ("Endpoints", reverse("vulnerable_endpoints")),
-                        (endpoint, reverse("view_endpoint", args=(endpoint.id,))),
+                        ("Endpoints", reverse("vulnerable_debt_endpoints")),
+                        (debt_endpoint, reverse("view_debt_endpoint", args=(debt_endpoint.id,))),
                     ]
                 )
         # Show the "All debt_items" breadcrumb if nothing is coming from the debt_context or debt_engagement
@@ -574,18 +575,18 @@ class ViewDebtItem(View):
         }
 
     def get_test_import_data(self, request: HttpRequest, debt_item: Debt_Item):
-        test_imports = Test_Import.objects.filter(debt_items_affected=debt_item)
+        test_imports = Debt_Test_Import.objects.filter(debt_items_affected=debt_item)
         test_import_filter = TestImportFilter(request.GET, test_imports)
 
-        test_import_debt_item_actions = debt_item.test_import_debt_item_action_set
+        test_import_debt_item_actions = debt_item.debt_test_import_debt_item_action_set
         test_import_debt_item_actions_count = test_import_debt_item_actions.all().count()
         test_import_debt_item_actions = test_import_debt_item_actions.filter(test_import__in=test_import_filter.qs)
-        test_import_debt_item_action_filter = TestImportDebtItemActionFilter(request.GET, test_import_debt_item_actions)
+        test_import_debt_item_action_filter = DebtTestImportDebtItemActionFilter(request.GET, test_import_debt_item_actions)
 
         paged_test_import_debt_item_actions = get_page_items_and_count(request, test_import_debt_item_action_filter.qs, 5, prefix='test_import_debt_item_actions')
         paged_test_import_debt_item_actions.object_list = paged_test_import_debt_item_actions.object_list.prefetch_related('test_import')
 
-        latest_test_import_debt_item_action = debt_item.test_import_debt_item_action_set.order_by('-created').first
+        latest_test_import_debt_item_action = debt_item.debt_test_import_debt_item_action_set.order_by('-created').first
 
         return {
             "test_import_filter": test_import_filter,
@@ -813,7 +814,7 @@ class EditDebtItem(View):
 
     def get_jira_form(self, request: HttpRequest, debt_item: Debt_Item, debt_item_form: DebtItemForm = None):
         # Determine if jira should be used
-        if (jira_project := jira_helper.get_jira_project(debt_item)) is not None:
+        if (debt_jira_project := jira_helper.get_debt_jira_project(debt_item)) is not None:
             # Determine if push all debt_items is enabled
             push_all_debt_items = jira_helper.is_push_all_issues(debt_item)
             # Set up the args for the form
@@ -823,7 +824,7 @@ class EditDebtItem(View):
                 "push_all": push_all_debt_items,
                 "prefix": "jiraform",
                 "instance": debt_item,
-                "jira_project": jira_project,
+                "debt_jira_project": debt_jira_project,
                 "debt_item_form": debt_item_form,
             }
 
@@ -902,7 +903,7 @@ class EditDebtItem(View):
 
     def process_mitigated_data(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         # If active is not checked and CAN_EDIT_MITIGATED_DATA,
-        # mitigate the debt_item and the associated endpoints status
+        # mitigate the debt_item and the associated debt_endpoints status
         if debt_item_helper.can_edit_mitigated_data(request.user) and ((
             context["form"]["active"].value() is False
             or context["form"]["false_p"].value()
@@ -910,8 +911,8 @@ class EditDebtItem(View):
         ) and context["form"]["duplicate"].value() is False):
             now = timezone.now()
             debt_item.is_mitigated = True
-            endpoint_status = debt_item.status_debt_item.all()
-            for status in endpoint_status:
+            debt_endpoint_status = debt_item.status_debt_item.all()
+            for status in debt_endpoint_status:
                 status.mitigated_by = (
                     context["form"].cleaned_data.get("mitigated_by") or request.user
                 )
@@ -978,13 +979,13 @@ class EditDebtItem(View):
             else:
                 if new_debt_item.risk_accepted:
                     ra_helper.risk_unaccept(new_debt_item, perform_save=False)
-            # Save and add new endpoints
-            debt_item_helper.add_endpoints(new_debt_item, context["form"])
-            # Remove unrelated endpoints
-            endpoint_status_list = Endpoint_Status.objects.filter(debt_item=new_debt_item)
-            for endpoint_status in endpoint_status_list:
-                if endpoint_status.endpoint not in new_debt_item.endpoints.all():
-                    endpoint_status.delete()
+            # Save and add new debt_endpoints
+            debt_item_helper.add_debt_endpoints(new_debt_item, context["form"])
+            # Remove unrelated debt_endpoints
+            debt_endpoint_status_list = Endpoint_Status.objects.filter(debt_item=new_debt_item)
+            for debt_endpoint_status in debt_endpoint_status_list:
+                if debt_endpoint_status.debt_endpoint not in new_debt_item.debt_endpoints.all():
+                    debt_endpoint_status.delete()
             # Handle some of the other steps
             self.process_mitigated_data(request, new_debt_item, context)
             self.process_false_positive_history(new_debt_item)
@@ -1237,8 +1238,8 @@ def close_debt_item(request, fid):
                 debt_item.false_p = form.cleaned_data.get("false_p", False)
                 debt_item.out_of_scope = form.cleaned_data.get("out_of_scope", False)
                 debt_item.duplicate = form.cleaned_data.get("duplicate", False)
-                endpoint_status = debt_item.status_debt_item.all()
-                for status in endpoint_status:
+                debt_endpoint_status = debt_item.status_debt_item.all()
+                for status in debt_endpoint_status:
                     status.mitigated_by = (
                         form.cleaned_data.get("mitigated_by") or request.user
                     )
@@ -1334,7 +1335,7 @@ def defect_debt_item_review(request, fid):
                 debt_item.is_mitigated = True
                 debt_item.last_reviewed = debt_item.mitigated
                 debt_item.last_reviewed_by = request.user
-                debt_item.endpoints.clear()
+                debt_item.debt_endpoints.clear()
             else:
                 debt_item.active = True
                 debt_item.verified = True
@@ -1407,8 +1408,8 @@ def reopen_debt_item(request, fid):
     debt_item.is_mitigated = False
     debt_item.last_reviewed = debt_item.mitigated
     debt_item.last_reviewed_by = request.user
-    endpoint_status = debt_item.status_debt_item.all()
-    for status in endpoint_status:
+    debt_endpoint_status = debt_item.status_debt_item.all()
+    for status in debt_endpoint_status:
         status.mitigated_by = None
         status.mitigated_time = None
         status.mitigated = False
@@ -1834,7 +1835,7 @@ def mktemplate(request, fid):
 @user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def find_template_to_apply(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
-    test = get_object_or_404(Test, id=debt_item.test.id)
+    test = get_object_or_404(Debt_Test, id=debt_item.test.id)
     templates_by_cve = (
         Debt_Item_Template.objects.annotate(
             cve_len=Length("cve"), order=models.Value(1, models.IntegerField())
@@ -1972,9 +1973,9 @@ def apply_template_to_debt_item(request, fid, tid):
         return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
 
-@user_is_authorized(Test, Permissions.Debt_Item_Add, "tid")
+@user_is_authorized(Debt_Test, Permissions.Debt_Item_Add, "tid")
 def add_stub_debt_item(request, tid):
-    test = get_object_or_404(Test, id=tid)
+    test = get_object_or_404(Debt_Test, id=tid)
     if request.method == "POST":
         form = StubDebtItemForm(request.POST)
         if form.is_valid():
@@ -2047,7 +2048,7 @@ def promote_to_debt_item(request, fid):
     form_error = False
     push_all_jira_issues = jira_helper.is_push_all_issues(debt_item)
     jform = None
-    use_jira = jira_helper.get_jira_project(debt_item) is not None
+    use_jira = jira_helper.get_debt_jira_project(debt_item) is not None
     debt_context_tab = Product_Tab(
         debt_item.test.debt_engagement.debt_context, title="Promote debt_item", tab="debt_items"
     )
@@ -2060,7 +2061,7 @@ def promote_to_debt_item(request, fid):
                 instance=debt_item,
                 prefix="jiraform",
                 push_all=push_all_jira_issues,
-                jira_project=jira_helper.get_jira_project(debt_item),
+                debt_jira_project=jira_helper.get_debt_jira_project(debt_item),
             )
 
         if form.is_valid() and (jform is None or jform.is_valid()):
@@ -2088,7 +2089,7 @@ def promote_to_debt_item(request, fid):
 
             new_debt_item.save()
 
-            debt_item_helper.add_endpoints(new_debt_item, form)
+            debt_item_helper.add_debt_endpoints(new_debt_item, form)
 
             push_to_jira = False
             if jform and jform.is_valid():
@@ -2179,7 +2180,7 @@ def promote_to_debt_item(request, fid):
             jform = JIRADebtItemForm(
                 prefix="jiraform",
                 push_all=jira_helper.is_push_all_issues(test),
-                jira_project=jira_helper.get_jira_project(test),
+                debt_jira_project=jira_helper.get_debt_jira_project(test),
             )
 
     return render(
@@ -2496,10 +2497,10 @@ def merge_debt_item_debt_context(request, pid):
         request.GET.get("merge_debt_items") or request.method == "POST"
     ) and debt_item_to_update:
         debt_item = Debt_Item.objects.get(
-            id=debt_item_to_update[0], test__debt_engagement__debt_context=debt_context
+            id=debt_item_to_update[0], debt_test__debt_engagement__debt_context=debt_context
         )
         debt_items = debt_item.objects.filter(
-            id__in=debt_item_to_update, test__debt_engagement__debt_context=debt_context
+            id__in=debt_item_to_update, debt_test__debt_engagement__debt_context=debt_context
         )
         form = MergeDebtItems(
             debt_item=debt_item,
@@ -2550,10 +2551,10 @@ def merge_debt_item_debt_context(request, pid):
                                 debt_item_references, debt_item.references
                             )
 
-                        # if checked merge the endpoints
-                        if form.cleaned_data["add_endpoints"]:
-                            debt_item_to_merge_into.endpoints.add(
-                                *debt_item.endpoints.all()
+                        # if checked merge the debt_endpoints
+                        if form.cleaned_data["add_debt_endpoints"]:
+                            debt_item_to_merge_into.debt_endpoints.add(
+                                *debt_item.debt_endpoints.all()
                             )
 
                         # if checked merge the tags
@@ -2666,7 +2667,7 @@ def merge_debt_item_debt_context(request, pid):
         "Open debt_items": reverse(
             "debt_context_open_debt_items", args=(debt_item.test.debt_engagement.debt_context.id,)
         )
-        + "?test__debt_engagement__debt_context="
+        + "?debt_test__debt_engagement__debt_context="
         + str(debt_item.test.debt_engagement.debt_context.id)
     }
 

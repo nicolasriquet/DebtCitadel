@@ -20,11 +20,11 @@ from django.db.models import JSONField
 import pytz
 from django.db.models import Q
 from dojo.models import Dojo_User, Finding_Group, Debt_Item_Group, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration, \
-    Product_Type, Debt_Context_Type, Finding, Debt_Item, Product, Debt_Context, Test_Import, Test_Type, \
+    Product_Type, Debt_Context_Type, Finding, Debt_Item, Product, Debt_Context, Test_Import, Debt_Test_Import, Test_Type, Debt_Test_Type, \
     Endpoint, Development_Environment, Finding_Template, Debt_Item_Template, Note_Type, Risk_Acceptance, Cred_Mapping, \
     Engagement_Survey, Question, TextQuestion, ChoiceQuestion, Endpoint_Status, Engagement, Debt_Engagement, \
     ENGAGEMENT_STATUS_CHOICES, Test, Debt_Test, App_Analysis, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Dojo_Group, Vulnerability_Id, \
-    Test_Import_Finding_Action, Test_Import_Debt_Item_Action, IMPORT_ACTIONS
+    Test_Import_Finding_Action, Debt_Test_Import_Debt_Item_Action, IMPORT_ACTIONS
 from dojo.utils import get_system_setting
 from django.contrib.contenttypes.models import ContentType
 import tagulous
@@ -515,13 +515,13 @@ def get_debt_item_filterset_fields(metrics=False, similar=False):
         'mitigated',
         'reporter',
         'reviewers',
-        'test__debt_engagement__debt_context__debt_context_type',
-        'test__debt_engagement__debt_context',
-        'test__debt_engagement',
-        'test',
-        'test__test_type',
-        'test__debt_engagement__version',
-        'test__version',
+        'debt_test__debt_engagement__debt_context__debt_context_type',
+        'debt_test__debt_engagement__debt_context',
+        'debt_test__debt_engagement',
+        'debt_test',
+        'debt_test__test_type',
+        'debt_test__debt_engagement__version',
+        'debt_test__version',
         'endpoints',
         'status',
         'active',
@@ -3766,6 +3766,32 @@ class TestImportFilter(DojoFilter):
         fields = []
 
 
+class DebtTestImportFilter(DojoFilter):
+    version = CharFilter(field_name='version', lookup_expr='icontains')
+    version_exact = CharFilter(field_name='version', lookup_expr='iexact', label='Version Exact')
+    branch_tag = CharFilter(lookup_expr='icontains', label='Branch/Tag')
+    build_id = CharFilter(lookup_expr='icontains', label="Build ID")
+    commit_hash = CharFilter(lookup_expr='icontains', label="Commit hash")
+
+    debt_items_affected = BooleanFilter(field_name='debt_items_affected', lookup_expr='isnull', exclude=True, label='Debt_items affected')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('date', 'date'),
+            ('version', 'version'),
+            ('branch_tag', 'branch_tag'),
+            ('build_id', 'build_id'),
+            ('commit_hash', 'commit_hash'),
+
+        )
+    )
+
+    class Meta:
+        model = Debt_Test_Import
+        fields = []
+
+
 class TestImportFindingActionFilter(DojoFilter):
     action = MultipleChoiceFilter(choices=IMPORT_ACTIONS)
     o = OrderingFilter(
@@ -3780,7 +3806,8 @@ class TestImportFindingActionFilter(DojoFilter):
         fields = []
 
 
-class TestImportDebtItemActionFilter(DojoFilter):
+
+class DebtTestImportDebtItemActionFilter(DojoFilter):
     action = MultipleChoiceFilter(choices=IMPORT_ACTIONS)
     o = OrderingFilter(
         # tuple-mapping retains order
@@ -3790,7 +3817,21 @@ class TestImportDebtItemActionFilter(DojoFilter):
     )
 
     class Meta:
-        model = Test_Import_Debt_Item_Action
+        model = Debt_Test_Import_Debt_Item_Action
+        fields = []
+
+
+class DebtTestImportDebtItemActionFilter(DojoFilter):
+    action = MultipleChoiceFilter(choices=IMPORT_ACTIONS)
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('action', 'action'),
+        )
+    )
+
+    class Meta:
+        model = Debt_Test_Import_Debt_Item_Action
         fields = []
 
 class LogEntryFilter(DojoFilter):
@@ -3862,6 +3903,22 @@ class TestTypeFilter(DojoFilter):
 
     class Meta:
         model = Test_Type
+        exclude = []
+        include = ('name',)
+
+
+class DebtTestTypeFilter(DojoFilter):
+    name = CharFilter(lookup_expr='icontains')
+
+    o = OrderingFilter(
+        # tuple-mapping retains order
+        fields=(
+            ('name', 'name'),
+        ),
+    )
+
+    class Meta:
+        model = Debt_Test_Type
         exclude = []
         include = ('name',)
 
