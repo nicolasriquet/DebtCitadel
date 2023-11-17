@@ -352,7 +352,7 @@ class DebtContextForm(forms.ModelForm):
     description = forms.CharField(widget=forms.Textarea(attrs={}),
                                   required=True)
 
-    prod_type = forms.ModelChoiceField(label='Debt_Context Type',
+    debt_context_type = forms.ModelChoiceField(label='Debt Context Type',
                                        queryset=Debt_Context_Type.objects.none(),
                                        required=True)
 
@@ -367,11 +367,11 @@ class DebtContextForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(DebtContextForm, self).__init__(*args, **kwargs)
-        self.fields['prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_Add_Debt_Context)
+        self.fields['debt_context_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_Add_Debt_Context)
 
     class Meta:
         model = Debt_Context
-        fields = ['name', 'description', 'tags', 'debt_context_manager', 'technical_contact', 'team_manager', 'prod_type', 'sla_configuration', 'regulations',
+        fields = ['name', 'description', 'tags', 'debt_context_manager', 'technical_contact', 'team_manager', 'debt_context_type', 'sla_configuration', 'regulations',
                   'business_criticality', 'platform', 'lifecycle', 'origin', 'user_records', 'revenue', 'external_audience', 'enable_debt_context_tag_inheritance',
                   'internet_accessible', 'enable_simple_risk_acceptance', 'enable_full_risk_acceptance', 'disable_sla_breach_notifications']
 
