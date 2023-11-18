@@ -8,19 +8,19 @@ from dojo.authorization.authorization import get_roles_for_permission, user_has_
 def get_authorized_groups(permission, user=None):
     roles = get_roles_for_permission(permission)
     authorized_debt_context_type_roles = Debt_Context_Type_Member.objects.filter(
-        debt_context_type=OuterRef('test__engagement__debt_context__prod_type_id'),
+        debt_context_type=OuterRef('debt_test__engagement__debt_context__prod_type_id'),
         user=user,
         role__in=roles)
     authorized_debt_context_roles = Debt_Context_Member.objects.filter(
-        debt_context=OuterRef('test__engagement__debt_context_id'),
+        debt_context=OuterRef('debt_test__engagement__debt_context_id'),
         user=user,
         role__in=roles)
     authorized_debt_context_type_groups = Debt_Context_Type_Group.objects.filter(
-        debt_context_type=OuterRef('test__engagement__debt_context__prod_type_id'),
+        debt_context_type=OuterRef('debt_test__engagement__debt_context__prod_type_id'),
         group__users=user,
         role__in=roles)
     authorized_debt_context_groups = Debt_Context_Group.objects.filter(
-        debt_context=OuterRef('test__engagement__debt_context_id'),
+        debt_context=OuterRef('debt_test__engagement__debt_context_id'),
         group__users=user,
         role__in=roles)
 
@@ -56,15 +56,15 @@ def get_authorized_debt_items(permission, queryset=None, user=None):
     ) = get_authorized_groups(permission, user=user)
 
     debt_items = debt_items.annotate(
-        test__engagement__debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
-        test__engagement__debt_context__member=Exists(authorized_debt_context_roles),
-        test__engagement__debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
-        test__engagement__debt_context__authorized_group=Exists(authorized_debt_context_groups))
+        debt_test__engagement__debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
+        debt_test__engagement__debt_context__member=Exists(authorized_debt_context_roles),
+        debt_test__engagement__debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
+        debt_test__engagement__debt_context__authorized_group=Exists(authorized_debt_context_groups))
     debt_items = debt_items.filter(
-        Q(test__engagement__debt_context__prod_type__member=True) |
-        Q(test__engagement__debt_context__member=True) |
-        Q(test__engagement__debt_context__prod_type__authorized_group=True) |
-        Q(test__engagement__debt_context__authorized_group=True))
+        Q(debt_test__engagement__debt_context__prod_type__member=True) |
+        Q(debt_test__engagement__debt_context__member=True) |
+        Q(debt_test__engagement__debt_context__prod_type__authorized_group=True) |
+        Q(debt_test__engagement__debt_context__authorized_group=True))
 
     return debt_items
 
@@ -89,15 +89,15 @@ def get_authorized_stub_debt_items(permission):
     ) = get_authorized_groups(permission, user=user)
 
     debt_items = Stub_Debt_Item.objects.annotate(
-        test__engagement__debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
-        test__engagement__debt_context__member=Exists(authorized_debt_context_roles),
-        test__engagement__debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
-        test__engagement__debt_context__authorized_group=Exists(authorized_debt_context_groups))
+        debt_test__engagement__debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
+        debt_test__engagement__debt_context__member=Exists(authorized_debt_context_roles),
+        debt_test__engagement__debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
+        debt_test__engagement__debt_context__authorized_group=Exists(authorized_debt_context_groups))
     debt_items = debt_items.filter(
-        Q(test__engagement__debt_context__prod_type__member=True) |
-        Q(test__engagement__debt_context__member=True) |
-        Q(test__engagement__debt_context__prod_type__authorized_group=True) |
-        Q(test__engagement__debt_context__authorized_group=True))
+        Q(debt_test__engagement__debt_context__prod_type__member=True) |
+        Q(debt_test__engagement__debt_context__member=True) |
+        Q(debt_test__engagement__debt_context__prod_type__authorized_group=True) |
+        Q(debt_test__engagement__debt_context__authorized_group=True))
 
     return debt_items
 
@@ -123,30 +123,30 @@ def get_authorized_vulnerability_ids(permission, queryset=None, user=None):
 
     roles = get_roles_for_permission(permission)
     authorized_debt_context_type_roles = Debt_Context_Type_Member.objects.filter(
-        debt_context_type=OuterRef('debt_item__test__engagement__debt_context__prod_type_id'),
+        debt_context_type=OuterRef('debt_item__debt_test__engagement__debt_context__prod_type_id'),
         user=user,
         role__in=roles)
     authorized_debt_context_roles = Debt_Context_Member.objects.filter(
-        debt_context=OuterRef('debt_item__test__engagement__debt_context_id'),
+        debt_context=OuterRef('debt_item__debt_test__engagement__debt_context_id'),
         user=user,
         role__in=roles)
     authorized_debt_context_type_groups = Debt_Context_Type_Group.objects.filter(
-        debt_context_type=OuterRef('debt_item__test__engagement__debt_context__prod_type_id'),
+        debt_context_type=OuterRef('debt_item__debt_test__engagement__debt_context__prod_type_id'),
         group__users=user,
         role__in=roles)
     authorized_debt_context_groups = Debt_Context_Group.objects.filter(
-        debt_context=OuterRef('debt_item__test__engagement__debt_context_id'),
+        debt_context=OuterRef('debt_item__debt_test__engagement__debt_context_id'),
         group__users=user,
         role__in=roles)
     vulnerability_ids = vulnerability_ids.annotate(
-        debt_item__test__engagement__debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
-        debt_item__test__engagement__debt_context__member=Exists(authorized_debt_context_roles),
-        debt_item__test__engagement__debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
-        debt_item__test__engagement__debt_context__authorized_group=Exists(authorized_debt_context_groups))
+        debt_item__debt_test__engagement__debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
+        debt_item__debt_test__engagement__debt_context__member=Exists(authorized_debt_context_roles),
+        debt_item__debt_test__engagement__debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
+        debt_item__debt_test__engagement__debt_context__authorized_group=Exists(authorized_debt_context_groups))
     vulnerability_ids = vulnerability_ids.filter(
-        Q(debt_item__test__engagement__debt_context__prod_type__member=True) |
-        Q(debt_item__test__engagement__debt_context__member=True) |
-        Q(debt_item__test__engagement__debt_context__prod_type__authorized_group=True) |
-        Q(debt_item__test__engagement__debt_context__authorized_group=True))
+        Q(debt_item__debt_test__engagement__debt_context__prod_type__member=True) |
+        Q(debt_item__debt_test__engagement__debt_context__member=True) |
+        Q(debt_item__debt_test__engagement__debt_context__prod_type__authorized_group=True) |
+        Q(debt_item__debt_test__engagement__debt_context__authorized_group=True))
 
     return vulnerability_ids

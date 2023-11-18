@@ -36,8 +36,8 @@ from dojo.debt_engagement.urls import urlpatterns as debt_engagement_urls
 from dojo.finding.urls import urlpatterns as finding_urls
 from dojo.debt_item.urls import urlpatterns as debt_item_urls
 from dojo.finding_group.urls import urlpatterns as finding_group_urls
-#from dojo.debt_item_group.urls import urlpatterns as debt_item_group_urls
-from dojo.home.urls import urlpatterns as home_urls
+#from dojo.home.urls import urlpatterns as home_urls
+from dojo.debt_home.urls import urlpatterns as debt_home_urls
 from dojo.metrics.urls import urlpatterns as metrics_urls
 from dojo.product.urls import urlpatterns as prod_urls
 from dojo.debt_context.urls import urlpatterns as debt_context_urls
@@ -163,8 +163,8 @@ ur += debt_engagement_urls
 ur += finding_urls
 ur += debt_item_urls
 ur += finding_group_urls
-#ur += debt_item_group_urls
-ur += home_urls
+#ur += home_urls
+ur += debt_home_urls
 ur += metrics_urls
 ur += prod_urls
 ur += debt_context_urls

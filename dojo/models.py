@@ -6911,6 +6911,23 @@ class Engagement_Survey(models.Model):
         return self.name
 
 
+# meant to be a abstract survey, identified by name for purpose
+class Debt_Engagement_Survey(models.Model):
+    name = models.CharField(max_length=200, null=False, blank=False,
+                            editable=True, default='')
+    description = models.TextField(editable=True, default='')
+    questions = models.ManyToManyField(Question)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = _("Debt Engagement Survey")
+        verbose_name_plural = "Debt Engagement Surveys"
+        ordering = ('-active', 'name',)
+
+    def __str__(self):
+        return self.name
+
+
 # meant to be an answered survey tied to an engagement
 
 class Answered_Survey(models.Model):
@@ -6938,6 +6955,33 @@ class Answered_Survey(models.Model):
         return self.survey.name
 
 
+# meant to be an answered survey tied to an engagement
+
+class Debt_Answered_Survey(models.Model):
+    # tie this to a specific engagement
+    debt_engagement = models.ForeignKey(Debt_Engagement, related_name='debt_engagement+',
+                                   null=True, blank=False, editable=True,
+                                   on_delete=models.CASCADE)
+    # what surveys have been answered
+    survey = models.ForeignKey(Debt_Engagement_Survey, on_delete=models.CASCADE)
+    assignee = models.ForeignKey(Dojo_User, related_name='debt_assignee',
+                                 null=True, blank=True, editable=True,
+                                 default=None, on_delete=models.RESTRICT)
+    # who answered it
+    responder = models.ForeignKey(Dojo_User, related_name='debt_responder',
+                                  null=True, blank=True, editable=True,
+                                  default=None, on_delete=models.RESTRICT)
+    completed = models.BooleanField(default=False)
+    answered_on = models.DateField(null=True)
+
+    class Meta:
+        verbose_name = _("Answered Debt Engagement Survey")
+        verbose_name_plural = _("Answered Debt Engagement Surveys")
+
+    def __str__(self):
+        return self.survey.name
+
+
 class General_Survey(models.Model):
     survey = models.ForeignKey(Engagement_Survey, on_delete=models.CASCADE)
     num_responses = models.IntegerField(default=0)
@@ -6952,12 +6996,37 @@ class General_Survey(models.Model):
         return self.survey.name
 
 
+class Debt_General_Survey(models.Model):
+    survey = models.ForeignKey(Debt_Engagement_Survey, on_delete=models.CASCADE)
+    num_responses = models.IntegerField(default=0)
+    generated = models.DateTimeField(auto_now_add=True, null=True)
+    expiration = models.DateTimeField(null=False, blank=False)
+
+    class Meta:
+        verbose_name = _("General Debt Engagement Survey")
+        verbose_name_plural = _("General Debt Engagement Surveys")
+
+    def __str__(self):
+        return self.survey.name
+
+
 class Answer(PolymorphicModel, TimeStampedModel):
     ''' Base Answer model
     '''
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
 
     answered_survey = models.ForeignKey(Answered_Survey,
+                                        null=False,
+                                        blank=False,
+                                        on_delete=models.CASCADE)
+
+
+class Debt_Answer(PolymorphicModel, TimeStampedModel):
+    ''' Base Answer model
+    '''
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+
+    answered_survey = models.ForeignKey(Debt_Answered_Survey,
                                         null=False,
                                         blank=False,
                                         on_delete=models.CASCADE)

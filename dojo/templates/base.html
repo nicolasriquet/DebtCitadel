@@ -218,7 +218,7 @@
                                 <ul class="nav" id="side-menu">
                                     {% block sidebar-items %}
                                         <li>
-                                            <a href="{% url 'dashboard' %}" aria-disabled="true" aria-expanded="false" aria-label="Dashboard">
+                                            <a href="{% url 'debt_dashboard' %}" aria-disabled="true" aria-expanded="false" aria-label="Dashboard">
                                                 <i class="fa-solid fa-gauge fa-fw"></i>
                                                 <span>{% trans "Dashboard" %}</span>
                                             </a>
@@ -493,14 +493,14 @@
                                             <!-- /.nav-second-level -->
                                         </li>
                                         <li>
-                                            <a href="{% url 'metrics' %}?date=5&view=dashboard" aria-expanded="false" aria-label="Metrics">
+                                            <a href="{% url 'metrics' %}?date=5&view=debt_dashboard" aria-expanded="false" aria-label="Metrics">
                                                 <i class="fa-solid fa-chart-column fa-fw"></i>
                                                 <span>{% trans "Metrics" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
                                             <ul class="nav nav-second-level">
                                                 <li>
-                                                    <a href="{% url 'metrics' %}?date=5&view=dashboard">
+                                                    <a href="{% url 'metrics' %}?date=5&view=debt_dashboard">
                                                         {% trans "Metrics Dashboard" %}
                                                     </a>
                                                 </li>
