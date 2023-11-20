@@ -879,7 +879,7 @@ class Debt_Context_Type(models.Model):
     # only used by bulk risk acceptance api
     @property
     def unaccepted_open_debt_items(self):
-        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__debt_engagement__debt__context__prod_type=self)
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__debt_engagement__debt_context__prod_type=self)
 
     class Meta:
         ordering = ('name',)
@@ -961,16 +961,31 @@ class DojoMeta(models.Model):
                                 null=True,
                                 editable=False,
                                 related_name='product_meta')
+    debt_context = models.ForeignKey('Debt_Context',
+                                on_delete=models.CASCADE,
+                                null=True,
+                                editable=False,
+                                related_name='debt_context_meta')
     endpoint = models.ForeignKey('Endpoint',
                                  on_delete=models.CASCADE,
                                  null=True,
                                  editable=False,
                                  related_name='endpoint_meta')
+    debt_endpoint = models.ForeignKey('Debt_Endpoint',
+                                 on_delete=models.CASCADE,
+                                 null=True,
+                                 editable=False,
+                                 related_name='debt_endpoint_meta')
     finding = models.ForeignKey('Finding',
                                  on_delete=models.CASCADE,
                                  null=True,
                                  editable=False,
                                  related_name='finding_meta')
+    debt_item = models.ForeignKey('Debt_Item',
+                                on_delete=models.CASCADE,
+                                null=True,
+                                editable=False,
+                                related_name='debt_item_meta')
 
     """
     Verify that this metadata entry belongs only to one object.
@@ -1395,7 +1410,7 @@ class Debt_Context(models.Model):
         except AttributeError:
             # ideally it's always prefetched and we can remove this code in the future
             self.active_debt_item_count = Debt_Item.objects.filter(active=True,
-                                                                   test__debt_engagement__debt__context=self).count()
+                                                                   debt_test__debt_engagement__debt_context=self).count()
             return self.active_debt_item_count
 
     @cached_property
@@ -1407,7 +1422,7 @@ class Debt_Context(models.Model):
             # ideally it's always prefetched and we can remove this code in the future
             self.active_verified_debt_item_count = Debt_Item.objects.filter(active=True,
                                                                             verified=True,
-                                                                            test__debt_engagement__debt__context=self).count()
+                                                                            test__debt_engagement__debt_context=self).count()
             return self.active_verified_debt_item_count
 
     @cached_property
@@ -1433,7 +1448,7 @@ class Debt_Context(models.Model):
         if start_date is None or end_date is None:
             return {}
         else:
-            critical = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
+            critical = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
                                                 mitigated__isnull=True,
                                                 verified=True,
                                                 false_p=False,
@@ -1442,7 +1457,7 @@ class Debt_Context(models.Model):
                                                 severity="Critical",
                                                 date__range=[start_date,
                                                              end_date]).count()
-            high = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
+            high = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
                                             mitigated__isnull=True,
                                             verified=True,
                                             false_p=False,
@@ -1451,7 +1466,7 @@ class Debt_Context(models.Model):
                                             severity="High",
                                             date__range=[start_date,
                                                          end_date]).count()
-            medium = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
+            medium = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
                                               mitigated__isnull=True,
                                               verified=True,
                                               false_p=False,
@@ -1460,7 +1475,7 @@ class Debt_Context(models.Model):
                                               severity="Medium",
                                               date__range=[start_date,
                                                            end_date]).count()
-            low = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
+            low = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
                                            mitigated__isnull=True,
                                            verified=True,
                                            false_p=False,
@@ -1487,7 +1502,7 @@ class Debt_Context(models.Model):
     # only used in APIv2 serializers.py, query should be aligned with debt_items_count
     @cached_property
     def open_debt_items_list(self):
-        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
+        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
                                               active=True)
         debt_items_list = []
         for i in debt_items:
@@ -1505,7 +1520,7 @@ class Debt_Context(models.Model):
 
     @property
     def violates_sla(self):
-        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt__context=self,
+        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
                                               active=True)
         for f in debt_items:
             if f.violates_sla:
@@ -1623,7 +1638,7 @@ class Product_API_Scan_Configuration(models.Model):
 
 
 class Debt_Context_API_Scan_Configuration(models.Model):
-    product = models.ForeignKey(Product, null=False, blank=False, on_delete=models.CASCADE)
+    debt_context = models.ForeignKey(Debt_Context, null=False, blank=False, on_delete=models.CASCADE)
     tool_configuration = models.ForeignKey(Tool_Configuration, null=False, blank=False, on_delete=models.CASCADE)
     service_key_1 = models.CharField(max_length=200, null=True, blank=True)
     service_key_2 = models.CharField(max_length=200, null=True, blank=True)
@@ -3062,7 +3077,7 @@ class Test(models.Model):
 class Debt_Test(models.Model):
     debt_engagement = models.ForeignKey(Debt_Engagement, editable=False, on_delete=models.CASCADE)
     lead = models.ForeignKey(Dojo_User, editable=True, null=True, blank=True, on_delete=models.RESTRICT)
-    test_type = models.ForeignKey(Debt_Test_Type, on_delete=models.CASCADE)
+    debt_test_type = models.ForeignKey(Debt_Test_Type, on_delete=models.CASCADE)
     scan_type = models.TextField(null=True)
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -3096,16 +3111,16 @@ class Debt_Test(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['debt_engagement', 'test_type']),
+            models.Index(fields=['debt_engagement', 'debt_test_type']),
         ]
 
     def test_type_name(self) -> str:
-        return self.test_type.name
+        return self.debt_test_type.name
 
     def __str__(self):
         if self.title:
-            return "%s (%s)" % (self.title, self.test_type)
-        return str(self.test_type)
+            return "%s (%s)" % (self.title, self.debt_test_type)
+        return str(self.debt_test_type)
 
     def get_breadcrumbs(self):
         bc = self.debt_engagement.get_breadcrumbs()
@@ -3154,9 +3169,9 @@ class Debt_Test(models.Model):
         deduplicationAlgorithm = settings.DEDUPE_ALGO_LEGACY
 
         if hasattr(settings, 'DEDUPLICATION_ALGORITHM_PER_PARSER'):
-            if (self.test_type.name in settings.DEDUPLICATION_ALGORITHM_PER_PARSER):
-                deduplicationLogger.debug(f'using DEDUPLICATION_ALGORITHM_PER_PARSER for test_type.name: {self.test_type.name}')
-                deduplicationAlgorithm = settings.DEDUPLICATION_ALGORITHM_PER_PARSER[self.test_type.name]
+            if (self.debt_test_type.name in settings.DEDUPLICATION_ALGORITHM_PER_PARSER):
+                deduplicationLogger.debug(f'using DEDUPLICATION_ALGORITHM_PER_PARSER for test_type.name: {self.debt_test_type.name}')
+                deduplicationAlgorithm = settings.DEDUPLICATION_ALGORITHM_PER_PARSER[self.debt_test_type.name]
             elif (self.scan_type in settings.DEDUPLICATION_ALGORITHM_PER_PARSER):
                 deduplicationLogger.debug(f'using DEDUPLICATION_ALGORITHM_PER_PARSER for scan_type: {self.scan_type}')
                 deduplicationAlgorithm = settings.DEDUPLICATION_ALGORITHM_PER_PARSER[self.scan_type]
@@ -3171,9 +3186,9 @@ class Debt_Test(models.Model):
         hashCodeFields = None
 
         if hasattr(settings, 'HASHCODE_FIELDS_PER_SCANNER'):
-            if (self.test_type.name in settings.HASHCODE_FIELDS_PER_SCANNER):
-                deduplicationLogger.debug(f'using HASHCODE_FIELDS_PER_SCANNER for test_type.name: {self.test_type.name}')
-                hashCodeFields = settings.HASHCODE_FIELDS_PER_SCANNER[self.test_type.name]
+            if (self.debt_test_type.name in settings.HASHCODE_FIELDS_PER_SCANNER):
+                deduplicationLogger.debug(f'using HASHCODE_FIELDS_PER_SCANNER for test_type.name: {self.debt_test_type.name}')
+                hashCodeFields = settings.HASHCODE_FIELDS_PER_SCANNER[self.debt_test_type.name]
             elif (self.scan_type in settings.HASHCODE_FIELDS_PER_SCANNER):
                 deduplicationLogger.debug(f'using HASHCODE_FIELDS_PER_SCANNER for scan_type: {self.scan_type}')
                 hashCodeFields = settings.HASHCODE_FIELDS_PER_SCANNER[self.scan_type]
@@ -3188,9 +3203,9 @@ class Debt_Test(models.Model):
         hashCodeAllowsNullCwe = True
 
         if hasattr(settings, 'HASHCODE_ALLOWS_NULL_CWE'):
-            if (self.test_type.name in settings.HASHCODE_ALLOWS_NULL_CWE):
-                deduplicationLogger.debug(f'using HASHCODE_ALLOWS_NULL_CWE for test_type.name: {self.test_type.name}')
-                hashCodeAllowsNullCwe = settings.HASHCODE_ALLOWS_NULL_CWE[self.test_type.name]
+            if (self.debt_test_type.name in settings.HASHCODE_ALLOWS_NULL_CWE):
+                deduplicationLogger.debug(f'using HASHCODE_ALLOWS_NULL_CWE for test_type.name: {self.debt_test_type.name}')
+                hashCodeAllowsNullCwe = settings.HASHCODE_ALLOWS_NULL_CWE[self.debt_test_type.name]
             elif (self.scan_type in settings.HASHCODE_ALLOWS_NULL_CWE):
                 deduplicationLogger.debug(f'using HASHCODE_ALLOWS_NULL_CWE for scan_type: {self.scan_type}')
                 hashCodeAllowsNullCwe = settings.HASHCODE_ALLOWS_NULL_CWE[self.scan_type]
@@ -4528,7 +4543,7 @@ class Debt_Item(models.Model):
                                          max_length=100,
                                          verbose_name=_('Component version'),
                                          help_text=_("Version of the affected component."))
-    found_by = models.ManyToManyField(Test_Type,
+    found_by = models.ManyToManyField(Debt_Test_Type,
                                       editable=False,
                                       verbose_name=_('Found by'),
                                       help_text=_("The name of the scanner that identified the flaw."))
@@ -6371,6 +6386,74 @@ class Notifications(models.Model):
         return result
 
 
+class Debt_Notifications(models.Model):
+    debt_context_type_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    debt_context_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    debt_engagement_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    debt_test_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+
+    scan_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, help_text=_('Triggered whenever an (re-)import has been done that created/updated/closed debt_items.'))
+    jira_update = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, verbose_name=_("JIRA problems"), help_text=_("JIRA sync happens in the background, errors will be shown as notifications/alerts so make sure to subscribe"))
+    upcoming_debt_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    stale_debt_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    auto_close_debt_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    close_debt_engagement = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    user_mentioned = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    code_review = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    review_requested = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    other = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True)
+    user = models.ForeignKey(Dojo_User, default=None, null=True, editable=False, on_delete=models.CASCADE)
+    debt_context = models.ForeignKey(Debt_Context, default=None, null=True, editable=False, on_delete=models.CASCADE)
+    template = models.BooleanField(default=False)
+    sla_breach = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True,
+                                  verbose_name=_('SLA breach'),
+                                  help_text=_('Get notified of (upcoming) SLA breaches'))
+    risk_acceptance_expiration = MultiSelectField(choices=NOTIFICATION_CHOICES, default='alert', blank=True,
+                                                  verbose_name=_('Risk Acceptance Expiration'),
+                                                  help_text=_('Get notified of (upcoming) Risk Acceptance expiries'))
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'debt_context'], name="notifications_user_debt_context")
+        ]
+        indexes = [
+            models.Index(fields=['user', 'debt_context']),
+        ]
+
+    @classmethod
+    def merge_notifications_list(cls, notifications_list):
+        if not notifications_list:
+            return []
+
+        result = None
+        for notifications in notifications_list:
+            if result is None:
+                # we start by copying the first instance, because creating a new instance would set all notification columns to 'alert' :-()
+                result = notifications
+                # result.pk = None # detach from db
+            else:
+                # TODO This concat looks  better, but requires Python 3.6+
+                # result.scan_added = [*result.scan_added, *notifications.scan_added]
+                from dojo.utils import merge_sets_safe
+                result.debt_context_type_added = merge_sets_safe(result.debt_context_type_added, notifications.debt_context_type_added)
+                result.debt_context_added = merge_sets_safe(result.debt_context_added, notifications.debt_context_added)
+                result.debt_engagement_added = merge_sets_safe(result.debt_engagement_added, notifications.debt_engagement_added)
+                result.debt_test_added = merge_sets_safe(result.debt_test_added, notifications.debt_test_added)
+                result.scan_added = merge_sets_safe(result.scan_added, notifications.scan_added)
+                result.jira_update = merge_sets_safe(result.jira_update, notifications.jira_update)
+                result.upcoming_debt_engagement = merge_sets_safe(result.upcoming_debt_engagement, notifications.upcoming_debt_engagement)
+                result.stale_debt_engagement = merge_sets_safe(result.stale_debt_engagement, notifications.stale_debt_engagement)
+                result.auto_close_debt_engagement = merge_sets_safe(result.auto_close_debt_engagement, notifications.auto_close_debt_engagement)
+                result.close_debt_engagement = merge_sets_safe(result.close_debt_engagement, notifications.close_debt_engagement)
+                result.user_mentioned = merge_sets_safe(result.user_mentioned, notifications.user_mentioned)
+                result.code_review = merge_sets_safe(result.code_review, notifications.code_review)
+                result.review_requested = merge_sets_safe(result.review_requested, notifications.review_requested)
+                result.other = merge_sets_safe(result.other, notifications.other)
+                result.sla_breach = merge_sets_safe(result.sla_breach, notifications.sla_breach)
+                result.risk_acceptance_expiration = merge_sets_safe(result.risk_acceptance_expiration, notifications.risk_acceptance_expiration)
+
+        return result
+
 # class Notifications(models.Model):
 #     product_type_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
 #     #debt_context_type_added = MultiSelectField(choices=NOTIFICATION_CHOICES, default=DEFAULT_NOTIFICATION, blank=True, max_length=get_max_length(NOTIFICATION_CHOICES, None))
@@ -6547,6 +6630,25 @@ class Cred_Mapping(models.Model):
         return self.cred_id.name + " (" + self.cred_id.role + ")"
 
 
+class Debt_Cred_Mapping(models.Model):
+    cred_id = models.ForeignKey(Cred_User, null=False,
+                                related_name="debt_cred_user",
+                                verbose_name=_('Credential'), on_delete=models.CASCADE)
+    debt_context = models.ForeignKey(Debt_Context, null=True, blank=True,
+                                related_name="debt_context", on_delete=models.CASCADE)
+    debt_item = models.ForeignKey(Debt_Item, null=True, blank=True,
+                                related_name="debt_item", on_delete=models.CASCADE)
+    debt_engagement = models.ForeignKey(Debt_Engagement, null=True, blank=True,
+                                   related_name="debt_engagement", on_delete=models.CASCADE)
+    debt_test = models.ForeignKey(Debt_Test, null=True, blank=True, related_name="debt_test", on_delete=models.CASCADE)
+    is_authn_provider = models.BooleanField(default=False,
+                                            verbose_name=_('Authentication Provider'))
+    url = models.URLField(max_length=2000, null=True, blank=True)
+
+    def __str__(self):
+        return self.cred_id.name + " (" + self.cred_id.role + ")"
+
+
 class Language_Type(models.Model):
     language = models.CharField(max_length=100, null=False)
     color = models.CharField(max_length=7, null=True, blank=True, verbose_name=_('HTML color'))
@@ -6572,6 +6674,24 @@ class Languages(models.Model):
         unique_together = [('language', 'product')]
 
 
+
+class Debt_Languages(models.Model):
+    language = models.ForeignKey(Language_Type, on_delete=models.CASCADE)
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    user = models.ForeignKey(Dojo_User, editable=True, blank=True, null=True, on_delete=models.RESTRICT)
+    files = models.IntegerField(blank=True, null=True, verbose_name=_('Number of files'))
+    blank = models.IntegerField(blank=True, null=True, verbose_name=_('Number of blank lines'))
+    comment = models.IntegerField(blank=True, null=True, verbose_name=_('Number of comment lines'))
+    code = models.IntegerField(blank=True, null=True, verbose_name=_('Number of code lines'))
+    created = models.DateTimeField(auto_now_add=True, null=False)
+
+    def __str__(self):
+        return self.language.language
+
+    class Meta:
+        unique_together = [('language', 'debt_context')]
+
+
 class App_Analysis(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     name = models.CharField(max_length=200, null=False)
@@ -6587,6 +6707,23 @@ class App_Analysis(models.Model):
 
     def __str__(self):
         return self.name + " | " + self.product.name
+
+
+class Debt_App_Analysis(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, null=False)
+    user = models.ForeignKey(Dojo_User, editable=True, on_delete=models.RESTRICT)
+    confidence = models.IntegerField(blank=True, null=True, verbose_name=_('Confidence level'))
+    version = models.CharField(max_length=200, null=True, blank=True, verbose_name=_('Version Number'))
+    icon = models.CharField(max_length=200, null=True, blank=True)
+    website = models.URLField(max_length=400, null=True, blank=True)
+    website_found = models.URLField(max_length=400, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True, null=False)
+
+    tags = TagField(blank=True, force_lowercase=True)
+
+    def __str__(self):
+        return self.name + " | " + self.debt_context.name
 
 
 class Objects_Review(models.Model):
@@ -7114,6 +7251,7 @@ tagulous.admin.register(Endpoint.inherited_tags)
 tagulous.admin.register(Finding_Template.tags)
 tagulous.admin.register(Debt_Item_Template.tags)
 tagulous.admin.register(App_Analysis.tags)
+tagulous.admin.register(Debt_App_Analysis.tags)
 tagulous.admin.register(Objects_Product.tags)
 
 # Benchmarks
@@ -7134,8 +7272,10 @@ admin.site.register(Network_Locations)
 admin.site.register(Objects_Product)
 admin.site.register(Objects_Review)
 admin.site.register(Languages)
+admin.site.register(Debt_Languages)
 admin.site.register(Language_Type)
 admin.site.register(App_Analysis)
+admin.site.register(Debt_App_Analysis)
 admin.site.register(Test)
 admin.site.register(Debt_Test)
 admin.site.register(Finding, FindingAdmin)
@@ -7218,6 +7358,7 @@ admin.site.register(Announcement)
 admin.site.register(UserAnnouncement)
 admin.site.register(BannerConf)
 admin.site.register(Notifications)
+admin.site.register(Debt_Notifications)
 admin.site.register(Tool_Product_History)
 admin.site.register(Tool_Debt_Context_History)
 admin.site.register(General_Survey)

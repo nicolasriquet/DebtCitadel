@@ -33,8 +33,8 @@ from dojo.forms import DebtContextForm, EngForm, DeleteDebtContextForm, DojoMeta
     Delete_Debt_Context_GroupForm, SLA_Configuration, \
     DeleteAppAnalysisForm, Debt_Context_API_Scan_ConfigurationForm, DeleteDebt_Context_API_Scan_ConfigurationForm
 from dojo.models import Debt_Context_Type, Note_Type, Debt_Item, Debt_Context, Engagement, Test, GITHUB_PKey, \
-    Test_Type, System_Settings, Languages, App_Analysis, Benchmark_Debt_Context_Summary, Endpoint_Status, \
-    Endpoint, Debt_Endpoint, Engagement_Presets, DojoMeta, Notifications, BurpRawRequestResponse, Debt_Context_Member, \
+    Test_Type, System_Settings, Languages, Debt_Languages, App_Analysis, Debt_App_Analysis, Benchmark_Debt_Context_Summary, Endpoint_Status, \
+    Endpoint, Debt_Endpoint, Engagement_Presets, DojoMeta, Notifications, Debt_Notifications, BurpRawRequestResponse, Debt_Context_Member, \
     Debt_Context_Group, Debt_Context_API_Scan_Configuration
 from dojo.utils import add_external_issue, add_error_message_to_response, add_field_errors_to_response, get_page_items, \
     add_breadcrumb, async_delete, \
@@ -152,10 +152,10 @@ def view_debt_context(request, pid):
     debt_context_groups = get_authorized_groups_for_debt_context(debt_context, Permissions.Debt_Context_View)
     debt_context_type_groups = get_authorized_groups_for_debt_context_type(debt_context.debt_context_type, Permissions.Debt_Context_Type_View)
     personal_notifications_form = DebtContextNotificationsForm(
-        instance=Notifications.objects.filter(user=request.user).filter(debt_context=debt_context).first())
-    langSummary = Languages.objects.filter(debt_context=debt_context).aggregate(Sum('files'), Sum('code'), Count('files'))
-    languages = Languages.objects.filter(debt_context=debt_context).order_by('-code').select_related('language')
-    app_analysis = App_Analysis.objects.filter(debt_context=debt_context).order_by('name')
+        instance=Debt_Notifications.objects.filter(user=request.user).filter(debt_context=debt_context).first())
+    langSummary = Debt_Languages.objects.filter(debt_context=debt_context).aggregate(Sum('files'), Sum('code'), Count('files'))
+    languages = Debt_Languages.objects.filter(debt_context=debt_context).order_by('-code').select_related('language')
+    app_analysis = Debt_App_Analysis.objects.filter(debt_context=debt_context).order_by('name')
     benchmarks = Benchmark_Debt_Context_Summary.objects.filter(debt_context=debt_context, publish=True,
                                                           benchmark_type__enabled=True).order_by('benchmark_type__name')
     sla = SLA_Configuration.objects.filter(id=debt_context.sla_configuration_id).first()
@@ -181,7 +181,7 @@ def view_debt_context(request, pid):
 
     debt_context_metadata = dict(debt_context.debt_context_meta.order_by('name').values_list('name', 'value'))
 
-    open_debt_items = Debt_Item.objects.filter(debt_testdebt_engagement__debt_context=debt_context,
+    open_debt_items = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=debt_context,
                                            false_p=False,
                                            active=True,
                                            duplicate=False,
@@ -1111,9 +1111,9 @@ def new_tech_for_debt_context(request, pid):
                    'pid': pid})
 
 
-@user_is_authorized(App_Analysis, Permissions.Technology_Edit, 'tid')
+@user_is_authorized(Debt_App_Analysis, Permissions.Technology_Edit, 'tid')
 def edit_technology(request, tid):
-    technology = get_object_or_404(App_Analysis, id=tid)
+    technology = get_object_or_404(Debt_App_Analysis, id=tid)
     form = AppAnalysisForm(instance=technology)
     if request.method == 'POST':
         form = AppAnalysisForm(request.POST, instance=technology)
@@ -1132,9 +1132,9 @@ def edit_technology(request, tid):
                    'technology': technology})
 
 
-@user_is_authorized(App_Analysis, Permissions.Technology_Delete, 'tid')
+@user_is_authorized(Debt_App_Analysis, Permissions.Technology_Delete, 'tid')
 def delete_technology(request, tid):
-    technology = get_object_or_404(App_Analysis, id=tid)
+    technology = get_object_or_404(Debt_App_Analysis, id=tid)
     form = DeleteAppAnalysisForm(instance=technology)
     if request.method == 'POST':
         form = Delete_Debt_Context_MemberForm(request.POST, instance=technology)
@@ -1592,9 +1592,9 @@ def delete_debt_engagement_presets(request, pid, eid):
 def edit_notifications(request, pid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     if request.method == 'POST':
-        debt_context_notifications = Notifications.objects.filter(user=request.user).filter(debt_context=debt_context).first()
+        debt_context_notifications = Debt_Notifications.objects.filter(user=request.user).filter(debt_context=debt_context).first()
         if not debt_context_notifications:
-            debt_context_notifications = Notifications(user=request.user, debt_context=debt_context)
+            debt_context_notifications = Debt_Notifications(user=request.user, debt_context=debt_context)
             logger.debug('no existing debt_context notifications found')
         else:
             logger.debug('existing debt_context notifications found')

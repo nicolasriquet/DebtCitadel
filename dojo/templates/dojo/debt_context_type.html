@@ -51,7 +51,7 @@
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                             <th>{% dojo_sort request 'Debt Context Type' 'name' 'asc' %}</th>
                             <th>{% trans "Debt context count" %}</th>
-                            <th>{% trans "Active (Verified) findings" %}</th>
+                            <th>{% trans "Active (Verified) debt items" %}</th>
                             <th class="text-center">{% trans "Critical debt context" %}</th>
                             <th class="text-center">{% trans "Key debt context" %}</th>
                         </tr>
@@ -101,10 +101,10 @@
                                     </ul>
                                 </td>
                                 <td><a href="{% url 'view_debt_context_type' pt.id %}">{{ pt.name }}</a></td>
-                                <td><a href="{% url 'debt_context' %}?prod_type={{ pt.id }}"> {{ pt.prod_count }} </a></td>
+                                <td><a href="{% url 'debt_context' %}?debt_context_type={{ pt.id }}"> {{ pt.debt_context_count }} </a></td>
                                 <td>
-                                    <a href="{% url 'open_findings' %}?test__engagement__debt_context__prod_type={{ pt.id }}"><b>{{ pt.active_findings_count }}</b></a>
-                                    &nbsp;(<a href="{% url 'verified_findings' %}?test__engagement__debt_context__prod_type={{ pt.id }}">{{ pt.active_verified_findings_count }}</a>)
+                                    <a href="{% url 'open_debt_items' %}?test__engagement__debt_context__debt_context_type={{ pt.id }}"><b>{{ pt.active_debt_items_count }}</b></a>
+                                    &nbsp;(<a href="{% url 'verified_debt_items' %}?test__engagement__debt_context__debt_context_type={{ pt.id }}">{{ pt.active_verified_debt_items_count }}</a>)
                                 </td>
                                 <td class="text-center">
                                     {% if pt.critical_debt_context %}

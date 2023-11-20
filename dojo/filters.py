@@ -519,7 +519,7 @@ def get_debt_item_filterset_fields(metrics=False, similar=False):
         'debt_test__debt_engagement__debt_context',
         'debt_test__debt_engagement',
         'debt_test',
-        'debt_test__test_type',
+        'debt_test__debt_test_type',
         'debt_test__debt_engagement__version',
         'debt_test__version',
         'endpoints',
@@ -1626,7 +1626,7 @@ class ProductFilter(DojoFilter):
 class DebtContextFilter(DojoFilter):
     name = CharFilter(lookup_expr='icontains', label="Debt_Context Name")
     name_exact = CharFilter(field_name='name', lookup_expr='iexact', label="Exact Debt_Context Name")
-    prod_type = ModelMultipleChoiceFilter(
+    debt_context_type = ModelMultipleChoiceFilter(
         queryset=Debt_Context_Type.objects.none(),
         label="Debt_Context Type")
     business_criticality = MultipleChoiceFilter(choices=Debt_Context.BUSINESS_CRITICALITY_CHOICES)
@@ -1729,7 +1729,7 @@ class DebtContextFilter(DojoFilter):
         fields=(
             ('name', 'name'),
             ('name_exact', 'name_exact'),
-            ('prod_type__name', 'prod_type__name'),
+            ('debt_context_type__name', 'debt_context_type__name'),
             ('business_criticality', 'business_criticality'),
             ('platform', 'platform'),
             ('lifecycle', 'lifecycle'),
@@ -1740,7 +1740,7 @@ class DebtContextFilter(DojoFilter):
         field_labels={
             'name': 'Debt_Context Name',
             'name_exact': 'Exact Debt_Context Name',
-            'prod_type__name': 'Debt_Context Type',
+            'debt_context_type__name': 'Debt_Context Type',
             'business_criticality': 'Business Criticality',
             'platform': 'Platform ',
             'lifecycle': 'Lifecycle ',
@@ -1760,11 +1760,11 @@ class DebtContextFilter(DojoFilter):
 
         super(DebtContextFilter, self).__init__(*args, **kwargs)
 
-        self.form.fields['prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+        self.form.fields['debt_context_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
 
     class Meta:
         model = Debt_Context
-        fields = ['name', 'name_exact', 'prod_type', 'business_criticality', 'platform', 'lifecycle', 'origin', 'external_audience',
+        fields = ['name', 'name_exact', 'debt_context_type', 'business_criticality', 'platform', 'lifecycle', 'origin', 'external_audience',
                   'internet_accessible', 'tags']
 
 
@@ -3329,7 +3329,7 @@ class DebtEngagementDebtTestFilter(DojoFilter):
 
     class Meta:
         model = Debt_Test
-        fields = ['id', 'title', 'test_type', 'target_start',
+        fields = ['id', 'title', 'debt_test_type', 'target_start',
                   'target_end', 'percent_complete',
                   'version', 'api_scan_configuration']
 

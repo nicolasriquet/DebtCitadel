@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load display_tags %}
+{% load authorization_tags %}
+
+{% block content %}
+    {{ block.super }}
+    <h3 id="id_heading"> Debt_Context Type {{ pt.name }}</h3>
+    <div class="row">
+        <div id="debt_tests" class="col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading tight">
+                  <div class="clearfix">
+                    <h3 class="pull-left">{% trans "Description" %}</h3>
+                    <div class="dropdown pull-right">
+                      <div class="btn-group">
+                        <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" label="Actions" data-toggle="dropdown" aria-expanded="true">
+                                      <span class="fa-solid fa-bars"></span>
+                                      <span class="caret"></span>
+                                  </button>
+                        <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
+                            {% if pt|has_object_permission:"Debt_Context_Type_Edit" %}
+                            <li>
+                                <a class="" href="{% url 'edit_debt_context_type' pt.id %}">
+                                <i class="fa-solid fa-pen-to-square"></i> {% trans "Edit" %}</a>
+                            </li>
+                            <li role="separator" class="divider"></li>
+                            {% endif %}
+                            <li>
+                                <a class="" href="{% url 'debt_context_type_metrics' pt.id %}">
+                                <i class="fa-solid fa-chart-line"></i> {% trans "Metrics" %}</a>
+                            </li>
+                            <li>
+                                <a class="" href="{% url 'debt_context_type_report' pt.id %}">
+                                <i class="fa-solid fa-file-lines"></i> {% trans "Debt_Context Type Report" %} </a>
+                            </li>
+                            {% if pt|has_object_permission:"Debt_Context_Type_Delete" %}
+                            <li role="separator" class="divider"></li>
+                            <li>
+                                <a class="" href="{% url 'delete_debt_context_type' pt.id %}">
+                                <i class="fa-solid fa-trash"></i> {% trans "Delete" %}</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="panel-body">
+                  {{ pt.description|markdown_render }}
+                </div>
+            </div>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="clearfix">
+                        <h4 class="pull-left">{% trans "Debt_Contexts" %}</h4>
+                        {% if pt|has_object_permission:"Debt_Context_Type_Add_Debt_Context" %}
+                        <div class="dropdown pull-right">
+                            <div class="btn-group">
+                                <button class="btn btn-primary dropdown-toggle" type="button" label="Actions" id="dropdownMenu1" data-toggle="dropdown" aria-expanded="true">
+                                            <span class="fa-solid fa-bars"></span>
+                                            <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
+                                    <li>
+                                        <a class="" href="{% url 'add_debt_context_to_debt_context_type' pt.id %}">
+                                        <i class="fa-solid fa-plus"></i> {% trans "Add Debt_Context" %}</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if debt_contexts %}
+                    <div class="clearfix pagination-in-panel">
+                        {% include "dojo/paging_snippet.html" with page=debt_contexts page_size=True %}
+                    </div>
+                    <div class="table-responsive">
+                        <table class="tablesorter-bootstrap table table-condensed table-striped">
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th class="text-center">{% trans "Tags" %}</th>
+                                <th class="text-center">{% trans "Criticality" %}</th>
+                                <th class="text-center">{% trans "Metadata" %}</th>
+                                <th class="text-center">{% trans "Active (Verified) Debt Items" %}</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for debt_context in debt_contexts %}
+                                <tr>
+                                    <td><a href="{% url 'view_debt_context' debt_context.id %}">{{ debt_context.name }}</a></td>
+                                    <!-- Tags column -->
+                                    <td class="text-center">
+                                        {% include "dojo/snippets/tags.html" with tags=debt_context.tags.all %}
+                                    </td>
+                                    <!-- End of Tags Column -->
+                                    <td class="text-center">{{ debt_context.business_criticality|business_criticality_icon }}</td>
+                                    <td class="text-center">
+                                    {{ debt_context.platform|platform_icon }}
+                                    {{ debt_context.lifecycle|lifecycle_icon }}
+                                    {{ debt_context.origin|origin_icon }}
+                                    {{ debt_context.external_audience|external_audience_icon }}
+                                    {{ debt_context.internet_accessible|internet_accessible_icon }}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if debt_context.debt_items_count %}
+                                            <a href="{% url 'debt_context_open_debt_items' debt_context.id %}"><b>{{ debt_context.debt_items_count }}</b></a>
+                                            &nbsp;(<a href="{% url 'debt_context_verified_debt_items' debt_context.id %}">{{ debt_context.debt_items_active_verified_count }}</a>)
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </td>
+                                    </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="clearfix pagination-in-panel">
+                        {% include "dojo/paging_snippet.html" with page=debt_contexts page_size=True %}
+                    </div>
+                {% else %}
+                    <div class="panel-body">
+                        <small class="text-muted"><em>{% trans "No debt_contexts found." %}</em></small>
+                    </div>
+                {% endif %}
+            </div>
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="clearfix">
+                            <h4 class="pull-left">{% trans "Members" %}</h4>
+                            &nbsp;
+                            <a href="https://documentation.defectdojo.com/usage/permissions/" target="_blank">
+                                <i class="fa-solid fa-circle-question"></i></a>
+                            {% if pt|has_object_permission:"Debt_Context_Type_Manage_Members" %}
+                            <div class="dropdown pull-right">
+                                <button class="btn btn-primary dropdown-toggle" label="Actions" type="button" id="dropdownMenuAddDebt_ContextTypeMember"
+                                        data-toggle="dropdown" aria-expanded="true" aria-label="{% trans "Add Debt_Context Type Member" %}">
+                                    <span class="fa-solid fa-bars"></span>
+                                    <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
+                                    <li role="presentation">
+                                        <a id="addDebt_ContextTypeMember" href="{% url 'add_debt_context_type_member' pt.id %}">
+                                            <i class="fa-solid fa-plus"></i> {% trans "Add Users" %}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if members %}
+                        <div class="table-responsive">
+                            <table class="tablesorter-bootstrap table table-condensed table-striped">
+                                <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>{% trans "User" %}</th>
+                                    <th>{% trans "Role" %}</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for member in members %}
+                                    <tr>
+                                        <td>
+                                            <ul>
+                                            <li class="dropdown" style="list-style:none;position:absolute">
+                                                <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="true" name="dropdownManageDebt_ContextTypeMember">&nbsp;<b class="fa-solid fa-ellipsis-vertical"></b>&nbsp;</a>
+                                                <ul class="dropdown-menu">
+                                                    {% if pt|has_object_permission:"Debt_Context_Type_Manage_Members" %}
+                                                    <li>
+                                                        <a name="editDebt_ContextTypeMember" href="{% url 'edit_debt_context_type_member' member.id %}">
+                                                        <i class="fa-solid fa-pen-to-square"></i> {% trans "Edit" %}</a>
+                                                    </li>
+                                                    {% endif %}
+                                                    {% if member|has_object_permission:"Debt_Context_Type_Member_Delete" %}
+                                                    <li>
+                                                        <a name="deleteDebt_ContextTypeMember" href="{% url 'delete_debt_context_type_member' member.id %}">
+                                                        <i class="fa-solid fa-trash"></i> {% trans "Delete" %}</a>
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </li>
+                                            </ul>
+                                        </td>
+                                        <td name="member_user">{{ member.user.get_full_name }}</td>
+                                        <td name="member_role">{{ member.role }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="panel-body">
+                            <small class="text-muted"><em>{% trans "No members found." %}</em></small>
+                        </div>
+                    {% endif %}
+                </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="clearfix">
+                        <h4 class="pull-left">{% trans "Groups" %}</h4>
+                        &nbsp;
+                        <a href="https://documentation.defectdojo.com/usage/permissions/" target="_blank">
+                            <i class="fa-solid fa-circle-question"></i></a>
+                        {% if pt|has_object_permission:"Debt_Context_Type_Group_Add" %}
+                        <div class="dropdown pull-right">
+                            <button class="btn btn-primary dropdown-toggle" label="Actions" type="button" id="dropdownMenuAddDebt_ContextTypeGroup"
+                                    data-toggle="dropdown" aria-expanded="true" aria-label="{% trans "Add Debt_Context Type Group" %}">
+                                <span class="fa-solid fa-bars"></span>
+                                <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
+                                <li role="presentation">
+                                    <a id="addDebt_ContextTypeGroup" href="{% url 'add_debt_context_type_group' pt.id %}">
+                                        <i class="fa-solid fa-plus"></i> {% trans "Add Groups" %}
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if groups %}
+                <div class="table-responsive">
+                    <table class="tablesorter-bootstrap table table-condensed table-striped">
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th>{% trans "Group" %}</th>
+                            <th>{% trans "Role" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for group in groups %}
+                        <tr>
+                            <td>
+                                <ul>
+                                    <li class="dropdown" style="list-style:none;position:absolute">
+                                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="true" name="dropdownManageDebt_ContextTypeGroup">&nbsp;<b class="fa-solid fa-ellipsis-vertical"></b>&nbsp;</a>
+                                        <ul class="dropdown-menu">
+                                            {% if pt|has_object_permission:"Debt_Context_Type_Group_Edit" %}
+                                            <li>
+                                                <a name="editDebt_ContextTypeGroup" href="{% url 'edit_debt_context_type_group' group.id %}">
+                                                    <i class="fa-solid fa-pen-to-square"></i> {% trans "Edit" %}</a>
+                                            </li>
+                                            {% endif %}
+                                            {% if pt|has_object_permission:"Debt_Context_Type_Group_Delete" %}
+                                            <li>
+                                                <a name="deleteDebt_ContextTypeGroup" href="{% url 'delete_debt_context_type_group' group.id %}">
+                                                    <i class="fa-solid fa-trash"></i> {% trans "Delete" %}</a>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </td>
+                            <td name="debt_context_type_group_group">{{ group.group.name }}</td>
+                            <td name="debt_context_type_group_role">{{ group.role }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="panel-body">
+                    <small class="text-muted"><em>{% trans "No groups found." %}</em></small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="panel panel-default-secondary">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="fa-solid fa-circle-info fa-fw" aria-hidden="true"></span>
+                        {{ pt.name }}
+                    </h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                      <tbody>
+                        <tr>
+                          <td style="width: 150px;"><strong>{% trans "Critical debt_context" %}</strong></td>
+                          <td>
+                            {% if pt.critical_debt_context %}
+                            <i class="text-success fa-solid fa-check"></i>
+                            {% else %}
+                            <i class="text-danger fa-solid fa-xmark"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                        <tr>
+                            <td style="width: 150px;"><strong>{% trans "Key debt_context" %}</strong></td>
+                            <td>
+                                {% if pt.key_debt_context %}
+                                <i class="text-success fa-solid fa-check"></i>
+                                {% else %}
+                                <i class="text-danger fa-solid fa-xmark"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

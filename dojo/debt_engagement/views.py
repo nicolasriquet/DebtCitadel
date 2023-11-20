@@ -30,9 +30,9 @@ from dojo.forms import CheckForm, \
     EditRiskAcceptanceForm
 
 from dojo.models import Debt_Item, Debt_Context, Debt_Engagement, Debt_Test, \
-    Check_List, Test_Import, Notes, \
+    Check_List, Test_Import, Debt_Test_Import, Notes, \
     Risk_Acceptance, Development_Environment, Endpoint, \
-    Cred_Mapping, System_Settings, Note_Type, Debt_Context_API_Scan_Configuration
+    Cred_Mapping, Debt_Cred_Mapping, System_Settings, Note_Type, Debt_Context_API_Scan_Configuration
 from dojo.tools.factory import get_scan_types_sorted
 from dojo.utils import add_error_message_to_response, add_success_message_to_response, get_page_items, add_breadcrumb, handle_uploaded_threat, \
     FileIterWrapper, get_cal_event, Debt_Context_Tab, is_scan_file_too_large, async_delete, \
@@ -275,7 +275,7 @@ def edit_debt_engagement(request, eid):
 
     debt_context_tab = Debt_Context_Tab(debt_engagement.debt_context, title=title, tab="debt_engagements")
     debt_context_tab.setDebtEngagement(debt_engagement)
-    return render(request, 'dojo/new_eng.html', {
+    return render(request, 'dojo/new_debt_eng.html', {
         'debt_context_tab': debt_context_tab,
         'title': title,
         'form': form,
@@ -384,7 +384,7 @@ def view_debt_engagement(request, eid):
 
     default_page_num = 10
 
-    debt_tests_filter = DebtEngagementDebt_TestFilter(request.GET, queryset=debt_tests, debt_engagement=eng)
+    debt_tests_filter = DebtEngagementDebtTestFilter(request.GET, queryset=debt_tests, debt_engagement=eng)
     paged_debt_tests = get_page_items(request, debt_tests_filter.qs, default_page_num)
     # prefetch only after creating the filters to avoid https://code.djangoproject.com/ticket/23771 and https://code.djangoproject.com/ticket/25375
     paged_debt_tests.object_list = prefetch_for_view_debt_tests(paged_debt_tests.object_list)
@@ -443,9 +443,9 @@ def view_debt_engagement(request, eid):
         else:
             form = NoteForm()
 
-    creds = Cred_Mapping.objects.filter(
+    creds = Debt_Cred_Mapping.objects.filter(
         debt_context=eng.debt_context).select_related('cred_id').order_by('cred_id')
-    cred_eng = Cred_Mapping.objects.filter(
+    cred_eng = Debt_Cred_Mapping.objects.filter(
         debt_engagement=eng.id).select_related('cred_id').order_by('cred_id')
 
     add_breadcrumb(parent=eng, top_level=False, request=request)
@@ -456,7 +456,7 @@ def view_debt_engagement(request, eid):
     debt_context_tab = Debt_Context_Tab(debt_context, title="View" + title + " Debt_Engagement", tab="debt_engagements")
     debt_context_tab.setDebt_Engagement(eng)
     return render(
-        request, 'dojo/view_eng.html', {
+        request, 'dojo/view_debt_eng.html', {
             'eng': eng,
             'debt_context_tab': debt_context_tab,
             'system_settings': system_settings,
@@ -501,13 +501,13 @@ def prefetch_for_view_debt_tests(debt_tests):
 def add_debt_tests(request, eid):
     eng = Debt_Engagement.objects.get(id=eid)
     cred_form = CredMappingForm()
-    cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+    cred_form.fields["cred_user"].queryset = Debt_Cred_Mapping.objects.filter(
         debt_engagement=eng).order_by('cred_id')
 
     if request.method == 'POST':
-        form = Debt_TestForm(request.POST, debt_engagement=eng)
+        form = DebtTestForm(request.POST, debt_engagement=eng)
         cred_form = CredMappingForm(request.POST)
-        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+        cred_form.fields["cred_user"].queryset = Debt_Cred_Mapping.objects.filter(
             debt_engagement=eng).order_by('cred_id')
         if form.is_valid():
             new_debt_test = form.save(commit=False)
@@ -531,7 +531,7 @@ def add_debt_tests(request, eid):
             if cred_form.is_valid():
                 if cred_form.cleaned_data['cred_user']:
                     # Select the credential mapping object from the selected list and only allow if the credential is associated with the debt_context
-                    cred_user = Cred_Mapping.objects.filter(
+                    cred_user = Debt_Cred_Mapping.objects.filter(
                         pk=cred_form.cleaned_data['cred_user'].id,
                         debt_engagement=eid).first()
 
@@ -558,7 +558,7 @@ def add_debt_tests(request, eid):
                 return HttpResponseRedirect(
                     reverse('view_debt_engagement', args=(eng.id, )))
     else:
-        form = Debt_TestForm(debt_engagement=eng)
+        form = DebtTestForm(debt_engagement=eng)
         form.initial['target_start'] = eng.target_start
         form.initial['target_end'] = eng.target_end
         form.initial['lead'] = request.user
@@ -588,7 +588,7 @@ def import_scan_results(request, eid=None, pid=None):
     if eid:
         debt_engagement = get_object_or_404(Debt_Engagement, id=eid)
         debt_engagement_or_debt_context = debt_engagement
-        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(debt_engagement=debt_engagement).order_by('cred_id')
+        cred_form.fields["cred_user"].queryset = Debt_Cred_Mapping.objects.filter(debt_engagement=debt_engagement).order_by('cred_id')
     elif pid:
         debt_context = get_object_or_404(Debt_Context, id=pid)
         debt_engagement_or_debt_context = debt_context
@@ -602,7 +602,7 @@ def import_scan_results(request, eid=None, pid=None):
     if request.method == "POST":
         form = ImportScanForm(request.POST, request.FILES)
         cred_form = CredMappingForm(request.POST)
-        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+        cred_form.fields["cred_user"].queryset = Debt_Cred_Mapping.objects.filter(
             debt_engagement=debt_engagement).order_by('cred_id')
 
         if jira_helper.get_jira_project(debt_engagement_or_debt_context):
@@ -711,7 +711,7 @@ def import_scan_results(request, eid=None, pid=None):
             if cred_form.is_valid():
                 if cred_form.cleaned_data['cred_user']:
                     # Select the credential mapping object from the selected list and only allow if the credential is associated with the debt_context
-                    cred_user = Cred_Mapping.objects.filter(
+                    cred_user = Debt_Cred_Mapping.objects.filter(
                         pk=cred_form.cleaned_data['cred_user'].id,
                         debt_engagement=eid).first()
 

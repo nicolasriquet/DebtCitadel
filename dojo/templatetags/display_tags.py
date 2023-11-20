@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 
 from dojo.utils import prepare_for_view, get_system_setting, get_full_url, get_file_images
 import dojo.utils
-from dojo.models import Check_List, FileAccessToken, Finding, System_Settings, Product, Dojo_User, Benchmark_Product
+from dojo.models import Check_List, FileAccessToken, Finding, Debt_Item, System_Settings, Product, Debt_Context, Dojo_User, Benchmark_Product
 import markdown
 from django.db.models import Sum, Case, When, IntegerField, Value
 import dateutil.relativedelta
@@ -739,6 +739,133 @@ def get_severity_count(id, table):
         display_counts.append("Total: " + str(total) + " Active Findings")
     elif table == "product":
         display_counts.append("Total: " + str(total) + " Active Findings")
+
+    display_counts = ", ".join([str(item) for item in display_counts])
+
+    return display_counts
+
+
+@register.filter
+def debt_get_severity_count(id, table):
+    if table == "debt_test":
+        counts = Debt_Item.objects.filter(debt_test=id). \
+            prefetch_related('debt_test__debt_engagement__debt_context').aggregate(
+            total=Sum(
+                Case(When(severity__in=('Critical', 'High', 'Medium', 'Low'),
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            critical=Sum(
+                Case(When(severity='Critical',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            high=Sum(
+                Case(When(severity='High',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            medium=Sum(
+                Case(When(severity='Medium',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            low=Sum(
+                Case(When(severity='Low',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            info=Sum(
+                Case(When(severity='Info',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+        )
+    elif table == "debt_engagement":
+        counts = Debt_Item.objects.filter(debt_test__debt_engagement=id, active=True, duplicate=False). \
+            prefetch_related('debt_test__debt_engagement__debt_context').aggregate(
+            total=Sum(
+                Case(When(severity__in=('Critical', 'High', 'Medium', 'Low'),
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            critical=Sum(
+                Case(When(severity='Critical',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            high=Sum(
+                Case(When(severity='High',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            medium=Sum(
+                Case(When(severity='Medium',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            low=Sum(
+                Case(When(severity='Low',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            info=Sum(
+                Case(When(severity='Info',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+        )
+    elif table == "debt_context":
+        counts = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=id). \
+            prefetch_related('debt_test__debt_engagement__debt_context').aggregate(
+            total=Sum(
+                Case(When(severity__in=('Critical', 'High', 'Medium', 'Low'),
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            critical=Sum(
+                Case(When(severity='Critical',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            high=Sum(
+                Case(When(severity='High',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            medium=Sum(
+                Case(When(severity='Medium',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            low=Sum(
+                Case(When(severity='Low',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+            info=Sum(
+                Case(When(severity='Info',
+                          then=Value(1)),
+                     output_field=IntegerField())),
+        )
+    critical = 0
+    high = 0
+    medium = 0
+    low = 0
+    info = 0
+    if counts["info"]:
+        info = counts["info"]
+
+    if counts["low"]:
+        low = counts["low"]
+
+    if counts["medium"]:
+        medium = counts["medium"]
+
+    if counts["high"]:
+        high = counts["high"]
+
+    if counts["critical"]:
+        critical = counts["critical"]
+
+    total = critical + high + medium + low + info
+    display_counts = []
+
+    display_counts.append("Critical: " + str(critical))
+    display_counts.append("High: " + str(high))
+    display_counts.append("Medium: " + str(medium))
+    display_counts.append("Low: " + str(low))
+    display_counts.append("Info: " + str(info))
+
+    if table == "debt_test":
+        display_counts.append("Total: " + str(total) + " Debt_Items")
+    elif table == "debt_engagement":
+        display_counts.append("Total: " + str(total) + " Active Debt_Items")
+    elif table == "debt_context":
+        display_counts.append("Total: " + str(total) + " Active Debt_Items")
 
     display_counts = ", ".join([str(item) for item in display_counts])
 

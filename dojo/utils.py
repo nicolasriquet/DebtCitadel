@@ -26,9 +26,9 @@ from django.db.models.signals import post_save
 from django.db.models.query import QuerySet
 import calendar as tcalendar
 from dojo.dojo_github import add_external_issue_github, update_external_issue_github, close_external_issue_github, reopen_external_issue_github
-from dojo.models import Finding, Debt_Item, Engagement, Finding_Group, Debt_Item_Group, \
+from dojo.models import Finding, Debt_Item, Engagement, Debt_Engagement, Finding_Group, Debt_Item_Group, \
     Finding_Template, Debt_Item_Template, Product, Debt_Context, \
-    Test, User, Dojo_User, System_Settings, Notifications, Endpoint, Benchmark_Type, \
+    Test, User, Dojo_User, System_Settings, Notifications, Debt_Notifications, Endpoint, Debt_Endpoint, Benchmark_Type, \
     Language_Type, Languages, Dojo_Group_Member, NOTIFICATION_CHOICES
 from asteval import Interpreter
 from dojo.notifications.helper import create_notification
@@ -1791,30 +1791,30 @@ class Debt_Context_Tab():
         self.debt_context = debt_context
         self.title = title
         self.tab = tab
-        self.engagement_count = Engagement.objects.filter(
+        self.debt_engagement_count = Debt_Engagement.objects.filter(
             debt_context=self.debt_context, active=True).count()
-        self.open_findings_count = Finding.objects.filter(test__engagement__debt_context=self.debt_context,
+        self.open_debt_items_count = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self.debt_context,
                                                           false_p=False,
                                                           duplicate=False,
                                                           out_of_scope=False,
                                                           active=True,
                                                           mitigated__isnull=True).count()
-        active_endpoints = Endpoint.objects.filter(
-            debt_context=self.debt_context, finding__active=True, finding__mitigated__isnull=True)
-        self.endpoints_count = active_endpoints.distinct().count()
-        self.endpoint_hosts_count = active_endpoints.values('host').distinct().count()
+        active_debt_endpoints = Debt_Endpoint.objects.filter(
+            debt_context=self.debt_context, debt_item__active=True, debt_item__mitigated__isnull=True)
+        self.debt_endpoints_count = active_debt_endpoints.distinct().count()
+        self.debt_endpoint_hosts_count = active_debt_endpoints.values('host').distinct().count()
         self.benchmark_type = Benchmark_Type.objects.filter(
             enabled=True).order_by('name')
-        self.engagement = None
+        self.debt_engagement = None
 
     def setTab(self, tab):
         self.tab = tab
 
-    def setEngagement(self, engagement):
-        self.engagement = engagement
+    def setDebt_Engagement(self, debt_engagement):
+        self.debt_engagement = debt_engagement
 
-    def engagement(self):
-        return self.engagement
+    def debt_engagement(self):
+        return self.debt_engagement
 
     def tab(self):
         return self.tab
@@ -1828,17 +1828,17 @@ class Debt_Context_Tab():
     def debt_context(self):
         return self.debt_context
 
-    def engagements(self):
-        return self.engagement_count
+    def debt_engagements(self):
+        return self.debt_engagement_count
 
-    def findings(self):
-        return self.open_findings_count
+    def debt_items(self):
+        return self.open_debt_items_count
 
     def endpoints(self):
-        return self.endpoints_count
+        return self.debt_endpoints_count
 
     def endpoint_hosts(self):
-        return self.endpoint_hosts_count
+        return self.debt_endpoint_hosts_count
 
     def benchmark_type(self):
         return self.benchmark_type
