@@ -12,7 +12,7 @@
 
 {% block content %}
     {{ block.super }}
-    {% block finding_stats_tiles %}
+    {% block debt_item_stats_tiles %}
         <div class="row status">
             {% block active_debt_engagements %}
                 <div class="col-lg-3 col-md-6">
@@ -100,7 +100,7 @@
                                 </div>
                             </div>
                         </div>
-                        <a href="{% url 'accepted_debt_items' %}?duplicate=2&risk_acceptance__created__date=2">
+                        <a href="{% url 'accepted_debt_items' %}?duplicate=2&debt_risk_acceptance__created__date=2">
                             <div class="panel-footer">
                                 <span class="pull-left">{% trans "View Debt Item Details" %}</span>
                                 <span class="pull-right"><i class="fa-solid fa-circle-right"></i></span>
@@ -114,7 +114,7 @@
     {% endblock %}
     {% block graph_row %}
         <div class="row">
-            {% block historical_finding_severity %}
+            {% block historical_debt_item_severity %}
                 <div class="col-lg-6">
                     <div class="panel panel-default">
                         <div class="panel-heading">
@@ -129,7 +129,7 @@
                     <!-- /.panel -->
                 </div>
             {% endblock %}
-            {% block reported_finding_severity_by_month %}
+            {% block reported_debt_item_severity_by_month %}
                 <div class="col-lg-6">
                     <div class="panel panel-default">
                         <div class="panel-heading">
@@ -161,7 +161,7 @@
                                     <thead>
                                         <tr>
                                             <th>{% trans "Name" %}</th>
-                                            <th>{% trans "Product" %}</th>
+                                            <th>{% trans "Debt Context" %}</th>
                                             <th>{% trans "Debt Engagement" %}</th>
                                             <th>{% trans "Responder" %}</th>
                                             <th>{% trans "Status" %}</th>
@@ -178,7 +178,7 @@
                                                     <a href="/empty_questionnaire/{{ survey.id }}">{{ survey.survey.name }}</a>
                                                 {% endif %}
                                             </td> 
-                                            <td><a href="/product/{{ survey.debt_engagement.product_id }}">{{ survey.debt_engagement.product.name }}</a></td>
+                                            <td><a href="/debt_context/{{ survey.debt_engagement.debt_context_id }}">{{ survey.debt_engagement.debt_context.name }}</a></td>
                                             <td>
                                                 <a href="/debt_engagement/{{ survey.debt_engagement.id }}">{{ survey.debt_engagement.name }}</a> 
                                             </td> 
@@ -265,7 +265,7 @@
         <script src="{% static "JUMFlot/javascripts/jquery.flot.bubbles.js" %}"></script>
     {% endif %}
     {% block metrics %}
-        <script src="{% static "dojo/js/metrics.js" %}"></script>
+        <script src="{% static "dojo/js/debt_metrics.js" %}"></script>
     {% endblock metrics %}
     <script>
         $(function () {

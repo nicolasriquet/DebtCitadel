@@ -436,6 +436,81 @@
                                             <!-- /.nav-second-level -->
                                         </li>
                                         <li>
+                                            <!--<a href="{% url 'metrics' %}?date=5&view=debt_dashboard" aria-expanded="false" aria-label="Metrics">
+                                                <i class="fa-solid fa-chart-column fa-fw"></i>
+                                                <span>{% trans "Metrics" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>-->
+                                            <a href="{% url 'debt_metrics' %}?date=5&view=debt_dashboard" aria-expanded="false" aria-label="Debt Metrics">
+                                                <i class="fa-solid fa-chart-column fa-fw"></i>
+                                                <span>{% trans "Debt Metrics" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <!--<li>
+                                                    <a href="{% url 'metrics' %}?date=5&view=dashboard">
+                                                        {% trans "Metrics Dashboard" %}
+                                                    </a>
+                                                </li>-->
+                                                <li>
+                                                    <a href="{% url 'debt_metrics' %}?date=5&view=debt_dashboard">
+                                                        {% trans "Debt Metrics Dashboard" %}
+                                                    </a>
+                                                </li>
+                                                <!--<li>
+                                                    <a href="{% url 'critical_product_metrics' %}">
+                                                        {% trans "Critical Product Metrics" %}
+                                                    </a>
+                                                </li>-->
+                                                <li>
+                                                    <a href="{% url 'critical_debt_context_metrics' %}">
+                                                        {% trans "Critical Debt Context Metrics" %}
+                                                    </a>
+                                                </li>
+                                                <!--<li>
+                                                    <a href="{% url 'metrics_product_type' %}">
+                                                        {% trans "Product Type Metrics" %}
+                                                    </a>
+                                                </li>-->
+                                                <li>
+                                                    <a href="{% url 'debt_metrics_debt_context_type' %}">
+                                                        {% trans "Debt Context Type Metrics" %}
+                                                    </a>
+                                                </li>
+                                                <!--<li>
+                                                    <a href="{% url 'product_type_counts' %}">
+                                                        {% trans "Product Type Counts" %}
+                                                    </a>
+                                                </li>-->
+                                                <li>
+                                                    <a href="{% url 'debt_context_type_counts' %}">
+                                                        {% trans "Debt Context Type Counts" %}
+                                                    </a>
+                                                </li>
+                                                <!--<li>
+                                                    <a href="{% url 'simple_metrics' %}">
+                                                        {% trans "Simple Metrics" %}
+                                                    </a>
+                                                </li>-->
+                                                <li>
+                                                    <a href="{% url 'simple_debt_metrics' %}">
+                                                        {% trans "Simple Debt Metrics" %}
+                                                    </a>
+                                                </li>
+                                                <!--<li>
+                                                    <a href="{% url 'engineer_metrics' %}">
+                                                        {% trans "Engineer Metrics" %}
+                                                    </a>
+                                                </li>-->
+                                                <li>
+                                                    <a href="{% url 'engineer_metrics' %}">
+                                                        {% trans "Engineer Debt Metrics" %}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <!-- /.nav-second-level -->
+                                        </li>
+                                        <!--<li>
                                             <a href="{% url 'components' %}" id="product_component_view" aria-expanded="false"  aria-label="Components">
                                                 <i class="fa-solid fa-table-cells-large fa-fw"></i>
                                                 <span>{% trans "Components" %}</span>
@@ -447,8 +522,8 @@
                                                     </a>
                                                 </li>
                                             </ul>
-                                        </li>
-                                        <li>
+                                        </li>-->
+                                        <!--<li>
                                             <a href="{% url 'endpoint' %}" aria-expanded="false" aria-label="Endpoints">
                                                 <i class="fa-solid fa-sitemap fa-fw"></i>
                                                 <span>{% trans "Endpoints" %}</span>
@@ -483,53 +558,13 @@
                                                     </li>
                                                 {% endif %}
                                             </ul>
-                                        </li>
+                                        </li>-->
                                         <li>
                                             <a href="{% url 'report_builder' %}" aria-expanded="false" aria-label="Reports">
                                                 <i class="fa-solid fa-file-lines fa-fw"></i>
                                                 <span>{% trans "Reports" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
-                                            <!-- /.nav-second-level -->
-                                        </li>
-                                        <li>
-                                            <a href="{% url 'metrics' %}?date=5&view=debt_dashboard" aria-expanded="false" aria-label="Metrics">
-                                                <i class="fa-solid fa-chart-column fa-fw"></i>
-                                                <span>{% trans "Metrics" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <li>
-                                                    <a href="{% url 'metrics' %}?date=5&view=debt_dashboard">
-                                                        {% trans "Metrics Dashboard" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'critical_product_metrics' %}">
-                                                        {% trans "Critical Product Metrics" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'metrics_product_type' %}">
-                                                        {% trans "Product Type Metrics" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'product_type_counts' %}">
-                                                        {% trans "Product Type Counts" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'simple_metrics' %}">
-                                                        {% trans "Simple Metrics" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'engineer_metrics' %}">
-                                                        {% trans "Engineer Metrics" %}
-                                                    </a>
-                                                </li>
-                                            </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
                                         {% if "auth.view_user"|has_configuration_permission:request or "auth.view_group"|has_configuration_permission:request %}
@@ -683,12 +718,12 @@
                                         </li>
                                     {% endblock %}
                                     {% block support-tab %}
-                                        <li>
+                                        <!--<li>
                                             <a href="{% url 'support' %}" aria-disabled="true" aria-expanded="false" aria-label="Support">
                                                 <i class="fa-solid fa-life-ring fa-fw"></i>
                                                 <span>{% trans "Get Support" %}</span>
                                             </a>
-                                        </li>
+                                        </li>-->
                                     {% endblock %}
                                     <li id="min-menu">
                                         <a href="#" id="minimize-menu" title="Expand/Collapse Menu" aria-label="Expand/Collapse Menu">

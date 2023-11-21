@@ -61,12 +61,12 @@ def get_authorized_users_for_debt_context_and_debt_context_type(users, debt_cont
         .filter(debt_context=debt_context, role__in=roles) \
         .select_related('user')
     debt_context_type_members = Debt_Context_Type_Member.objects \
-        .filter(debt_context_type=debt_context.prod_type, role__in=roles) \
+        .filter(debt_context_type=debt_context.debt_context_type, role__in=roles) \
         .select_related('user')
     debt_context_groups = Debt_Context_Group.objects \
         .filter(debt_context=debt_context, role__in=roles)
     debt_context_type_groups = Debt_Context_Type_Group.objects \
-        .filter(debt_context_type=debt_context.prod_type, role__in=roles)
+        .filter(debt_context_type=debt_context.debt_context_type, role__in=roles)
     group_members = Dojo_Group_Member.objects \
         .filter(
         Q(group__in=[pg.group for pg in debt_context_groups]) |

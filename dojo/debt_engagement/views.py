@@ -25,7 +25,7 @@ from dojo.debt_engagement.services import close_debt_engagement, reopen_debt_eng
 from dojo.filters import DebtEngagementFilter, DebtEngagementDirectFilter, DebtEngagementDebtTestFilter
 from dojo.forms import CheckForm, \
     UploadThreatForm, RiskAcceptanceForm, NoteForm, DoneForm, \
-    EngForm, TestForm, DebtTestForm, ReplaceRiskAcceptanceProofForm, AddDebtItemsRiskAcceptanceForm, DeleteDebtEngagementForm, ImportScanForm, \
+    EngForm, DebtEngForm, TestForm, DebtTestForm, ReplaceRiskAcceptanceProofForm, AddDebtItemsRiskAcceptanceForm, DeleteDebtEngagementForm, ImportScanForm, \
     CredMappingForm, JIRADebtEngagementForm, JIRAImportScanForm, TypedNoteForm, JIRAProjectForm, \
     EditRiskAcceptanceForm
 
@@ -217,7 +217,7 @@ def edit_debt_engagement(request, eid):
     jira_error = False
 
     if request.method == 'POST':
-        form = EngForm(request.POST, instance=debt_engagement, cicd=is_ci_cd, debt_context=debt_engagement.debt_context, user=request.user)
+        form = DebtEngForm(request.POST, instance=debt_engagement, cicd=is_ci_cd, debt_context=debt_engagement.debt_context, user=request.user)
         jira_project = jira_helper.get_jira_project(debt_engagement, use_inheritance=False)
 
         if form.is_valid():
@@ -259,7 +259,7 @@ def edit_debt_engagement(request, eid):
             logger.debug(form.errors)
 
     else:
-        form = EngForm(initial={'debt_context': debt_engagement.debt_context}, instance=debt_engagement, cicd=is_ci_cd, debt_context=debt_engagement.debt_context, user=request.user)
+        form = DebtEngForm(initial={'debt_context': debt_engagement.debt_context}, instance=debt_engagement, cicd=is_ci_cd, debt_context=debt_engagement.debt_context, user=request.user)
 
         jira_epic_form = None
         if get_system_setting('enable_jira'):
@@ -327,7 +327,7 @@ def delete_debt_engagement(request, eid):
         rels = collector.nested()
 
     debt_context_tab = Debt_Context_Tab(debt_context, title="Delete Debt_Engagement", tab="debt_engagements")
-    debt_context_tab.setDebt_Engagement(debt_engagement)
+    debt_context_tab.setDebtEngagement(debt_engagement)
     return render(request, 'dojo/delete_debt_engagement.html', {
         'debt_context_tab': debt_context_tab,
         'debt_engagement': debt_engagement,
@@ -454,7 +454,7 @@ def view_debt_engagement(request, eid):
     if eng.debt_engagement_type == "CI/CD":
         title = " CI/CD"
     debt_context_tab = Debt_Context_Tab(debt_context, title="View" + title + " Debt_Engagement", tab="debt_engagements")
-    debt_context_tab.setDebt_Engagement(eng)
+    debt_context_tab.setDebtEngagement(eng)
     return render(
         request, 'dojo/view_debt_eng.html', {
             'eng': eng,
@@ -565,7 +565,7 @@ def add_debt_tests(request, eid):
     add_breadcrumb(
         parent=eng, title="Add Debt_Tests", top_level=False, request=request)
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Add Debt_Tests", tab="debt_engagements")
-    debt_context_tab.setDebt_Engagement(eng)
+    debt_context_tab.setDebtEngagement(eng)
     return render(request, 'dojo/add_debt_tests.html', {
         'debt_context_tab': debt_context_tab,
         'form': form,
@@ -729,7 +729,7 @@ def import_scan_results(request, eid=None, pid=None):
     title = "Import Scan Results"
     if debt_engagement:
         debt_context_tab = Debt_Context_Tab(debt_engagement.debt_context, title=title, tab="debt_engagements")
-        debt_context_tab.setDebt_Engagement(debt_engagement)
+        debt_context_tab.setDebtEngagement(debt_engagement)
     else:
         custom_breadcrumb = {"", ""}
         debt_context_tab = Debt_Context_Tab(debt_context, title=title, tab="debt_items")
@@ -835,7 +835,7 @@ def complete_checklist(request, eid):
         form = CheckForm(instance=checklist, debt_items=debt_items)
 
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Checklist", tab="debt_engagements")
-    debt_context_tab.setDebt_Engagement(eng)
+    debt_context_tab.setDebtEngagement(eng)
     return render(request, 'dojo/checklist.html', {
         'form': form,
         'debt_context_tab': debt_context_tab,
@@ -905,7 +905,7 @@ def add_risk_acceptance(request, eid, fid=None):
     if fid:
         form.fields['accepted_debt_items'].initial = {fid}
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Risk Acceptance", tab="debt_engagements")
-    debt_context_tab.setDebt_Engagement(eng)
+    debt_context_tab.setDebtEngagement(eng)
 
     return render(request, 'dojo/add_risk_acceptance.html', {
                   'eng': eng,
@@ -1062,7 +1062,7 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
         "accepted_debt_items"].queryset = add_fpage.object_list
 
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Risk Acceptance", tab="debt_engagements")
-    debt_context_tab.setDebt_Engagement(eng)
+    debt_context_tab.setDebtEngagement(eng)
     return render(
         request, 'dojo/view_risk_acceptance.html', {
             'risk_acceptance': risk_acceptance,

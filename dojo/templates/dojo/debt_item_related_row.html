@@ -1,0 +1,73 @@
+{% load navigation_tags %}
+{% load display_tags %}
+{% load static %}
+<tr>
+    {% if similar_debt_item.duplicate_debt_item == debt_item_context %}
+        <td title="The debt_item on the top of this page is the original for this related debt_item">Duplicate{% if debt_item_context == similar_debt_item %}(this){% endif %}</td>
+    {% elif debt_item_context.duplicate_debt_item == similar_debt_item %}
+        <td title="The debt_item on the top of this page is a duplicate of this so called original debt_item">Original{% if debt_item_context == similar_debt_item %} (this){% endif %}</td>
+    {% elif similar_debt_item.duplicate and similar_debt_item.duplicate_debt_item == debt_item_context.duplicate_debt_item %}
+        <td title="This debt_item is a duplicate of the same original above">Duplicate{% if debt_item_context == similar_debt_item %}(this){% endif %}</td>
+    {% elif not similar_debt_item.duplicate and similar_debt_item == debt_item_context %}
+        <td title="This debt_item is the original of the cluster">Original{% if debt_item_context == similar_debt_item %}(this){% endif %}</td>
+    {% else %}
+        <td title="This debt_item shares fields values with the debt_item on this page because of which it looks similar">Similar</td>
+    {% endif %}
+    <td class="centered" data-order="{% severity_number_value debt_item.severity %}">
+        <span class="label severity severity-{{ debt_item.severity }}">
+            {{ similar_debt_item.severity_display }}
+        </span>
+    </td>
+    <td>
+        <a title="{{ similar_debt_item.title }}" href="{% url 'view_debt_item' similar_debt_item.id %}">{{ similar_debt_item.title|truncatechars_html:80 }}</a>
+        {% if similar_debt_item.tags %}
+        <small>
+            {% include "dojo/snippets/tags.html" with tags=similar_debt_item.tags.all %}
+        </small>
+        {% endif %}
+        {% with similar_debt_item.notes.count as note_count %}
+            ({{ note_count }} note{{ note_count|pluralize }})
+        {% endwith %}
+    </td>
+    <td class="nowrap">{{ similar_debt_item.date|date }}</td>
+    <td>{{ similar_debt_item|debt_item_display_status|safe }}&nbsp;{{ similar_debt_item|import_history }}</td>
+    <td><a href="{% url 'view_debt_test' similar_debt_item.debt_test_id %}">{{ similar_debt_item.debt_test }}</a></td>
+    <td><a href="{% url 'view_debt_engagement' similar_debt_item.debt_test.debt_engagement_id %}">{{ similar_debt_item.debt_test.debt_engagement.name }}</a>
+    {% if similar_debt_item.debt_test.debt_engagement.version %}
+        <sup>
+                <a target="_blank" class="tag-label tag-version" data-toggle="tooltip" data-placement="bottom" title="Debt_Context Version: {{ similar_debt_item.debt_test.debt_engagement.version }}">
+                {{ similar_debt_item.debt_test.debt_engagement.version }}</a>
+        </sup>
+    {% endif %}
+    </td>
+    <td><a href="{% url 'view_debt_context' similar_debt_item.debt_test.debt_engagement.debt_context.id %}">{{ similar_debt_item.debt_test.debt_engagement.debt_context.name }}</a>
+    <td>
+        {% if similar_debt_item.cwe > 0 %}
+        <a target="_blank" href="{{ similar_debt_item.cwe|cwe_url }}">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ similar_debt_item.cwe }}
+        </a>
+        {% endif %}
+    </td>
+    <td>{{ similar_debt_item.cve }}</td>
+    {% if similar_debt_item.file_path %}
+        <td title="{{similar_debt_item.file_path}}{% if similar_debt_item.line > 0 %} (Line {{ similar_debt_item.line }}){% endif %}">
+            {{ similar_debt_item.file_path|truncatechars_html:20 }}{% if similar_debt_item.line > 0 %} (Line {{ similar_debt_item.line }}){% endif %}
+            <i class="fa-solid fa-copy fa-align-right copytoclipboard" title="copy full path to clipboard"
+            data-clipboard-text="{{similar_debt_item.file_path}}{% if similar_debt_item.line > 0 %} (Line {{ similar_debt_item.line }}){% endif %}"></i></td>
+    {% else %}
+        <td></td>
+    {% endif%}
+
+    {% if system_settings.enable_jira %}
+        <td>
+            {% if similar_debt_item.jira_issue %}
+                <a href="{{ similar_debt_item | jira_issue_url }}"
+                target="_blank" title="{{similar_debt_item | jira_issue_url }}">{{ similar_debt_item | jira_key }}</a>
+            {% endif %}
+        </td>
+    {% endif %}
+
+    <td>
+        {% include "dojo/debt_item_related_actions.html" with similar_debt_item=similar_debt_item debt_item_context=debt_item %}
+    </td>
+</tr>

@@ -2698,9 +2698,9 @@ class SimilarDebtItemFilter(DebtItemFilter):
             data['file_path'] = self.debt_item.file_path
             data['line'] = self.debt_item.line
             data['unique_id_from_tool'] = self.debt_item.unique_id_from_tool
-            data['test__test_type'] = self.debt_item.test.test_type
-            data['test__engagement__debt_context'] = self.debt_item.test.engagement.debt_context
-            data['test__engagement__debt_context__prod_type'] = self.debt_item.test.engagement.debt_context.prod_type
+            data['debt_test__test_type'] = self.debt_item.debt_test.debt_test_type
+            data['debt_test__engagement__debt_context'] = self.debt_item.debt_test.debt_engagement.debt_context
+            data['debt_test__engagement__debt_context__prod_type'] = self.debt_item.debt_test.debt_engagement.debt_context.debt_context_type
 
             self.has_changed = False
 

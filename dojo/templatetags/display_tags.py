@@ -1077,8 +1077,29 @@ def finding_extended_title(finding):
 
 
 @register.filter
+def debt_item_extended_title(debt_item):
+    if not debt_item:
+        return ''
+    result = debt_item.title
+
+    vulnerability_ids = debt_item.vulnerability_ids
+    if vulnerability_ids:
+        result += ' (' + vulnerability_ids[0] + ')'
+
+    if debt_item.cwe:
+        result += ' (CWE-' + str(debt_item.cwe) + ')'
+
+    return result
+
+
+@register.filter
 def finding_duplicate_cluster_size(finding):
     return len(finding.duplicate_finding_set()) + (1 if finding.duplicate_finding else 0)
+
+
+@register.filter
+def debt_item_duplicate_cluster_size(debt_item):
+    return len(debt_item.duplicate_debt_item_set()) + (1 if debt_item.duplicate_debt_item else 0)
 
 
 @register.filter

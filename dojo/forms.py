@@ -29,7 +29,7 @@ from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_It
     JIRA_Issue, JIRA_Project, Debt_JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
     Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
     Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
-    Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, DojoMeta, \
+    Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, Debt_Engagement_Presets, DojoMeta, \
     Engagement_Survey, Answered_Survey, TextAnswer, ChoiceAnswer, Choice, Question, TextQuestion, \
     ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Product_Member, \
     Debt_Context_Member, Product_Type_Member, Debt_Context_Type_Member, Global_Role, Dojo_Group, Product_Group, \
@@ -1134,6 +1134,80 @@ class EngForm(forms.ModelForm):
         exclude = ('first_contacted', 'real_start', 'engagement_type', 'inherited_tags',
                    'real_end', 'requester', 'reason', 'updated', 'report_type',
                    'product', 'threat_model', 'api_test', 'pen_test', 'check_list')
+
+
+class DebtEngForm(forms.ModelForm):
+    name = forms.CharField(
+        max_length=300, required=False,
+        help_text="Add a descriptive name to identify this debt_engagement. " +
+                  "Without a name the target start date will be set.")
+    description = forms.CharField(widget=forms.Textarea(attrs={}),
+                                  required=False, help_text="Description of the debt_engagement and details regarding the debt_engagement.")
+    debt_context = forms.ModelChoiceField(label='Debt_Context',
+                                          queryset=Debt_Context.objects.none(),
+                                          required=True)
+    target_start = forms.DateField(widget=forms.TextInput(
+        attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    target_end = forms.DateField(widget=forms.TextInput(
+        attrs={'class': 'datepicker', 'autocomplete': 'off'}))
+    lead = forms.ModelChoiceField(
+        queryset=None,
+        required=True, label="Testing Lead")
+    test_strategy = forms.URLField(required=False, label="Test Strategy URL")
+
+    def __init__(self, *args, **kwargs):
+        cicd = False
+        debt_context = None
+        if 'cicd' in kwargs:
+            cicd = kwargs.pop('cicd')
+
+        if 'debt_context' in kwargs:
+            debt_context = kwargs.pop('debt_context')
+
+        self.user = None
+        if 'user' in kwargs:
+            self.user = kwargs.pop('user')
+
+        super(DebtEngForm, self).__init__(*args, **kwargs)
+
+        if debt_context:
+            self.fields['preset'] = forms.ModelChoiceField(help_text="Settings and notes for performing this debt_engagement.", required=False, queryset=Debt_Engagement_Presets.objects.filter(debt_context=debt_context))
+            self.fields['lead'].queryset = get_authorized_users_for_debt_context_and_debt_context_type(None, debt_context, Permissions.Debt_Context_View).filter(is_active=True)
+        else:
+            self.fields['lead'].queryset = get_authorized_users(Permissions.Debt_Engagement_View).filter(is_active=True)
+
+        self.fields['debt_context'].queryset = get_authorized_debt_contexts(Permissions.Debt_Engagement_Add)
+
+        # Don't show CICD fields on a interactive debt_engagement
+        if cicd is False:
+            del self.fields['build_id']
+            del self.fields['commit_hash']
+            del self.fields['branch_tag']
+            del self.fields['build_server']
+            del self.fields['source_code_management_server']
+            # del self.fields['source_code_management_uri']
+            del self.fields['orchestration_engine']
+        else:
+            del self.fields['test_strategy']
+            del self.fields['status']
+
+    def is_valid(self):
+        valid = super(DebtEngForm, self).is_valid()
+
+        # we're done now if not valid
+        if not valid:
+            return valid
+        if self.cleaned_data['target_start'] > self.cleaned_data['target_end']:
+            self.add_error('target_start', 'Your target start date exceeds your target end date')
+            self.add_error('target_end', 'Your target start date exceeds your target end date')
+            return False
+        return True
+
+    class Meta:
+        model = Debt_Engagement
+        exclude = ('first_contacted', 'real_start', 'debt_engagement_type', 'inherited_tags',
+                   'real_end', 'requester', 'reason', 'updated', 'report_type',
+                   'debt_context', 'threat_model', 'api_test', 'pen_test', 'check_list')
 
 
 class DeleteEngagementForm(forms.ModelForm):
@@ -3152,6 +3226,21 @@ class ProductTypeCountsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super(ProductTypeCountsForm, self).__init__(*args, **kwargs)
         self.fields['product_type'].queryset = get_authorized_product_types(Permissions.Product_Type_View)
+
+
+class DebtContextTypeCountsForm(forms.Form):
+    month = forms.ChoiceField(choices=list(MONTHS.items()), required=True, error_messages={
+        'required': '*'})
+    year = forms.ChoiceField(choices=get_years, required=True, error_messages={
+        'required': '*'})
+    debt_context_type = forms.ModelChoiceField(required=True,
+                                          queryset=Debt_Context_Type.objects.none(), label="Debt Context Type",
+                                          error_messages={
+                                              'required': '*'})
+
+    def __init__(self, *args, **kwargs):
+        super(DebtContextTypeCountsForm, self).__init__(*args, **kwargs)
+        self.fields['debt_context_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
 
 
 class APIKeyForm(forms.ModelForm):

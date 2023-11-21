@@ -1,0 +1,230 @@
+{% load display_tags %}
+{% load authorization_tags %}
+{% load static %}
+{% load get_debt_endpoint_status %}
+
+{% if destination == "Report" %}
+    {% if debt_item|has_debt_endpoints %}
+        {% with debt_endpoints=debt_item|get_vulnerable_debt_endpoints %}
+            {% if debt_endpoints %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="panel panel-info debt_endpoints table-responsive">
+                            <div class="panel-heading">
+                                <h6>Vulnerable Debt_Endpoints / Systems ({{ debt_endpoints|length }})</h6>
+                            </div>
+                            <table id="vuln_debt_endpoints" class="table-striped table ">
+                                <thead>
+                                    <th>Debt_Endpoint</th>
+                                    <th>Status</th>
+                                    <th>Date Discovered</th>
+                                    <th>Last Modified</th>
+                                </thead>
+                                <tbody>
+                                    {% for debt_endpoint in debt_endpoints %}
+                                        <tr>
+                                            <td>{{ debt_endpoint }}{% if debt_endpoint.is_broken %} <span data-toggle="tooltip" title="Debt_Endpoint is broken. Check documentation to look for fix process" >&#128681;</span>{% endif %}</td>
+                                            <td>{{ debt_endpoint|debt_endpoint_display_status:debt_item|safe }}</td>
+                                            <td>{{ debt_endpoint|debt_endpoint_date:debt_item|date }}</td>
+                                            <td>{{ debt_endpoint|debt_endpoint_update_time:debt_item|date}}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% with debt_endpoints=debt_item|get_mitigated_debt_endpoints %}
+            {% if debt_endpoints %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="panel panel-info debt_endpoints table-responsive">
+                            <div class="panel-heading">
+                                <h6>Mitigated Debt_Endpoints / Systems ({{ debt_endpoints|length }})</h6>
+                            </div>
+                            <table id="remd_debt_endpoints" class="table-striped table table-hover">
+                                <thead>
+                                    <th>Debt_Endpoint</th>
+                                    <th>Status</th>
+                                    <th>Mitigation Time</th>
+                                    <th>Mitigator</th>
+                                </thead>
+                                <tbody>
+                                    {% for debt_endpoint in debt_endpoints %}
+                                        <tr>
+                                            <td>{{ debt_endpoint }}{% if debt_endpoint.is_broken %} <span data-toggle="tooltip" title="Debt_Endpoint is broken. Check documentation to look for fix process" >&#128681;</span>{% endif %}</td>
+                                            <td>{{ debt_endpoint|debt_endpoint_display_status:debt_item|safe }}</td>
+                                            <td>{{ debt_endpoint|debt_endpoint_mitigated_time:debt_item|date }}</td>
+                                            <td>{{ debt_endpoint|debt_endpoint_mitigator:debt_item|safe }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+    {% if debt_item.file_path %}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-info debt_endpoints table-responsive">
+                    <div class="panel-heading">
+                        <h6> Location </h6>
+                    </div>
+                    <table class="table-striped table table table-condensed table-hover debt_item-debt_endpoints">
+                        <tr>
+                            {% if debt_item.service %}
+                                <th style="text-align: left;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">Service</th>
+                            {% endif %}
+                            {% if debt_item.component_name %}
+                                <th style="text-align: left;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">Component</th>
+                            {% endif %}
+                            {% if debt_item.component_version %}
+                                <th style="text-align: center;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">Version</th>
+                            {% endif %}
+                            {% if debt_item.line > 0 %}
+                                <th style="text-align: center;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">Line Number</th>
+                            {% endif %}
+                        </tr>
+                        <tr>
+                            {% if debt_item.service %}
+                                <td style="text-align: left;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">{{ debt_item.service }}</td>
+                            {% endif %}
+                            {% if debt_item.component_name %}
+                                <td style="text-align: left;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">{{ debt_item.component_name }}</td>
+                            {% endif %}
+                            {% if debt_item.component_version %}
+                                <td style="text-align: center;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">{{ debt_item.component_version }}</td>
+                            {% endif %}
+                            {% if debt_item.line > 0 %}
+                                <td style="text-align: center; padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">{{ debt_item.line }}</td>
+                            {% endif %}
+                        </tr>
+                    </table>
+                    <table style="word-wrap: break-word; table-layout: fixed;" class="table-striped table table table-condensed table-hover debt_item-debt_endpoints">
+                        <tr>
+                            <th style="text-align: center;padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">File Path</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px;vertical-align: top;border: 1px solid #DDDDDD;">{{ debt_item.file_path }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% else %}
+    {% with debt_endpoints=debt_item|get_vulnerable_debt_endpoints %}
+        {% if debt_endpoints %}
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel panel-default table-responsive">
+                        <div class="panel-heading">
+                            <h4>Vulnerable Debt_Endpoints / Systems ({{ debt_endpoints|length }})
+                                <span class="pull-right"><a data-toggle="collapse" href="#vuln_debt_endpoints"><i
+                                        class="glyphicon glyphicon-chevron-up"></i></a></span>
+                            </h4>
+                        </div>
+
+                        <table id="vuln_debt_endpoints" class="table-striped table table-hover">
+                            <thead>
+                                {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
+                                    <th class="" title="Select all vulnerable debt_endpoints." style="width: 10%;">
+                                        <form class="inline-form" action="#">
+                                            <input type="checkbox" label="select_all_vulnerable" name="select_all_vulnerable" id="select_all_vulnerable"/>
+                                        </form>
+                                        <span>Select All</span>
+                                    </th>
+                                {% endif %}
+                                <th>Debt_Endpoint</th>
+                                <th>Status</th>
+                                <th>Date Discovered</th>
+                                <th>Last Modified</th>
+                            </thead>
+                            <tbody>
+                                {% for debt_endpoint in debt_endpoints %}
+                                    <tr>
+                                        {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
+                                            <td class="">
+                                                <form action="#">
+                                                    <input type="checkbox" label="select_vulnerable_{{ debt_endpoint.id }}" name="select_vulnerable_{{ debt_endpoint.id }}" id="{{ debt_endpoint.id }}"
+                                                        class="select_one"/>
+                                                </form>
+                                            </td>
+                                        {% endif %}
+                                        <td>
+                                            <a data-toggle="tooltip" data-placement="top" data-original-title="{{ debt_endpoint }}" href="{% url 'view_debt_endpoint' debt_endpoint.id %}">{{ debt_endpoint|url_shortner }}{% if debt_endpoint.is_broken %} <span data-toggle="tooltip" title="Debt_Endpoint is broken. Check documentation to look for fix process" >&#128681;</span>{% endif %}</a>
+                                            {% include "dojo/snippets/tags.html" with tags=debt_endpoint.tags.all %}
+                                        </td>
+                                        <td>{{ debt_endpoint|debt_endpoint_display_status:debt_item|safe }}</td>
+                                        <td>{{ debt_endpoint|debt_endpoint_date:debt_item|date }}</td>
+                                        <td>{{ debt_endpoint|debt_endpoint_update_time:debt_item|date}}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% with debt_endpoints=debt_item|get_mitigated_debt_endpoints %}
+        {% if debt_endpoints %}
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel panel-default table-responsive">
+                        <div class="panel-heading">
+                            <h4>Mitigated Debt_Endpoints / Systems ({{ debt_endpoints|length }})
+                                <span class="pull-right"><a data-toggle="collapse" href="#remd_debt_endpoints"><i
+                                        class="glyphicon glyphicon-chevron-up"></i></a></span>
+                            </h4>
+                        </div>
+                        <table id="remd_debt_endpoints" class="table-striped table table-hover">
+                            <thead>
+                                {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
+                                    <th class="" title="Select all mitigated debt_endpoints." style="width: 10%;">
+                                        <form class="inline-form" action="#">
+                                            <input type="checkbox" label="select_all_mitigated" name="select_all_mitigated" id="select_all_mitigated"/>
+                                        </form>
+                                        <span>Select All</span>
+                                    </th>
+                                {% endif %}
+                                <th>Debt_Endpoint</th>
+                                <th>Status</th>
+                                <th>Mitigation Time</th>
+                                <th>Mitigator</th>
+                            </thead>
+                            <tbody>
+                                {% for debt_endpoint in debt_endpoints %}
+                                    <tr>
+                                        {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
+                                            <td class="">
+                                                <form action="#">
+                                                    <input type="checkbox" label="select_mitigated_{{ debt_endpoint.id }}" name="select_mitigated_{{ debt_endpoint.id }}" id="{{ debt_endpoint.id }}"
+                                                        class="select_one"/>
+                                                </form>
+                                            </td>
+                                        {% endif %}
+                                        <td>
+                                            <a data-toggle="tooltip" data-placement="top" data-original-title="{{ debt_endpoint }}" href="{% url 'view_debt_endpoint' debt_endpoint.id %}">{{ debt_endpoint|url_shortner }}{% if debt_endpoint.is_broken %} <span data-toggle="tooltip" title="Debt_Endpoint is broken. Check documentation to look for fix process" >&#128681;</span>{% endif %}</a>
+                                            {% include "dojo/snippets/tags.html" with tags=debt_endpoint.tags.all %}
+                                        </td>
+                                        <td>{{ debt_endpoint|debt_endpoint_display_status:debt_item|safe }}</td>
+                                        <td>{{ debt_endpoint|debt_endpoint_mitigated_time:debt_item|date }}</td>
+                                        <td>{{ debt_endpoint|debt_endpoint_mitigator:debt_item|safe }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+{% endif %}

@@ -84,7 +84,7 @@ from dojo.models import (
     GITHUB_PKey,
     GITHUB_Issue,
     Dojo_User,
-    Cred_Mapping,
+    Debt_Cred_Mapping,
     Debt_Test,
     Product,
     Debt_Test_Import,
@@ -102,6 +102,7 @@ from dojo.utils import (
     get_system_setting,
     apply_cwe_to_template,
     Product_Tab,
+    Debt_Context_Tab,
     debt_calculate_grade,
     redirect_to_return_url_or_else,
     get_return_url,
@@ -140,7 +141,7 @@ def prefetch_for_debt_items(debt_items, prefetch_type="all", exclude_untouched=T
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "debt_jira_issue__debt_jira_project__jira_instance"
         )
-        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__test_type")
+        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__debt_test_type")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "debt_test__debt_engagement__debt_jira_project__jira_instance"
         )
@@ -221,7 +222,7 @@ def prefetch_for_similar_debt_items(debt_items):
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "jira_issue__debt_jira_project__jira_instance"
         )
-        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__test_type")
+        prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__debt_test_type")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
             "debt_test__debt_engagement__debt_jira_project__jira_instance"
         )
@@ -274,7 +275,7 @@ class BaseListDebtItems:
         self.filter_name = filter_name
         self.debt_context_id = debt_context_id
         self.debt_engagement_id = debt_engagement_id
-        self.test_id = test_id
+        self.debt_test_id = test_id
         self.order_by = order_by
         self.prefetch_type = prefetch_type
 
@@ -305,8 +306,8 @@ class BaseListDebtItems:
 
     def get_test_id(self):
         if not hasattr(self, "test_id"):
-            self.test_id = None
-        return self.test_id
+            self.debt_test_id = None
+        return self.debt_test_id
 
     def filter_debt_items_by_object(self, debt_items: QuerySet[Debt_Item]):
         if debt_context_id := self.get_debt_context_id():
@@ -382,7 +383,7 @@ class ListDebtItems(View, BaseListDebtItems):
             debt_context = get_object_or_404(Product, id=debt_context_id)
             user_has_permission_or_403(request.user, debt_context, Permissions.Product_View)
             context["show_debt_context_column"] = False
-            context["debt_context_tab"] = Product_Tab(debt_context, title="debt_items", tab="debt_items")
+            context["debt_context_tab"] = Debt_Context_Tab(debt_context, title="debt_items", tab="debt_items")
             context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_context)
             if github_config := GITHUB_PKey.objects.filter(debt_context=debt_context).first():
                 context["github_config"] = github_config.git_conf_id
@@ -390,7 +391,7 @@ class ListDebtItems(View, BaseListDebtItems):
             debt_engagement = get_object_or_404(Debt_Engagement, id=debt_engagement_id)
             user_has_permission_or_403(request.user, debt_engagement, Permissions.Debt_Engagement_View)
             context["show_debt_context_column"] = False
-            context["debt_context_tab"] = Product_Tab(debt_engagement.debt_context, title=debt_engagement.name, tab="debt_engagements")
+            context["debt_context_tab"] = Debt_Context_Tab(debt_engagement.debt_context, title=debt_engagement.name, tab="debt_engagements")
             context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_engagement)
             if github_config := GITHUB_PKey.objects.filter(debt_context__debt_engagement=debt_engagement).first():
                 context["github_config"] = github_config.git_conf_id
@@ -500,7 +501,7 @@ class ViewDebtItem(View):
     def get_previous_and_next_debt_items(self, debt_item: Debt_Item):
         # Get the whole list of debt_items in the current test
         debt_items = (
-            debt_item.objects.filter(test=debt_item.test)
+            Debt_Item.objects.filter(debt_test=debt_item.debt_test)
             .order_by("numerical_severity")
             .values_list("id", flat=True)
         )
@@ -527,17 +528,17 @@ class ViewDebtItem(View):
 
     def get_credential_objects(self, debt_item: Debt_Item):
         cred = (
-            Cred_Mapping.objects.filter(test=debt_item.test.id)
+            Debt_Cred_Mapping.objects.filter(debt_test=debt_item.debt_test.id)
             .select_related("cred_id")
             .order_by("cred_id")
         )
         cred_debt_engagement = (
-            Cred_Mapping.objects.filter(debt_engagement=debt_item.test.debt_engagement.id)
+            Debt_Cred_Mapping.objects.filter(debt_engagement=debt_item.debt_test.debt_engagement.id)
             .select_related("cred_id")
             .order_by("cred_id")
         )
         cred_debt_item = (
-            Cred_Mapping.objects.filter(debt_item=debt_item.id)
+            Debt_Cred_Mapping.objects.filter(debt_item=debt_item.id)
             .select_related("cred_id")
             .order_by("cred_id")
         )
@@ -575,25 +576,25 @@ class ViewDebtItem(View):
         }
 
     def get_test_import_data(self, request: HttpRequest, debt_item: Debt_Item):
-        test_imports = Debt_Test_Import.objects.filter(debt_items_affected=debt_item)
-        test_import_filter = TestImportFilter(request.GET, test_imports)
+        debt_test_imports = Debt_Test_Import.objects.filter(debt_items_affected=debt_item)
+        debt_test_import_filter = DebtTestImportFilter(request.GET, debt_test_imports)
 
-        test_import_debt_item_actions = debt_item.debt_test_import_debt_item_action_set
-        test_import_debt_item_actions_count = test_import_debt_item_actions.all().count()
-        test_import_debt_item_actions = test_import_debt_item_actions.filter(test_import__in=test_import_filter.qs)
-        test_import_debt_item_action_filter = DebtTestImportDebtItemActionFilter(request.GET, test_import_debt_item_actions)
+        debt_test_import_debt_item_actions = debt_item.debt_test_import_debt_item_action_set
+        debt_test_import_debt_item_actions_count = debt_test_import_debt_item_actions.all().count()
+        debt_test_import_debt_item_actions = debt_test_import_debt_item_actions.filter(debt_test_import__in=debt_test_import_filter.qs)
+        debt_test_import_debt_item_action_filter = DebtTestImportDebtItemActionFilter(request.GET, debt_test_import_debt_item_actions)
 
-        paged_test_import_debt_item_actions = get_page_items_and_count(request, test_import_debt_item_action_filter.qs, 5, prefix='test_import_debt_item_actions')
-        paged_test_import_debt_item_actions.object_list = paged_test_import_debt_item_actions.object_list.prefetch_related('test_import')
+        paged_test_import_debt_item_actions = get_page_items_and_count(request, debt_test_import_debt_item_action_filter.qs, 5, prefix='debt_test_import_debt_item_actions')
+        paged_test_import_debt_item_actions.object_list = paged_test_import_debt_item_actions.object_list.prefetch_related('debt_test_import')
 
         latest_test_import_debt_item_action = debt_item.debt_test_import_debt_item_action_set.order_by('-created').first
 
         return {
-            "test_import_filter": test_import_filter,
-            "test_import_debt_item_action_filter": test_import_debt_item_action_filter,
+            "test_import_filter": debt_test_import_filter,
+            "test_import_debt_item_action_filter": debt_test_import_debt_item_action_filter,
             "paged_test_import_debt_item_actions": paged_test_import_debt_item_actions,
             "latest_test_import_debt_item_action": latest_test_import_debt_item_action,
-            "test_import_debt_item_actions_count": test_import_debt_item_actions_count,
+            "test_import_debt_item_actions_count": debt_test_import_debt_item_actions_count,
         }
 
     def get_similar_debt_items(self, request: HttpRequest, debt_item: Debt_Item):
@@ -617,7 +618,7 @@ class ViewDebtItem(View):
         similar_debt_items = get_page_items(
             request,
             similar_debt_items_filter.qs,
-            settings.SIMILAR_debt_itemS_MAX_RESULTS,
+            settings.SIMILAR_DEBT_ITEMS_MAX_RESULTS,
             prefix="similar",
         )
         similar_debt_items.object_list = prefetch_for_similar_debt_items(
@@ -729,8 +730,8 @@ class ViewDebtItem(View):
             "files": debt_item.files.all(),
             "note_type_activation": note_type_activation,
             "available_note_types": available_note_types,
-            "debt_context_tab": Product_Tab(
-                debt_item.test.debt_engagement.debt_context, title="View debt_item", tab="debt_items"
+            "debt_context_tab": Debt_Context_Tab(
+                debt_item.debt_test.debt_engagement.debt_context, title="View debt_item", tab="debt_items"
             )
         }
         # Set the form using the context, and then update the context
@@ -835,7 +836,7 @@ class EditDebtItem(View):
         # Determine if github should be used
         if get_system_setting("enable_github"):
             # Ensure there is a github conf correctly configured for the debt_context
-            config_present = GITHUB_PKey.objects.filter(debt_context=debt_item.test.debt_engagement.debt_context)
+            config_present = GITHUB_PKey.objects.filter(debt_context=debt_item.debt_test.debt_engagement.debt_context)
             if config_present := config_present.exclude(git_conf_id=None):
                 # Set up the args for the form
                 args = [request.POST] if request.method == "POST" else []
@@ -857,8 +858,8 @@ class EditDebtItem(View):
             "jform": self.get_jira_form(request, debt_item, debt_item_form=debt_item_form),
             "gform": self.get_github_form(request, debt_item),
             "return_url": get_return_url(request),
-            "debt_context_tab": Product_Tab(
-                debt_item.test.debt_engagement.debt_context, title="Edit debt_item", tab="debt_items"
+            "debt_context_tab": Debt_Context_Tab(
+                debt_item.debt_test.debt_engagement.debt_context, title="Edit debt_item", tab="debt_items"
             )
         }
 
@@ -932,7 +933,7 @@ class EditDebtItem(View):
                 logger.debug('FALSE_POSITIVE_HISTORY: Reactivating existing debt_items based on: %s', debt_item)
 
                 existing_fp_debt_items = match_debt_item_to_existing_debt_items(
-                    debt_item, debt_context=debt_item.test.debt_engagement.debt_context
+                    debt_item, debt_context=debt_item.debt_test.debt_engagement.debt_context
                 ).filter(false_p=True)
 
                 for fp in existing_fp_debt_items:
@@ -963,7 +964,7 @@ class EditDebtItem(View):
         if context["form"].is_valid():
             # process some of the easy stuff first
             new_debt_item = context["form"].save(commit=False)
-            new_debt_item.test = debt_item.test
+            new_debt_item.debt_test = debt_item.debt_test
             new_debt_item.numerical_severity = debt_item.get_numerical_severity(new_debt_item.severity)
             new_debt_item.last_reviewed = timezone.now()
             new_debt_item.last_reviewed_by = request.user
@@ -974,7 +975,7 @@ class EditDebtItem(View):
                 debt_item_helper.update_debt_item_group(new_debt_item, debt_item_group)
             # Handle risk exception related things
             if "risk_accepted" in context["form"].cleaned_data and context["form"]["risk_accepted"].value():
-                if new_debt_item.test.debt_engagement.debt_context.enable_simple_risk_acceptance:
+                if new_debt_item.debt_test.debt_engagement.debt_context.enable_simple_risk_acceptance:
                     ra_helper.simple_risk_accept(new_debt_item, perform_save=False)
             else:
                 if new_debt_item.risk_accepted:
@@ -1146,7 +1147,7 @@ class DeleteDebtItem(View):
 
     def process_form(self, request: HttpRequest, debt_item: Debt_Item, context: dict):
         if context["form"].is_valid():
-            debt_context = debt_item.test.debt_engagement.debt_context
+            debt_context = debt_item.debt_test.debt_engagement.debt_context
             debt_item.delete()
             # Update the grade of the debt_context async
             debt_calculate_grade(debt_context)
@@ -1164,7 +1165,7 @@ class DeleteDebtItem(View):
                 description=f'The debt_item "{debt_item.title}" was deleted by {request.user}',
                 debt_context=debt_context,
                 url=request.build_absolute_uri(reverse("all_debt_items")),
-                recipients=[debt_item.test.debt_engagement.lead],
+                recipients=[debt_item.debt_test.debt_engagement.lead],
                 icon="exclamation-triangle",
             )
             # return the request
@@ -1193,7 +1194,7 @@ class DeleteDebtItem(View):
         request, success = self.process_form(request, debt_item, context)
         # Handle the case of a successful form
         if success:
-            return redirect_to_return_url_or_else(request, reverse("view_test", args=(debt_item.test.id,)))
+            return redirect_to_return_url_or_else(request, reverse("view_test", args=(debt_item.debt_test.id,)))
         raise PermissionDenied()
 
 
@@ -1285,15 +1286,15 @@ def close_debt_item(request, fid):
                     url=reverse("view_debt_item", args=(debt_item.id,)),
                 )
                 return HttpResponseRedirect(
-                    reverse("view_test", args=(debt_item.test.id,))
+                    reverse("view_test", args=(debt_item.debt_test.id,))
                 )
             else:
                 return HttpResponseRedirect(
                     reverse("close_debt_item", args=(debt_item.id,))
                 )
 
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context, title="Close", tab="debt_items"
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context, title="Close", tab="debt_items"
     )
 
     return render(
@@ -1374,13 +1375,13 @@ def defect_debt_item_review(request, fid):
             messages.add_message(
                 request, messages.SUCCESS, "Defect Reviewed", extra_tags="alert-success"
             )
-            return HttpResponseRedirect(reverse("view_test", args=(debt_item.test.id,)))
+            return HttpResponseRedirect(reverse("view_test", args=(debt_item.debt_test.id,)))
 
     else:
         form = DefectDebtItemForm()
 
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context, title="Jira Status Review", tab="debt_items"
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context, title="Jira Status Review", tab="debt_items"
     )
 
     return render(
@@ -1480,9 +1481,9 @@ def apply_template_cwe(request, fid):
 @user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def copy_debt_item(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
-    debt_context = debt_item.test.debt_engagement.debt_context
+    debt_context = debt_item.debt_test.debt_engagement.debt_context
     tests = get_authorized_tests(Permissions.Test_Edit).filter(
-        debt_engagement=debt_item.test.debt_engagement
+        debt_engagement=debt_item.debt_test.debt_engagement
     )
     form = CopyDebtItemForm(tests=tests)
 
@@ -1490,7 +1491,7 @@ def copy_debt_item(request, fid):
         form = CopyDebtItemForm(request.POST, tests=tests)
         if form.is_valid():
             test = form.cleaned_data.get("test")
-            debt_context = debt_item.test.debt_engagement.debt_context
+            debt_context = debt_item.debt_test.debt_engagement.debt_context
             debt_item_copy = debt_item.copy(test=test)
             debt_calculate_grade(debt_context)
             messages.add_message(
@@ -1508,7 +1509,7 @@ def copy_debt_item(request, fid):
                 url=request.build_absolute_uri(
                     reverse("copy_debt_item", args=(debt_item_copy.id,))
                 ),
-                recipients=[debt_item.test.debt_engagement.lead],
+                recipients=[debt_item.debt_test.debt_engagement.lead],
                 icon="exclamation-triangle",
             )
             return redirect_to_return_url_or_else(
@@ -1522,7 +1523,7 @@ def copy_debt_item(request, fid):
                 extra_tags="alert-danger",
             )
 
-    debt_context_tab = Product_Tab(debt_context, title="Copy debt_item", tab="debt_items")
+    debt_context_tab = Debt_Context_Tab(debt_context, title="Copy debt_item", tab="debt_items")
     return render(
         request,
         "dojo/copy_object.html",
@@ -1560,8 +1561,8 @@ def remediation_date(request, fid):
     else:
         form = EditPlannedRemediationDateDebtItemForm(debt_item=debt_item)
 
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context,
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context,
         title="Planned Remediation Date",
         tab="debt_items",
     )
@@ -1588,7 +1589,7 @@ def touch_debt_item(request, fid):
 def simple_risk_accept(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
 
-    if not debt_item.test.debt_engagement.debt_context.enable_simple_risk_acceptance:
+    if not debt_item.debt_test.debt_engagement.debt_context.enable_simple_risk_acceptance:
         raise PermissionDenied()
 
     ra_helper.simple_risk_accept(debt_item)
@@ -1701,8 +1702,8 @@ def request_debt_item_review(request, fid):
             )
             return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context, title="Review debt_item", tab="debt_items"
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context, title="Review debt_item", tab="debt_items"
     )
 
     return render(
@@ -1777,8 +1778,8 @@ def clear_debt_item_review(request, fid):
     else:
         form = ClearDebtItemReviewForm(instance=debt_item)
 
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context, title="Clear debt_item Review", tab="debt_items"
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context, title="Clear debt_item Review", tab="debt_items"
     )
 
     return render(
@@ -1835,7 +1836,7 @@ def mktemplate(request, fid):
 @user_is_authorized(Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def find_template_to_apply(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
-    test = get_object_or_404(Debt_Test, id=debt_item.test.id)
+    test = get_object_or_404(Debt_Test, id=debt_item.debt_test.id)
     templates_by_cve = (
         Debt_Item_Template.objects.annotate(
             cve_len=Length("cve"), order=models.Value(1, models.IntegerField())
@@ -1870,7 +1871,7 @@ def find_template_to_apply(request, fid):
 
     # just query all templates as this weird ordering above otherwise breaks Django ORM
     title_words = get_words_for_field(Debt_Item_Template, "title")
-    debt_context_tab = Product_Tab(
+    debt_context_tab = Debt_Context_Tab(
         test.debt_engagement.debt_context, title="Apply Template to debt_item", tab="debt_items"
     )
     return render(
@@ -1899,8 +1900,8 @@ def choose_debt_item_template_options(request, tid, fid):
     data["vulnerability_ids"] = "\n".join(debt_item.vulnerability_ids)
 
     form = ApplyDebtItemTemplateForm(data=data, template=template)
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context,
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context,
         title="debt_item Template Options",
         tab="debt_items",
     )
@@ -1952,8 +1953,8 @@ def apply_template_to_debt_item(request, fid, tid):
                 "There appears to be errors on the form, please correct below.",
                 extra_tags="alert-danger",
             )
-            debt_context_tab = Product_Tab(
-                debt_item.test.debt_engagement.debt_context,
+            debt_context_tab = Debt_Context_Tab(
+                debt_item.debt_test.debt_engagement.debt_context,
                 title="Apply debt_item Template",
                 tab="debt_items",
             )
@@ -1980,7 +1981,7 @@ def add_stub_debt_item(request, tid):
         form = StubDebtItemForm(request.POST)
         if form.is_valid():
             stub_debt_item = form.save(commit=False)
-            stub_debt_item.test = test
+            stub_debt_item.debt_test = test
             stub_debt_item.reporter = request.user
             stub_debt_item.save()
             messages.add_message(
@@ -2021,7 +2022,7 @@ def delete_stub_debt_item(request, fid):
     if request.method == "POST":
         form = DeleteStubDebtItemForm(request.POST, instance=debt_item)
         if form.is_valid():
-            tid = debt_item.test.id
+            tid = debt_item.debt_test.id
             debt_item.delete()
             messages.add_message(
                 request,
@@ -2044,13 +2045,13 @@ def delete_stub_debt_item(request, fid):
 @user_is_authorized(Stub_Debt_Item, Permissions.Debt_Item_Edit, "fid")
 def promote_to_debt_item(request, fid):
     debt_item = get_object_or_404(Stub_Debt_Item, id=fid)
-    test = debt_item.test
+    test = debt_item.debt_test
     form_error = False
     push_all_jira_issues = jira_helper.is_push_all_issues(debt_item)
     jform = None
     use_jira = jira_helper.get_debt_jira_project(debt_item) is not None
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context, title="Promote debt_item", tab="debt_items"
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context, title="Promote debt_item", tab="debt_items"
     )
 
     if request.method == "POST":
@@ -2074,7 +2075,7 @@ def promote_to_debt_item(request, fid):
                 )
 
             new_debt_item = form.save(commit=False)
-            new_debt_item.test = test
+            new_debt_item.debt_test = test
             new_debt_item.reporter = request.user
             new_debt_item.numerical_severity = debt_item.get_numerical_severity(
                 new_debt_item.severity
@@ -2170,7 +2171,7 @@ def promote_to_debt_item(request, fid):
                 "date": debt_item.date,
                 "severity": debt_item.severity,
                 "description": debt_item.description,
-                "test": debt_item.test,
+                "test": debt_item.debt_test,
                 "reporter": debt_item.reporter,
             },
             debt_context=test.debt_engagement.debt_context,
@@ -2660,15 +2661,15 @@ def merge_debt_item_debt_context(request, pid):
                     extra_tags="alert-danger",
                 )
 
-    debt_context_tab = Product_Tab(
-        debt_item.test.debt_engagement.debt_context, title="Merge debt_items", tab="debt_items"
+    debt_context_tab = Debt_Context_Tab(
+        debt_item.debt_test.debt_engagement.debt_context, title="Merge debt_items", tab="debt_items"
     )
     custom_breadcrumb = {
         "Open debt_items": reverse(
-            "debt_context_open_debt_items", args=(debt_item.test.debt_engagement.debt_context.id,)
+            "debt_context_open_debt_items", args=(debt_item.debt_test.debt_engagement.debt_context.id,)
         )
         + "?debt_test__debt_engagement__debt_context="
-        + str(debt_item.test.debt_engagement.debt_context.id)
+        + str(debt_item.debt_test.debt_engagement.debt_context.id)
     }
 
     return render(
@@ -2698,9 +2699,9 @@ def debt_item_bulk_update_all(request, pid=None):
         logger.debug("bulk 20")
 
         debt_item_to_update = request.POST.getlist("debt_item_to_update")
-        finds = Debt_Item.objects.filter(id__in=debt_item_to_update).order_by("id")
-        total_find_count = finds.count()
-        debt_contexts = set([find.test.debt_engagement.debt_context for find in finds])
+        debt_items = Debt_Item.objects.filter(id__in=debt_item_to_update).order_by("id")
+        total_debt_item_count = debt_items.count()
+        debt_contexts = set([debt_item.debt_test.debt_engagement.debt_context for debt_item in debt_items])
         if request.POST.get("delete_bulk_debt_items"):
             if form.is_valid() and debt_item_to_update:
                 if pid is not None:
@@ -2709,29 +2710,29 @@ def debt_item_bulk_update_all(request, pid=None):
                         request.user, debt_context, Permissions.Debt_Item_Delete
                     )
 
-                finds = get_authorized_debt_items(
-                    Permissions.Debt_Item_Delete, finds
+                debt_items = get_authorized_debt_items(
+                    Permissions.Debt_Item_Delete, debt_items
                 ).distinct()
 
-                skipped_find_count = total_find_count - finds.count()
-                deleted_find_count = finds.count()
+                skipped_debt_item_count = total_debt_item_count - debt_items.count()
+                deleted_debt_item_count = debt_items.count()
 
-                for find in finds:
-                    find.delete()
+                for debt_item in debt_items:
+                    debt_item.delete()
 
-                if skipped_find_count > 0:
+                if skipped_debt_item_count > 0:
                     add_error_message_to_response(
                         "Skipped deletion of {} debt_items because you are not authorized.".format(
-                            skipped_find_count
+                            skipped_debt_item_count
                         )
                     )
 
-                if deleted_find_count > 0:
+                if deleted_debt_item_count > 0:
                     messages.add_message(
                         request,
                         messages.SUCCESS,
                         "Bulk delete of {} debt_items was successful.".format(
-                            deleted_find_count
+                            deleted_debt_item_count
                         ),
                         extra_tags="alert-success",
                     )
@@ -2744,87 +2745,87 @@ def debt_item_bulk_update_all(request, pid=None):
                     )
 
                 # make sure users are not editing stuff they are not authorized for
-                finds = get_authorized_debt_items(
-                    Permissions.Debt_Item_Edit, finds
+                debt_items = get_authorized_debt_items(
+                    Permissions.Debt_Item_Edit, debt_items
                 ).distinct()
 
-                skipped_find_count = total_find_count - finds.count()
-                updated_find_count = finds.count()
+                skipped_debt_item_count = total_debt_item_count - debt_items.count()
+                updated_debt_item_count = debt_items.count()
 
-                if skipped_find_count > 0:
+                if skipped_debt_item_count > 0:
                     add_error_message_to_response(
                         "Skipped update of {} debt_items because you are not authorized.".format(
-                            skipped_find_count
+                            skipped_debt_item_count
                         )
                     )
 
-                finds = prefetch_for_debt_items(finds)
+                debt_items = prefetch_for_debt_items(debt_items)
                 if form.cleaned_data["severity"] or form.cleaned_data["status"]:
-                    for find in finds:
-                        old_find = copy.deepcopy(find)
+                    for debt_item in debt_items:
+                        old_debt_item = copy.deepcopy(debt_item)
 
                         if form.cleaned_data["severity"]:
-                            find.severity = form.cleaned_data["severity"]
-                            find.numerical_severity = Debt_Item.get_numerical_severity(
+                            debt_item.severity = form.cleaned_data["severity"]
+                            debt_item.numerical_severity = Debt_Item.get_numerical_severity(
                                 form.cleaned_data["severity"]
                             )
-                            find.last_reviewed = now
-                            find.last_reviewed_by = request.user
+                            debt_item.last_reviewed = now
+                            debt_item.last_reviewed_by = request.user
 
                         if form.cleaned_data["status"]:
                             # logger.debug('setting status from bulk edit form: %s', form)
-                            find.active = form.cleaned_data["active"]
-                            find.verified = form.cleaned_data["verified"]
-                            find.false_p = form.cleaned_data["false_p"]
-                            find.out_of_scope = form.cleaned_data["out_of_scope"]
-                            find.is_mitigated = form.cleaned_data["is_mitigated"]
-                            find.last_reviewed = timezone.now()
-                            find.last_reviewed_by = request.user
+                            debt_item.active = form.cleaned_data["active"]
+                            debt_item.verified = form.cleaned_data["verified"]
+                            debt_item.false_p = form.cleaned_data["false_p"]
+                            debt_item.out_of_scope = form.cleaned_data["out_of_scope"]
+                            debt_item.is_mitigated = form.cleaned_data["is_mitigated"]
+                            debt_item.last_reviewed = timezone.now()
+                            debt_item.last_reviewed_by = request.user
 
                         # use super to avoid all custom logic in our overriden save method
                         # it will trigger the pre_save signal
-                        find.save_no_options()
+                        debt_item.save_no_options()
 
                         if system_settings.false_positive_history:
                             # If debt_item is being marked as false positive
-                            if find.false_p:
-                                do_false_positive_history(find)
+                            if debt_item.false_p:
+                                do_false_positive_history(debt_item)
 
                             # If debt_item was a false positive and is being reactivated: retroactively reactivates all equal debt_items
-                            elif old_find.false_p and not find.false_p:
+                            elif old_debt_item.false_p and not debt_item.false_p:
                                 if system_settings.retroactive_false_positive_history:
-                                    logger.debug('FALSE_POSITIVE_HISTORY: Reactivating existing debt_items based on: %s', find)
+                                    logger.debug('FALSE_POSITIVE_HISTORY: Reactivating existing debt_items based on: %s', debt_item)
 
                                     existing_fp_debt_items = match_debt_item_to_existing_debt_items(
-                                        find, debt_context=find.test.debt_engagement.debt_context
+                                        debt_item, debt_context=debt_item.debt_test.debt_engagement.debt_context
                                     ).filter(false_p=True)
 
                                     for fp in existing_fp_debt_items:
                                         logger.debug('FALSE_POSITIVE_HISTORY: Reactivating false positive %i: %s', fp.id, fp)
-                                        fp.active = find.active
-                                        fp.verified = find.verified
+                                        fp.active = debt_item.active
+                                        fp.verified = debt_item.verified
                                         fp.false_p = False
-                                        fp.out_of_scope = find.out_of_scope
-                                        fp.is_mitigated = find.is_mitigated
+                                        fp.out_of_scope = debt_item.out_of_scope
+                                        fp.is_mitigated = debt_item.is_mitigated
                                         fp.save_no_options()
 
                     for debt_context in debt_contexts:
                         debt_calculate_grade(debt_context)
 
                 if form.cleaned_data["date"]:
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         debt_item.date = form.cleaned_data["date"]
                         debt_item.save_no_options()
 
                 if form.cleaned_data["planned_remediation_date"]:
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         debt_item.planned_remediation_date = form.cleaned_data[
                             "planned_remediation_date"
                         ]
                         debt_item.save_no_options()
 
                 if form.cleaned_data["planned_remediation_version"]:
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         debt_item.planned_remediation_version = form.cleaned_data[
                             "planned_remediation_version"
                         ]
@@ -2832,11 +2833,11 @@ def debt_item_bulk_update_all(request, pid=None):
 
                 skipped_risk_accept_count = 0
                 if form.cleaned_data["risk_acceptance"]:
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         if not debt_item.duplicate:
                             if form.cleaned_data["risk_accept"]:
                                 if (
-                                    not debt_item.test.debt_engagement.debt_context.enable_simple_risk_acceptance
+                                    not debt_item.debt_test.debt_engagement.debt_context.enable_simple_risk_acceptance
                                 ):
                                     skipped_risk_accept_count += 1
                                 else:
@@ -2862,7 +2863,7 @@ def debt_item_bulk_update_all(request, pid=None):
                     debt_item_group_name = form.cleaned_data["debt_item_group_create_name"]
                     logger.debug("debt_item_group_create_name: %s", debt_item_group_name)
                     debt_item_group, added, skipped = debt_item_helper.create_debt_item_group(
-                        finds, debt_item_group_name
+                        debt_items, debt_item_group_name
                     )
 
                     if added:
@@ -2880,14 +2881,14 @@ def debt_item_bulk_update_all(request, pid=None):
                         )
 
                     # refresh debt_items from db
-                    finds = finds.all()
+                    debt_items = debt_items.all()
 
                 if form.cleaned_data["debt_item_group_add"]:
                     logger.debug("debt_item_group_add checked!")
                     fgid = form.cleaned_data["add_to_debt_item_group_id"]
                     debt_item_group = Debt_Item_Group.objects.get(id=fgid)
                     debt_item_group, added, skipped = debt_item_helper.add_to_debt_item_group(
-                        debt_item_group, finds
+                        debt_item_group, debt_items
                     )
 
                     if added:
@@ -2907,7 +2908,7 @@ def debt_item_bulk_update_all(request, pid=None):
                         )
 
                     # refresh debt_items from db
-                    finds = finds.all()
+                    debt_items = debt_items.all()
 
                 if form.cleaned_data["debt_item_group_remove"]:
                     logger.debug("debt_item_group_remove checked!")
@@ -2915,7 +2916,7 @@ def debt_item_bulk_update_all(request, pid=None):
                         debt_item_groups,
                         removed,
                         skipped,
-                    ) = debt_item_helper.remove_from_debt_item_group(finds)
+                    ) = debt_item_helper.remove_from_debt_item_group(debt_items)
 
                     if removed:
                         add_success_message_to_response(
@@ -2938,7 +2939,7 @@ def debt_item_bulk_update_all(request, pid=None):
                         )
 
                     # refresh debt_items from db
-                    finds = finds.all()
+                    debt_items = debt_items.all()
 
                 if form.cleaned_data["debt_item_group_by"]:
                     logger.debug("debt_item_group_by checked!")
@@ -2953,7 +2954,7 @@ def debt_item_bulk_update_all(request, pid=None):
                         grouped,
                         skipped,
                         groups_created,
-                    ) = debt_item_helper.group_debt_items_by(finds, debt_item_group_by_option)
+                    ) = debt_item_helper.group_debt_items_by(debt_items, debt_item_group_by_option)
 
                     if grouped:
                         add_success_message_to_response(
@@ -2969,11 +2970,11 @@ def debt_item_bulk_update_all(request, pid=None):
                         )
 
                     # refresh debt_items from db
-                    finds = finds.all()
+                    debt_items = debt_items.all()
 
                 if form.cleaned_data["push_to_github"]:
                     logger.debug("push selected debt_items to github")
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         logger.debug("will push to GitHub debt_item: " + str(debt_item))
                         old_status = debt_item.status()
                         if form.cleaned_data["push_to_github"]:
@@ -2995,12 +2996,12 @@ def debt_item_bulk_update_all(request, pid=None):
                     )
                     history.save()
                     note.history.add(history)
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         debt_item.notes.add(note)
                         debt_item.save()
 
                 if form.cleaned_data["tags"]:
-                    for debt_item in finds:
+                    for debt_item in debt_items:
                         tags = form.cleaned_data["tags"]
                         logger.debug(
                             "bulk_edit: setting tags for: %i %s %s",
@@ -3015,7 +3016,7 @@ def debt_item_bulk_update_all(request, pid=None):
                 error_counts = defaultdict(lambda: 0)
                 success_count = 0
                 debt_item_groups = set(
-                    [find.debt_item_group for find in finds if find.has_debt_item_group]
+                    [debt_item.debt_item_group for debt_item in debt_items if debt_item.has_debt_item_group]
                 )
                 logger.debug("debt_item_groups: %s", debt_item_groups)
                 groups_pushed_to_jira = False
@@ -3049,11 +3050,11 @@ def debt_item_bulk_update_all(request, pid=None):
                     groups_pushed_to_jira = True
 
                 # refresh from db
-                finds = finds.all()
+                debt_items = debt_items.all()
 
                 error_counts = defaultdict(lambda: 0)
                 success_count = 0
-                for debt_item in finds:
+                for debt_item in debt_items:
                     from dojo.tools import tool_issue_updater
 
                     tool_issue_updater.async_tool_issue_update(debt_item)
@@ -3105,12 +3106,12 @@ def debt_item_bulk_update_all(request, pid=None):
                         "%i debt_items pushed to JIRA successfully" % success_count
                     )
 
-                if updated_find_count > 0:
+                if updated_debt_item_count > 0:
                     messages.add_message(
                         request,
                         messages.SUCCESS,
                         "Bulk update of {} debt_items was successful.".format(
-                            updated_find_count
+                            updated_debt_item_count
                         ),
                         extra_tags="alert-success",
                     )
@@ -3171,9 +3172,9 @@ def mark_debt_item_duplicate(request, original_id, duplicate_id):
     original = get_object_or_404(Debt_Item, id=original_id)
     duplicate = get_object_or_404(Debt_Item, id=duplicate_id)
 
-    if original.test.debt_engagement != duplicate.test.debt_engagement:
-        if (original.test.debt_engagement.deduplication_on_debt_engagement
-                or duplicate.test.debt_engagement.deduplication_on_debt_engagement):
+    if original.debt_test.debt_engagement != duplicate.debt_test.debt_engagement:
+        if (original.debt_test.debt_engagement.deduplication_on_debt_engagement
+                or duplicate.debt_test.debt_engagement.deduplication_on_debt_engagement):
             messages.add_message(
                 request,
                 messages.ERROR,
@@ -3203,7 +3204,7 @@ def mark_debt_item_duplicate(request, original_id, duplicate_id):
     duplicate.last_reviewed = timezone.now()
     duplicate.last_reviewed_by = request.user
     duplicate.save(dedupe_option=False)
-    original.found_by.add(duplicate.test.test_type)
+    original.found_by.add(duplicate.debt_test.debt_test_type)
     original.save(dedupe_option=False)
 
     return redirect_to_return_url_or_else(
@@ -3256,9 +3257,9 @@ def set_debt_item_as_original_internal(user, debt_item_id, new_original_id):
     debt_item = get_object_or_404(Debt_Item, id=debt_item_id)
     new_original = get_object_or_404(debt_item, id=new_original_id)
 
-    if debt_item.test.debt_engagement != new_original.test.debt_engagement:
-        if (debt_item.test.debt_engagement.deduplication_on_debt_engagement
-                or new_original.test.debt_engagement.deduplication_on_debt_engagement):
+    if debt_item.debt_test.debt_engagement != new_original.debt_test.debt_engagement:
+        if (debt_item.debt_test.debt_engagement.deduplication_on_debt_engagement
+                or new_original.debt_test.debt_engagement.deduplication_on_debt_engagement):
             return False
 
     if debt_item.duplicate or debt_item.original_debt_item.all():
@@ -3432,9 +3433,9 @@ def calculate_possible_related_actions_for_similar_debt_item(
     request, debt_item, similar_debt_item
 ):
     actions = []
-    if similar_debt_item.test.debt_engagement != debt_item.test.debt_engagement and (
-        similar_debt_item.test.debt_engagement.deduplication_on_debt_engagement
-        or debt_item.test.debt_engagement.deduplication_on_debt_engagement
+    if similar_debt_item.debt_test.debt_engagement != debt_item.debt_test.debt_engagement and (
+        similar_debt_item.debt_test.debt_engagement.deduplication_on_debt_engagement
+        or debt_item.debt_test.debt_engagement.deduplication_on_debt_engagement
     ):
         actions.append(
             {

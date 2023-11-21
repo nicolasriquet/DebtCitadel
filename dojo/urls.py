@@ -39,6 +39,7 @@ from dojo.finding_group.urls import urlpatterns as finding_group_urls
 #from dojo.home.urls import urlpatterns as home_urls
 from dojo.debt_home.urls import urlpatterns as debt_home_urls
 from dojo.metrics.urls import urlpatterns as metrics_urls
+from dojo.debt_metrics.urls import urlpatterns as debt_metrics_urls
 from dojo.product.urls import urlpatterns as prod_urls
 from dojo.debt_context.urls import urlpatterns as debt_context_urls
 from dojo.product_type.urls import urlpatterns as pt_urls
@@ -166,6 +167,7 @@ ur += finding_group_urls
 #ur += home_urls
 ur += debt_home_urls
 ur += metrics_urls
+ur += debt_metrics_urls
 ur += prod_urls
 ur += debt_context_urls
 ur += pt_urls

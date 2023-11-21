@@ -50,7 +50,7 @@
                             <th></th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                             <th>{% dojo_sort request 'Debt Context Type' 'name' 'asc' %}</th>
-                            <th>{% trans "Debt context count" %}</th>
+                            <th>{% trans "Debt Context count" %}</th>
                             <th>{% trans "Active (Verified) debt items" %}</th>
                             <th class="text-center">{% trans "Critical debt context" %}</th>
                             <th class="text-center">{% trans "Key debt context" %}</th>
@@ -129,7 +129,7 @@
                     {% include "dojo/paging_snippet.html" with page=pts page_size=True %}
                 </div>
             {% else %}
-                <p class="text-center">{% trans "No debt context types found." %}</p>
+                <p class="text-center">{% trans "No Debt Context Types found." %}</p>
             {% endif %}
         </div>
     </div>

@@ -652,6 +652,43 @@ def count_findings(findings):
     return product_count, finding_count
 
 
+def count_debt_items(debt_items):
+    debt_context_count = {}
+    debt_item_count = {'low': 0, 'med': 0, 'high': 0, 'crit': 0}
+    for f in debt_items:
+        debt_context = f.debt_test.debt_engagement.debt_context
+        if debt_context in debt_context_count:
+            debt_context_count[debt_context][4] += 1
+            if f.severity == 'Low':
+                debt_context_count[debt_context][3] += 1
+                debt_item_count['low'] += 1
+            if f.severity == 'Medium':
+                debt_context_count[debt_context][2] += 1
+                debt_item_count['med'] += 1
+            if f.severity == 'High':
+                debt_context_count[debt_context][1] += 1
+                debt_item_count['high'] += 1
+            if f.severity == 'Critical':
+                debt_context_count[debt_context][0] += 1
+                debt_item_count['crit'] += 1
+        else:
+            debt_context_count[debt_context] = [0, 0, 0, 0, 0]
+            debt_context_count[debt_context][4] += 1
+            if f.severity == 'Low':
+                debt_context_count[debt_context][3] += 1
+                debt_item_count['low'] += 1
+            if f.severity == 'Medium':
+                debt_context_count[debt_context][2] += 1
+                debt_item_count['med'] += 1
+            if f.severity == 'High':
+                debt_context_count[debt_context][1] += 1
+                debt_item_count['high'] += 1
+            if f.severity == 'Critical':
+                debt_context_count[debt_context][0] += 1
+                debt_item_count['crit'] += 1
+    return debt_context_count, debt_item_count
+
+
 def findings_this_period(findings, period_type, stuff, o_stuff, a_stuff):
     # periodType: 0 - weeks
     # 1 - months
@@ -689,6 +726,101 @@ def findings_this_period(findings, period_type, stuff, o_stuff, a_stuff):
             'total': 0
         }
         for f in findings:
+            if f.mitigated is not None and end_of_period >= f.mitigated >= start_of_period:
+                o_count['closed'] += 1
+            elif f.mitigated is not None and f.mitigated > end_of_period and f.date <= end_of_period.date():
+                if f.severity == 'Critical':
+                    o_count['zero'] += 1
+                elif f.severity == 'High':
+                    o_count['one'] += 1
+                elif f.severity == 'Medium':
+                    o_count['two'] += 1
+                elif f.severity == 'Low':
+                    o_count['three'] += 1
+            elif f.mitigated is None and f.date <= end_of_period.date():
+                if f.severity == 'Critical':
+                    o_count['zero'] += 1
+                    a_count['zero'] += 1
+                elif f.severity == 'High':
+                    o_count['one'] += 1
+                    a_count['one'] += 1
+                elif f.severity == 'Medium':
+                    o_count['two'] += 1
+                    a_count['two'] += 1
+                elif f.severity == 'Low':
+                    o_count['three'] += 1
+                    a_count['three'] += 1
+
+        total = sum(o_count.values()) - o_count['closed']
+        if period_type == 0:
+            counts.append(
+                start_of_period.strftime("%b %d") + " - " +
+                end_of_period.strftime("%b %d"))
+        else:
+            counts.append(start_of_period.strftime("%b %Y"))
+        counts.append(o_count['zero'])
+        counts.append(o_count['one'])
+        counts.append(o_count['two'])
+        counts.append(o_count['three'])
+        counts.append(total)
+        counts.append(o_count['closed'])
+
+        stuff.append(counts)
+        o_stuff.append(counts[:-1])
+
+        a_counts = []
+        a_total = sum(a_count.values())
+        if period_type == 0:
+            a_counts.append(
+                start_of_period.strftime("%b %d") + " - " +
+                end_of_period.strftime("%b %d"))
+        else:
+            a_counts.append(start_of_period.strftime("%b %Y"))
+        a_counts.append(a_count['zero'])
+        a_counts.append(a_count['one'])
+        a_counts.append(a_count['two'])
+        a_counts.append(a_count['three'])
+        a_counts.append(a_total)
+        a_stuff.append(a_counts)
+
+
+def debt_items_this_period(debt_items, period_type, stuff, o_stuff, a_stuff):
+    # periodType: 0 - weeks
+    # 1 - months
+    now = timezone.now()
+    for i in range(6):
+        counts = []
+        # Weeks start on Monday
+        if period_type == 0:
+            curr = now - relativedelta(weeks=i)
+            start_of_period = curr - relativedelta(
+                weeks=1, weekday=0, hour=0, minute=0, second=0)
+            end_of_period = curr + relativedelta(
+                weeks=0, weekday=0, hour=0, minute=0, second=0)
+        else:
+            curr = now - relativedelta(months=i)
+            start_of_period = curr - relativedelta(
+                day=1, hour=0, minute=0, second=0)
+            end_of_period = curr + relativedelta(
+                day=31, hour=23, minute=59, second=59)
+
+        o_count = {
+            'closed': 0,
+            'zero': 0,
+            'one': 0,
+            'two': 0,
+            'three': 0,
+            'total': 0
+        }
+        a_count = {
+            'closed': 0,
+            'zero': 0,
+            'one': 0,
+            'two': 0,
+            'three': 0,
+            'total': 0
+        }
+        for f in debt_items:
             if f.mitigated is not None and end_of_period >= f.mitigated >= start_of_period:
                 o_count['closed'] += 1
             elif f.mitigated is not None and f.mitigated > end_of_period and f.date <= end_of_period.date():
@@ -1256,6 +1388,89 @@ def opened_in_period(start_date, end_date, pt):
     return oip
 
 
+def debt_opened_in_period(start_date, end_date, pt):
+    start_date = datetime(
+        start_date.year,
+        start_date.month,
+        start_date.day,
+        tzinfo=timezone.get_current_timezone())
+    end_date = datetime(
+        end_date.year,
+        end_date.month,
+        end_date.day,
+        tzinfo=timezone.get_current_timezone())
+    opened_in_period = Debt_Item.objects.filter(
+        date__range=[start_date, end_date],
+        debt_test__debt_engagement__debt_context__debt_context_type=pt,
+        verified=True,
+        false_p=False,
+        duplicate=False,
+        out_of_scope=False,
+        mitigated__isnull=True,
+        severity__in=(
+            'Critical', 'High', 'Medium',
+            'Low')).values('numerical_severity').annotate(
+        Count('numerical_severity')).order_by('numerical_severity')
+    total_opened_in_period = Debt_Item.objects.filter(
+        date__range=[start_date, end_date],
+        debt_test__debt_engagement__debt_context__debt_context_type=pt,
+        verified=True,
+        false_p=False,
+        duplicate=False,
+        out_of_scope=False,
+        mitigated__isnull=True,
+        severity__in=('Critical', 'High', 'Medium', 'Low')).aggregate(
+        total=Sum(
+            Case(
+                When(
+                    severity__in=('Critical', 'High', 'Medium', 'Low'),
+                    then=Value(1)),
+                output_field=IntegerField())))['total']
+
+    oip = {
+        'S0':
+            0,
+        'S1':
+            0,
+        'S2':
+            0,
+        'S3':
+            0,
+        'Total':
+            total_opened_in_period,
+        'start_date':
+            start_date,
+        'end_date':
+            end_date,
+        'closed':
+            Debt_Item.objects.filter(
+                mitigated__date__range=[start_date, end_date],
+                debt_test__debt_engagement__debt_context__debt_context_type=pt,
+                severity__in=('Critical', 'High', 'Medium', 'Low')).aggregate(
+                total=Sum(
+                    Case(
+                        When(
+                            severity__in=('Critical', 'High', 'Medium', 'Low'),
+                            then=Value(1)),
+                        output_field=IntegerField())))['total'],
+        'to_date_total':
+            Debt_Item.objects.filter(
+                date__lte=end_date.date(),
+                verified=True,
+                false_p=False,
+                duplicate=False,
+                out_of_scope=False,
+                mitigated__isnull=True,
+                debt_test__debt_engagement__debt_context__debt_context_type=pt,
+                severity__in=('Critical', 'High', 'Medium', 'Low')).count()
+    }
+
+    for o in opened_in_period:
+        oip[o['numerical_severity']] = o['numerical_severity__count']
+
+    return oip
+
+
 class FileIterWrapper(object):
     def __init__(self, flo, chunk_size=1024**2):
         self.flo = flo
@@ -1810,7 +2025,7 @@ class Debt_Context_Tab():
     def setTab(self, tab):
         self.tab = tab
 
-    def setDebt_Engagement(self, debt_engagement):
+    def setDebtEngagement(self, debt_engagement):
         self.debt_engagement = debt_engagement
 
     def debt_engagement(self):

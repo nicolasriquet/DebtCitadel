@@ -933,7 +933,7 @@ def edit_debt_context(request, pid):
         else:
             gform = None
 
-    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Edit debt_context"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit debt_context"), tab="settings")
     return render(request,
                   'dojo/edit_debt_context.html',
                   {'form': form,
