@@ -100,6 +100,11 @@ class Permissions(IntEnum):
     Endpoint_Edit = 1506
     Endpoint_Delete = 1507
 
+    Debt_Endpoint_View = 1502
+    Debt_Endpoint_Add = 1503
+    Debt_Endpoint_Edit = 1506
+    Debt_Endpoint_Delete = 1507
+
     Benchmark_Edit = 1606
     Benchmark_Delete = 1607
 

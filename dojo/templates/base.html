@@ -19,7 +19,7 @@
             {% elif product_tab.title %}
                 {{ product_tab.title }} |
             {% endif %}
-            DebtDojoTool
+            DefectDojo
         </title>
         {% block add_css_before %}
         {% endblock %}
@@ -218,12 +218,12 @@
                                 <ul class="nav" id="side-menu">
                                     {% block sidebar-items %}
                                         <li>
-                                            <a href="{% url 'debt_dashboard' %}" aria-disabled="true" aria-expanded="false" aria-label="Dashboard">
+                                            <a href="{% url 'dashboard' %}" aria-disabled="true" aria-expanded="false" aria-label="Dashboard">
                                                 <i class="fa-solid fa-gauge fa-fw"></i>
                                                 <span>{% trans "Dashboard" %}</span>
                                             </a>
                                         </li>
-                                        <!--<li>
+                                        <li>
                                             <a id="product-side-menu" href="{% url 'product' %}" aria-expanded="false" aria-label="Products">
                                                 <i class="fa-solid fa-list-ul fa-fw"></i>
                                                 <span>{% trans "Products" %}</span>
@@ -254,44 +254,10 @@
                                                         </a>
                                                     </li>
                                                 {% endif %}
-                                            </ul>-->
-                                            <!-- /.nav-second-level -->
-                                        <!--</li>-->
-                                        <li>
-                                            <a id="debt-context-side-menu" href="{% url 'debt_context' %}" aria-expanded="false" aria-label="Debt Context">
-                                                <i class="fa-solid fa-list-ul fa-fw"></i>
-                                                <span>{% trans "Debt Contexts" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <li>
-                                                    <a href="{% url 'debt_context' %}">
-                                                        {% trans "All Debt Contexts" %}
-                                                    </a>
-                                                </li>
-                                                {% if request.user|can_add_debt_context %}
-                                                    <li>
-                                                        <a href="{% url 'new_debt_context' %}">
-                                                            {% trans "Add Debt Context" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
-                                                <li>
-                                                    <a href="{% url 'debt_context_type' %}">
-                                                        {% trans "All Debt Context Types" %}
-                                                    </a>
-                                                </li>
-                                                {% if "Debt_Context_Type_Add"|has_global_permission %}
-                                                    <li>
-                                                        <a id="pop-out-add-debt_context-type" href="{% url 'add_debt_context_type' %}">
-                                                            {% trans "Add Debt Context Type" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
                                             </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
-                                        <!--<li>
+                                        <li>
                                             <a href="{% url 'engagement' %}" aria-expanded="false" aria-label="Engagements">
                                                 <i class="fa-solid fa-inbox fa-fw"></i>
                                                 <span>{% trans "Engagements" %}</span>
@@ -323,45 +289,10 @@
                                                         {% trans "Environments" %}
                                                     </a>
                                                 </li>
-                                            </ul>-->
-                                            <!-- /.nav-second-level -->
-                                        <!--</li>-->
-                                        <li>
-                                            <a href="{% url 'debt_engagement' %}" aria-expanded="false" aria-label="Debt Engagements">
-                                                <i class="fa-solid fa-inbox fa-fw"></i>
-                                                <span>{% trans "Debt Engagements" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <li>
-                                                    <a href="{% url 'active_debt_engagements' %}">
-                                                        {% trans "Active Debt Engagements" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'all_debt_engagements' %}">
-                                                        {% trans "All Debt Engagements" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'debt_engagements_all' %}">
-                                                        {% trans "Debt Engagements by Debt Context" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'debt_test_type' %}">
-                                                        {% trans "Debt Test Types" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'dev_env' %}">
-                                                        {% trans "Environments" %}
-                                                    </a>
-                                                </li>
                                             </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
-                                        <!--<li>
+                                        <li>
                                             <a href="{% url 'open_findings' %}" aria-expanded="false" aria-label="Findings">
                                                 <i class="fa-solid fa-bug fa-fw"></i>
                                                 <span>{% trans "Findings" %}</span>
@@ -395,122 +326,10 @@
                                                         </a>
                                                     </li>
                                                 {% endif %}
-                                            </ul>-->
-                                            <!-- /.nav-second-level -->
-                                        <!--</li>-->
-                                        <li>
-                                            <a href="{% url 'open_debt_items' %}" aria-expanded="false" aria-label="Debt Items">
-                                                <i class="fa-solid fa-bug fa-fw"></i>
-                                                <span>{% trans "Debt Items" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <li>
-                                                    <a href="{% url 'open_debt_items' %}">
-                                                        {% trans "Open Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'all_debt_items' %}">
-                                                        {% trans "All Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'closed_debt_items' %}">
-                                                        {% trans "Closed Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'accepted_debt_items' %}">
-                                                        {% trans "Risk Accepted Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                {% if "Debt_Item_View"|has_global_permission %}
-                                                    <li>
-                                                        <a href="{% url 'templates' %}">
-                                                            {% trans "Debt Item Templates" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
                                             </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
                                         <li>
-                                            <!--<a href="{% url 'metrics' %}?date=5&view=debt_dashboard" aria-expanded="false" aria-label="Metrics">
-                                                <i class="fa-solid fa-chart-column fa-fw"></i>
-                                                <span>{% trans "Metrics" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>-->
-                                            <a href="{% url 'debt_metrics' %}?date=5&view=debt_dashboard" aria-expanded="false" aria-label="Debt Metrics">
-                                                <i class="fa-solid fa-chart-column fa-fw"></i>
-                                                <span>{% trans "Debt Metrics" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <!--<li>
-                                                    <a href="{% url 'metrics' %}?date=5&view=dashboard">
-                                                        {% trans "Metrics Dashboard" %}
-                                                    </a>
-                                                </li>-->
-                                                <li>
-                                                    <a href="{% url 'debt_metrics' %}?date=5&view=debt_dashboard">
-                                                        {% trans "Debt Metrics Dashboard" %}
-                                                    </a>
-                                                </li>
-                                                <!--<li>
-                                                    <a href="{% url 'critical_product_metrics' %}">
-                                                        {% trans "Critical Product Metrics" %}
-                                                    </a>
-                                                </li>-->
-                                                <li>
-                                                    <a href="{% url 'critical_debt_context_metrics' %}">
-                                                        {% trans "Critical Debt Context Metrics" %}
-                                                    </a>
-                                                </li>
-                                                <!--<li>
-                                                    <a href="{% url 'metrics_product_type' %}">
-                                                        {% trans "Product Type Metrics" %}
-                                                    </a>
-                                                </li>-->
-                                                <li>
-                                                    <a href="{% url 'debt_metrics_debt_context_type' %}">
-                                                        {% trans "Debt Context Type Metrics" %}
-                                                    </a>
-                                                </li>
-                                                <!--<li>
-                                                    <a href="{% url 'product_type_counts' %}">
-                                                        {% trans "Product Type Counts" %}
-                                                    </a>
-                                                </li>-->
-                                                <li>
-                                                    <a href="{% url 'debt_context_type_counts' %}">
-                                                        {% trans "Debt Context Type Counts" %}
-                                                    </a>
-                                                </li>
-                                                <!--<li>
-                                                    <a href="{% url 'simple_metrics' %}">
-                                                        {% trans "Simple Metrics" %}
-                                                    </a>
-                                                </li>-->
-                                                <li>
-                                                    <a href="{% url 'simple_debt_metrics' %}">
-                                                        {% trans "Simple Debt Metrics" %}
-                                                    </a>
-                                                </li>
-                                                <!--<li>
-                                                    <a href="{% url 'engineer_metrics' %}">
-                                                        {% trans "Engineer Metrics" %}
-                                                    </a>
-                                                </li>-->
-                                                <li>
-                                                    <a href="{% url 'engineer_metrics' %}">
-                                                        {% trans "Engineer Debt Metrics" %}
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                            <!-- /.nav-second-level -->
-                                        </li>
-                                        <!--<li>
                                             <a href="{% url 'components' %}" id="product_component_view" aria-expanded="false"  aria-label="Components">
                                                 <i class="fa-solid fa-table-cells-large fa-fw"></i>
                                                 <span>{% trans "Components" %}</span>
@@ -522,8 +341,8 @@
                                                     </a>
                                                 </li>
                                             </ul>
-                                        </li>-->
-                                        <!--<li>
+                                        </li>
+                                        <li>
                                             <a href="{% url 'endpoint' %}" aria-expanded="false" aria-label="Endpoints">
                                                 <i class="fa-solid fa-sitemap fa-fw"></i>
                                                 <span>{% trans "Endpoints" %}</span>
@@ -558,13 +377,53 @@
                                                     </li>
                                                 {% endif %}
                                             </ul>
-                                        </li>-->
+                                        </li>
                                         <li>
                                             <a href="{% url 'report_builder' %}" aria-expanded="false" aria-label="Reports">
                                                 <i class="fa-solid fa-file-lines fa-fw"></i>
                                                 <span>{% trans "Reports" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
+                                            <!-- /.nav-second-level -->
+                                        </li>
+                                        <li>
+                                            <a href="{% url 'metrics' %}?date=5&view=dashboard" aria-expanded="false" aria-label="Metrics">
+                                                <i class="fa-solid fa-chart-column fa-fw"></i>
+                                                <span>{% trans "Metrics" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <li>
+                                                    <a href="{% url 'metrics' %}?date=5&view=dashboard">
+                                                        {% trans "Metrics Dashboard" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'critical_product_metrics' %}">
+                                                        {% trans "Critical Product Metrics" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'metrics_product_type' %}">
+                                                        {% trans "Product Type Metrics" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'product_type_counts' %}">
+                                                        {% trans "Product Type Counts" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'simple_metrics' %}">
+                                                        {% trans "Simple Metrics" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'engineer_metrics' %}">
+                                                        {% trans "Engineer Metrics" %}
+                                                    </a>
+                                                </li>
+                                            </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
                                         {% if "auth.view_user"|has_configuration_permission:request or "auth.view_group"|has_configuration_permission:request %}
@@ -718,12 +577,12 @@
                                         </li>
                                     {% endblock %}
                                     {% block support-tab %}
-                                        <!--<li>
+                                        <li>
                                             <a href="{% url 'support' %}" aria-disabled="true" aria-expanded="false" aria-label="Support">
                                                 <i class="fa-solid fa-life-ring fa-fw"></i>
                                                 <span>{% trans "Get Support" %}</span>
                                             </a>
-                                        </li>-->
+                                        </li>
                                     {% endblock %}
                                     <li id="min-menu">
                                         <a href="#" id="minimize-menu" title="Expand/Collapse Menu" aria-label="Expand/Collapse Menu">
@@ -1178,28 +1037,20 @@
                                     </a>
                                     <br/>
                                     <br/>
+                                    {% dojo_version %} ( {% dojo_current_hash %} )
                                 </p>
                                 <p>
-                                    DebtDojoTool
-                                </p>
-                                <p>
-                                    &copy; 2023-{% now "Y" %} Nicolas Riquet.
-                                </p>
-                                <p>
-                                    DebtDojoTool is licensed under the <a
-                                        href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD
-                                    License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
-                                </p>
-                                <p>
-                                    DebtDojoTool is based on DefectDojo {% dojo_version %} ( {% dojo_current_hash %} ), &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
-                                </p>
-                                <!--<p>
                                     Detailed DefectDojo documentation can be found in our <a
                                         href="{% dojo_docs_url %}">GitHub Pages</a>.
-                                </p>-->
-                                <!--<p>
+                                </p>
+                                <p>
+                                    DefectDojo is licensed under the <a
+                                        href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD
+                            License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
+                                </p>
+                                <p>
                                     &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
-                                </p>-->
+                                </p>
                             </div>
                         </div>
                     </div>

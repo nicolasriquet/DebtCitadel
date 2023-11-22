@@ -1,0 +1,30 @@
+{% extends "debt_base.html" %}
+{% load i18n %}
+{% block content %}
+    {{ block.super }}
+    <h3>{% blocktrans %}Delete Debt Context Type {{ debt_context_type }}{% endblocktrans %}</h3>
+    <p>
+        {% blocktrans %}Deleting this Debt Context Type will remove any related objects associated
+        with it. These relationships are listed below:{% endblocktrans %}
+    </p>
+    <div class="danger-zone panel panel-danger">
+        <div class="panel-heading">
+            <h3>{% trans "Danger Zone" %}</h3>
+        </div>
+        {% if rels|length > 1 %}
+            <ul class="left">{{ rels|unordered_list }}</ul>
+        {% else %}
+            <p class="text-center">{% trans "No relationships found." %}</p>
+        {% endif %}
+        <form class="form-horizontal" method="post">
+            {% csrf_token %}
+            {{ form }}
+
+            <div class="form-group">
+                <button class="btn btn-danger" type="submit" name="delete_debt_context_type" value="delete_debt_context_type">{% trans "Delete Debt Context Type" %}</button>
+            </div>
+        </form>
+    </div>
+    <br/>
+    <br/>
+{% endblock %}

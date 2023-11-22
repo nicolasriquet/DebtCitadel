@@ -1,0 +1,556 @@
+{% extends "debt_base.html" %}
+{% load i18n %}
+{% load event_tags %}
+{% load display_tags %}
+
+{% block content %}
+    {{ block.super }}
+    <h2> {{ name }} <i class="fa-solid fa-circle-question has-popover" data-trigger="hover"
+                       data-content="{% blocktrans %}This simple search function will return results whose debt_items or debt_item templates
+                                     title, URL, description, debt_endpoints, tags, references, languages or technologies contain the search query and debt_contexts whose
+                                     name, tags or description contain the search query.</br> Advanced search operators: (Restrict results to a certain type) debt_context:,
+                                     debt_engagement:, debt_item:, debt_endpoint:, tag:, language:, technology: or vulnerability_id:.
+                                     debt_test-tags shows debt_items in debt_tests that are tagged with provided tag, similar for debt_engagement-tags and debt_context-tags.
+                                     After submitting the search query, tabbed results will be displayed. The debt_items tab will have the possibility to
+                                     to perform more finegrained filtering on status fields, debt_test type, etc.{% endblocktrans %}"
+                       data-placement="right" data-container="body" data-original-title="" title="">
+                    </i>
+        </h2>
+
+    <div class="custom-search-form2">
+        <form role="search" method="get" action="{% url 'simple_search' %}">
+            <div class="input-group">
+                <input id="custom_search_query" type="text" name="query" class="form-control"
+                        placeholder="{% trans "Search" %}..." value="{{clean_query}}">
+                <span class="input-group-btn">
+                    <button class="btn btn-primary" type="submit" aria-label="Search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <div>
+        <p></p>
+    </div>
+
+    <div role="tabpanel">
+
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs" role="tablist">
+            {% if debt_items %}
+                <li role="presentation" {% if activetab == 'debt_items' %}class="active"{% endif %}>
+                    <a href="#tabs-1" role="tab" data-toggle="tab">{% trans "Debt_Items" %} ({{ debt_items.paginator.count }})</a>
+                </li>
+            {% endif %}
+            {% if vulnerability_ids %}
+                <li role="presentation" {% if activetab == 'vulnerability_ids' %}class="active"{% endif %}>
+                    <a href="#tabs-2" role="tab" data-toggle="tab">{% trans "Vulnerability Ids" %} ({{ vulnerability_ids|length }})</a>
+                </li>
+            {% endif %}
+            {% if debt_contexts %}
+                <li role="presentation" {% if activetab == 'debt_contexts' %}class="active"{% endif %}>
+                    <a href="#tabs-3" role="tab" data-toggle="tab">{% trans "Debt_Contexts" %} ({{ debt_contexts|length }})</a>
+                </li>
+            {% endif %}
+            {% if debt_engagements %}
+                <li role="presentation" {% if activetab == 'debt_engagements' %}class="active"{% endif %}>
+                    <a href="#tabs-4" role="tab" data-toggle="tab">{% trans "Debt_Engagements" %} ({{ debt_engagements|length }})</a>
+                </li>
+            {% endif %}
+            {% if debt_tests %}
+                <li role="presentation" {% if activetab == 'debt_tests' %}class="active"{% endif %}>
+                    <a href="#tabs-5" role="tab" data-toggle="tab">{% trans "Debt_Tests" %} ({{ debt_tests|length }})</a>
+                </li>
+            {% endif %}
+            {% if debt_endpoints %}
+                <li role="presentation" {% if activetab == 'debt_endpoints' %}class="active"{% endif %}>
+                    <a href="#tabs-6" role="tab" data-toggle="tab">{% trans "Debt_Endpoints" %} ({{ debt_endpoints|length }})</a>
+                </li>
+            {% endif %}
+            {% if debt_item_templates %}
+                <li role="presentation">
+                    <a href="#tabs-7" role="tab" data-toggle="tab">{% trans "Debt_Item Templates" %} ({{ debt_item_templates|length }})</a>
+                </li>
+            {% endif %}
+            {% if languages %}
+                <li role="presentation">
+                    <a href="#tabs-8" role="tab" data-toggle="tab">{% trans "Languages" %} ({{ languages|length }})</a>
+                </li>
+            {% endif %}
+            {% if app_analysis %}
+                <li role="presentation">
+                    <a href="#tabs-9" role="tab" data-toggle="tab">{% trans "Application Technolgies" %} ({{ app_analysis|length }})</a>
+                </li>
+            {% endif %}
+            {% if tagged_debt_items or tagged_debt_item_templates or tagged_debt_contexts or tagged_debt_tests or tagged_debt_endpoints or tagged_debt_engagements %}
+                <li role="presentation" {% if activetab == 'tagged' %}class="active"{% endif %}>
+                    <a href="#tabs-10" role="tab" data-toggle="tab">Tagged
+                        ({{ tagged_debt_items|length }}, {{ tagged_debt_contexts|length }}, {{ tagged_debt_engagements|length }}, {{ tagged_debt_tests|length }}, {{ tagged_debt_endpoints|length }},
+                        {{ tagged_debt_item_templates|length }})
+                    </a>
+                </li>
+            {% endif %}
+            {% if generic %}
+                <li role="presentation" {% if activetab == 'generic' %}class="active"{% endif %}>
+                    <a href="#tabs-11" role="tab" data-toggle="tab">Experimental ({{ generic|length }})</a>
+                </li>
+            {% endif %}
+        </ul>
+        <!-- Tab panes -->
+        <div class="tab-content">
+            {% if debt_items %}
+                <div role="tabpanel" class="table-responsive tab-pane {% if activetab == 'debt_items' %}active{% endif %}" id="tabs-1">
+                    {% comment %} include inherits the current context so debt_items, filtered and other variables {% endcomment %}
+                    {% include "dojo/debt_items_list_snippet.html" with form_id="custom_search_filter" %}
+                </div>
+            {% endif %}
+            {% if vulnerability_ids %}
+                <div role="tabpanel" class="table-responsive tab-pane  {% if activetab == 'vulnerability_ids' %}active{% endif %}" id="tabs-2">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Vulnerability Id" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                            <th>{% trans "Debt_Engagement" %}</th>
+                            <th>{% trans "Debt_Test" %}</th>
+                            <th>{% trans "Debt_Item" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for vulnerability_id in vulnerability_ids %}
+                            {% if vulnerability_id.id %}
+                            <tr>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_item' vulnerability_id.debt_item.id %}">
+                                        {{ vulnerability_id.vulnerability_id }}</a>
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_context' vulnerability_id.debt_item.debt_test.debt_engagement.debt_context.id %}">
+                                        {{ vulnerability_id.debt_item.debt_test.debt_engagement.debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=vulnerability_id.debt_item.debt_test.debt_engagement.debt_context.tags.all %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_engagement' vulnerability_id.debt_item.debt_test.debt_engagement.id %}">
+                                        {{ vulnerability_id.debt_item.debt_test.debt_engagement.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=vulnerability_id.debt_item.debt_test.debt_engagement.tags.all %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_test' vulnerability_id.debt_item.debt_test.id %}">
+                                        {{ vulnerability_id.debt_item.debt_test }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=vulnerability_id.debt_item.debt_test.tags.all %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_item' vulnerability_id.debt_item.id %}">
+                                        {{ vulnerability_id.debt_item.title }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=vulnerability_id.debt_item.tags.all %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if debt_contexts %}
+                <div role="tabpanel" class="table-responsive tab-pane  {% if activetab == 'debt_contexts' %}active{% endif %}" id="tabs-3">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Name" %}</th>
+                            <th>{% trans "Description" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for debt_context in debt_contexts %}
+                            {% comment %} sometimes the index contains references to debt_items that no longer exist. even after rebuilding the index. {% endcomment %}
+                            {% if debt_context.id %}
+                            <tr>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_context' debt_context.id %}">{{ debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_context.tags.all %}
+                                </td>
+                                <td>{{ debt_context.description|truncatechars_html:150|markdown_render }}</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if debt_engagements %}
+                <div role="tabpanel" class="table-responsive tab-pane {% if activetab == 'debt_engagements' %}active{% endif %}" id="tabs-4">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Type" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                            <th>{% trans "Date" %}</th>
+                            <th>{% trans "Status" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for debt_engagement in debt_engagements %}
+                            {% comment %} sometimes the index contains references to debt_items that no longer exist. even after rebuilding the index. {% endcomment %}
+                            {% if debt_engagement.id %}
+                            <tr>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_engagement' debt_engagement.id %}">{{ debt_engagement.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_engagement.tags.all %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_context' debt_engagement.debt_context.id %}">{{ debt_engagement.debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_engagement.debt_context.tags.all %}
+                                </td>
+                                <td>{{ debt_engagement.target_start|date }} - {{ debt_engagement.target_end|date }}</td>
+                                <td>{{ debt_engagement.status }}</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if debt_tests %}
+                <div role="tabpanel" class="table-responsive tab-pane  {% if activetab == 'debt_tests' %}active{% endif %}" id="tabs-5">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Title" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                            <th>{% trans "Debt_Engagement" %}</th>
+                            <th>{% trans "Date" %}</th>
+                            <th>{% trans "Status" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for debt_test in debt_tests %}
+                            {% comment %} sometimes the index contains references to debt_items that no longer exist. even after rebuilding the index. {% endcomment %}
+                            {% if debt_test.id %}
+                            <tr>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_test' debt_test.id %}">{{ debt_test }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_test.tags.all %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_context' debt_test.debt_engagement.debt_context.id %}">{{ debt_test.debt_engagement.debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_test.debt_engagement.debt_context.tags.all %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_debt_engagement' debt_test.debt_engagement.id %}">{{ debt_test.debt_engagement.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_test.debt_engagement.tags.all %}
+                                </td>
+                                <td>{{ debt_test.debt_engagement.target_start|date }} - {{ debt_test.debt_engagement.target_end|date }}</td>
+                                <td>{{ debt_test.debt_engagement.status }}</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if debt_endpoints %}
+                <div role="tabpanel" class="table-responsive tab-pane {% if activetab == 'debt_endpoints' %}active{% endif %}" id="tabs-6">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Debt_Endpoint" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                            <th>{% trans "Open Debt_Items" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for e in debt_endpoints %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'view_debt_endpoint' e.id %}">{{ e }}{% if e.is_broken %} <span data-toggle="tooltip" title="{% trans "Debt_Endpoint is broken. Check documentation to look for fix process" %}" >&#128681;</span>{% endif %}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=e.tags.all %}
+                                </td>
+                                {% if e.debt_context %}
+                                    <td>
+                                        <a href="{% url 'view_debt_context' e.debt_context.id %}">{{ e.debt_context.name }}</a>
+                                        {% include "dojo/snippets/tags.html" with tags=e.debt_context.tags.all %}
+                                    </td>
+                                {% else %}
+                                    <td>{% trans "None" %}</td>
+                                {% endif %}
+                                <td>
+                                  {% if e.active_debt_item_count > 0 %}
+                                  <a href="{% url 'open_debt_items' %}?debt_endpoints={{ e.id }}">{{ e.active_debt_item_count }}</a>
+                                  {% else %}
+                                  {% trans "No Open, Active Debt_Items" %}
+                                  {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if debt_item_templates %}
+                <div role="tabpanel" class="table-responsive tab-pane" id="tabs-7">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Title" %}</th>
+                            <th>{% trans "Description" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for debt_item_template in debt_item_templates %}
+                            <tr>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'edit_template' debt_item_template.id %}">{{ debt_item_template.title }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_item_template.tags.all %}
+                                </td>
+                                <td>{{ debt_item_template.description }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if languages %}
+            <div role="tabpanel"
+                 class="table-responsive tab-pane"
+                 id="tabs-8">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Language" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for lang in languages %}
+                            <tr>
+                               <td>{{ lang.language.language }}</td>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_context' lang.debt_context.id %}">{{ lang.debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=lang.debt_context.tags.all %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if app_analysis %}
+            <div role="tabpanel"
+                 class="table-responsive tab-pane"
+                 id="tabs-9">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Technology" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for app in app_analysis %}
+                            <tr>
+                               <td>{{ app.name }}</td>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_context' app.debt_context.id %}">{{ app.debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=app.debt_context.tags.all %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if tagged_debt_items or tagged_debt_item_templates or tagged_debt_contexts or tagged_debt_tests or tagged_debt_endpoints or tagged_debt_engagements %}
+                <div role="tabpanel"
+                     class="table-responsive tab-pane {% if activetab == 'tagged' %}active{% endif %}"
+                     id="tabs-10">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "Type" %}</th>
+                            <th>{% trans "Item" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% if tagged_debt_tests %}
+                            {% for debt_test in tagged_debt_tests %}
+                                <tr>
+                                    <td>{% trans "Debt_Test" %}</td>
+                                    <td>
+                                        <a class="search-debt_item" href="{% url 'view_debt_test' debt_test.id %}">{{ debt_test }}</a>
+                                        {% include "dojo/snippets/tags.html" with tags=debt_test.tags.all %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                        {% for debt_item in tagged_debt_items %}
+                            <tr>
+                                <td>{% trans "Debt_Item" %}</td>
+                                <td><a class="search-debt_item"
+                                       href="{% url 'view_debt_item' debt_item.id %}">{{ debt_item.title }}</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% for debt_item_template in tagged_debt_item_templates %}
+                            <tr>
+                                <td>{% trans "Debt_Item Template" %}</td>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'edit_template' debt_item_template.id %}">{{ debt_item_template.title }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_item_template.tags.all %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% for debt_context in tagged_debt_contexts %}
+                            <tr>
+                                <td>{% trans "Debt_Context" %}</td>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_context' debt_context.id %}">{{ debt_context.name }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_context.tags.all %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% for debt_endpoint in tagged_debt_endpoints %}
+                            <tr>
+                                <td>{% trans "Debt_Endpoint" %}</td>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_endpoint' debt_endpoint.id %}">{{ debt_endpoint }}{% if debt_endpoint.is_broken %} <span data-toggle="tooltip" title="Debt_Endpoint is broken. Check documentation to look for fix process" >&#128681;</span>{% endif %}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=debt_endpoint.tags.all %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% for eng in tagged_debt_engagements %}
+                            <tr>
+                                <td>{% trans "Debt_Engagement" %}</td>
+                                <td>
+                                    <a class="search-debt_item" href="{% url 'view_debt_engagement' eng.id %}">{{ eng }}</a>
+                                    {% include "dojo/snippets/tags.html" with tags=eng.tags.all %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+            {% if generic %}
+                <div role="tabpanel" class="table-responsive tab-pane {% if activetab == 'generic' %}active{% endif %}"
+                     id="tabs-11">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{% trans "ID" %}</th>
+                            <th>{% trans "Type" %}</th>
+                            <th>{% trans "Debt_Context" %}</th>
+                            <th>{% trans "Severity" %}</th>
+                            <th>{% trans "Title" %}</th>
+                            <th>{% trans "Description" %}</th>
+                            <th>{% trans "JIRA" %}</th>
+                            <th>{% trans "Rank" %}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for result in generic %}
+                            {% comment %} sometimes the index contains references to debt_items that no longer exist. even after rebuilding the index. {% endcomment %}
+                            {% if result.object.id %}
+                                <tr>
+                                    <td>
+                                        <a href="{{result.url}}" title="{{result.title}}">
+                                            <span>
+                                                {{ result.object.id }}
+                                            </span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{{result.url}}" title="{{result.title}}">
+                                            {{ result.object| class_name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{{result.url}}" title="{{result.title}}">
+                                            {% comment %} a{{ result.meta.debt_engagement__debt_context__name }}b {% endcomment %}
+                                            {% firstof result.meta.debt_item__debt_test__debt_engagement__debt_context__name result.meta.debt_test__debt_engagement__debt_context__name result.meta.debt_engagement__debt_context__name result.meta.debt_context__name result.object.name %}
+                                        </a>
+                                    </td>
+                                    <td class="centered">
+                                        {% if result.meta.severity_display %}
+                                        <a href="{{result.url}}" title="{{result.title}}">
+                                                <span class="label severity severity-{{ result.meta.severity }}">
+                                                    {{ result.meta.severity_display }}
+                                                </span>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{result.url}}" title="{{result.title}}">
+                                            {{ result.title }}
+                                        </a>
+                                    </td>
+                                    <td width="50%">
+                                        {% comment %} {{ result.content }} {% endcomment %}
+                                        <span>
+                                            <p>{{ result.object.description }}</p>
+                                            <p>{{ result.object.impact }}</p>
+                                            <p>{{ result.object.mitigation }}</p>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{result.url}}" title="{{result.title}}">
+                                            <span style="white-space: nowrap;">{{ result.meta.jira_issue__jira_key }}</span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {{ result.watson_rank }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+{% endblock %}
+{% block postscript %}
+    {{ block.super }}
+    <script type="text/javascript">
+        {% comment %} django filters do no support a "full_text" query field which is not a field of the model
+        so we have to inject it clientside to qavoid duplicating the whole form with hardcoded fields etc. {% endcomment %}
+        $(function () {
+            set_custom_search_filter_handlers();
+        });
+
+        function set_custom_search_filter_handlers() {
+            var query = $('#custom_search_query').val()
+            var custom_search_filter = $('#custom_search_filter')
+            {% comment %} alert(custom_search_filter.html())             {% endcomment %}
+            var apply = custom_search_filter.find("#apply")
+            var clear = custom_search_filter.find("#clear")
+            {% comment %} alert(apply.html())             {% endcomment %}
+            {% comment %} alert(clear.html())             {% endcomment %}
+            apply.click(submit_fulltext_query)
+            clear.click(goto_fulltext_query)
+        }
+
+        function submit_fulltext_query() {
+            var query = $('#custom_search_query').val()
+            var custom_search_filter = $('#custom_search_filter')
+            $('<input>').attr({ type: 'hidden',
+                                id: 'query',
+                                name: 'query',
+                                value: query
+                             }).appendTo(custom_search_filter);
+        }
+
+        function goto_fulltext_query() {
+            var query = $('#custom_search_query').val()
+            var custom_search_filter = $('#custom_search_filter')
+            var clear = custom_search_filter.find("#clear")
+            clear.attr('href', '?query=' + query)
+
+        }
+
+
+    </script>
+{% endblock %}

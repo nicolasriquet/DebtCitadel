@@ -41,7 +41,7 @@ from dojo.utils import add_external_issue, add_error_message_to_response, add_fi
     get_system_setting, get_setting, Debt_Context_Tab, get_punchcard_data, queryset_check, is_title_in_breadcrumbs, \
     get_enabled_notifications_list, get_zero_severity_level, sum_by_severity_level, get_open_debt_items_burndown
 
-from dojo.notifications.helper import create_notification
+from dojo.debt_notifications.helper import create_notification
 from dojo.components.sql_group_concat import Sql_GroupConcat
 from dojo.authorization.authorization import user_has_permission, user_has_permission_or_403
 from dojo.authorization.roles_permissions import Permissions
@@ -83,7 +83,7 @@ def debt_context(request):
 
     # print(debt_context_list.object_list.explain)
 
-    add_breadcrumb(title=_("debt_context List"), top_level=not len(request.GET), request=request)
+    add_breadcrumb(title=_("Debt Context List"), top_level=not len(request.GET), request=request)
 
     return render(request, 'dojo/debt_context.html', {
         'debt_context_list': debt_context_list,
@@ -208,8 +208,8 @@ def view_debt_context(request, pid):
 
     total = critical + high + medium + low + info
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("debt_context"), tab="overview")
-    return render(request, 'dojo/view_debt_context_details.html', {
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Debt Context"), tab="overview")
+    return render(request, 'dojo/debt_view_debt_context_details.html', {
         'debt_context': debt_context,
         'debt_context_tab': debt_context_tab,
         'debt_context_metadata': debt_context_metadata,
@@ -628,7 +628,7 @@ def view_debt_context_metrics(request, pid):
         else:
             test_data[t.test_type.name] = t.verified_debt_item_count
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("debt_context"), tab="metrics")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Debt Context"), tab="metrics")
 
     open_objs_by_age = {x: len([_ for _ in filters.get('open') if _.age == x]) for x in set([_.age for _ in filters.get('open')])}
 
@@ -804,7 +804,7 @@ def new_debt_context(request, ptid=None):
                                  messages.SUCCESS,
                                  _('debt_context added successfully.'),
                                  extra_tags='alert-success')
-            success, jira_project_form = jira_helper.process_jira_project_form(request, debt_context=debt_context)
+            success, jira_project_form = jira_helper.debt_process_jira_project_form(request, debt_context=debt_context)
             error = not success
 
             if get_system_setting('enable_github'):
@@ -857,8 +857,8 @@ def new_debt_context(request, ptid=None):
         else:
             gform = None
 
-    add_breadcrumb(title=_("New debt_context"), top_level=False, request=request)
-    return render(request, 'dojo/new_debt_context.html',
+    add_breadcrumb(title=_("New Debt Context"), top_level=False, request=request)
+    return render(request, 'dojo/debt_new_debt_context.html',
                   {'form': form,
                    'jform': jira_project_form,
                    'gform': gform})
@@ -933,7 +933,7 @@ def edit_debt_context(request, pid):
         else:
             gform = None
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit debt_context"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit Debt Context"), tab="settings")
     return render(request,
                   'dojo/edit_debt_context.html',
                   {'form': form,
@@ -988,11 +988,11 @@ def delete_debt_context(request, pid):
         collector.collect([debt_context])
         rels = collector.nested()
 
-    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("debt_context"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Debt Context"), tab="settings")
 
     logger.debug('delete_debt_context: GET RENDER')
 
-    return render(request, 'dojo/delete_debt_context.html', {
+    return render(request, 'dojo/debt_delete_debt_context.html', {
         'debt_context': debt_context,
         'form': form,
         'debt_context_tab': debt_context_tab,
@@ -1640,7 +1640,7 @@ def add_debt_context_member(request, pid):
                                      _('debt_context members added successfully.'),
                                      extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
-    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Add debt_context Member"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Add Debt Context Member"), tab="settings")
     return render(request, 'dojo/new_debt_context_member.html', {
         'debt_context': debt_context,
         'form': memberform,
@@ -1671,7 +1671,7 @@ def edit_debt_context_member(request, memberid):
                     return HttpResponseRedirect(reverse('view_user', args=(member.user.id,)))
                 else:
                     return HttpResponseRedirect(reverse('view_debt_context', args=(member.debt_context.id,)))
-    debt_context_tab = Debt_Context_Tab(member.debt_context, title=_("Edit debt_context Member"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(member.debt_context, title=_("Edit Debt Context Member"), tab="settings")
     return render(request, 'dojo/edit_debt_context_member.html', {
         'memberid': memberid,
         'form': memberform,
@@ -1699,7 +1699,7 @@ def delete_debt_context_member(request, memberid):
                 return HttpResponseRedirect(reverse('debt_context'))
             else:
                 return HttpResponseRedirect(reverse('view_debt_context', args=(member.debt_context.id,)))
-    debt_context_tab = Debt_Context_Tab(member.debt_context, title=_("Delete debt_context Member"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(member.debt_context, title=_("Delete Debt Context Member"), tab="settings")
     return render(request, 'dojo/delete_debt_context_member.html', {
         'memberid': memberid,
         'form': memberform,
@@ -1866,7 +1866,7 @@ def edit_debt_context_group(request, groupid):
                 else:
                     return HttpResponseRedirect(reverse('view_debt_context', args=(group.debt_context.id,)))
 
-    debt_context_tab = Debt_Context_Tab(group.debt_context, title=_("Edit debt_context Group"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(group.debt_context, title=_("Edit Debt Context Group"), tab="settings")
     return render(request, 'dojo/edit_debt_context_group.html', {
         'groupid': groupid,
         'form': groupform,
@@ -1894,7 +1894,7 @@ def delete_debt_context_group(request, groupid):
             #  page
             return HttpResponseRedirect(reverse('view_debt_context', args=(group.debt_context.id,)))
 
-    debt_context_tab = Debt_Context_Tab(group.debt_context, title=_("Delete debt_context Group"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(group.debt_context, title=_("Delete Debt Context Group"), tab="settings")
     return render(request, 'dojo/delete_debt_context_group.html', {
         'groupid': groupid,
         'form': groupform,
@@ -1931,7 +1931,7 @@ def add_debt_context_group(request, pid):
                                      _('debt_context groups added successfully.'),
                                      extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('view_debt_context', args=(pid,)))
-    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Edit debt_context Group"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(Debt_Context, title=_("Edit Debt Context Group"), tab="settings")
     return render(request, 'dojo/new_debt_context_group.html', {
         'debt_context': debt_context,
         'form': group_form,

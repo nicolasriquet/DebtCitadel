@@ -61,10 +61,22 @@ finding_related_action_classes_dict = {
     'mark_finding_duplicate': 'fa-solid fa-copy'
 }
 
+debt_item_related_action_classes_dict = {
+    'reset_debt_item_duplicate_status': 'fa-solid fa-eraser',
+    'set_debt_item_as_original': 'fa-brands fa-superpowers',
+    'mark_debt_item_duplicate': 'fa-solid fa-copy'
+}
+
 finding_related_action_title_dict = {
     'reset_finding_duplicate_status': 'Reset duplicate status',
     'set_finding_as_original': 'Set as original',
     'mark_finding_duplicate': 'Mark as duplicate'
+}
+
+debt_item_related_action_title_dict = {
+    'reset_debt_item_duplicate_status': 'Reset duplicate status',
+    'set_debt_item_as_original': 'Set as original',
+    'mark_debt_item_duplicate': 'Mark as duplicate'
 }
 
 supported_file_formats = [
@@ -1108,14 +1120,27 @@ def finding_related_action_classes(related_action):
 
 
 @register.filter
+def debt_item_related_action_classes(related_action):
+    return debt_item_related_action_classes_dict.get(related_action, '')
+
+
+@register.filter
 def finding_related_action_title(related_action):
     return finding_related_action_title_dict.get(related_action, '')
 
 
 @register.filter
+def debt_item_related_action_title(related_action):
+    return debt_item_related_action_title_dict.get(related_action, '')
+
+@register.filter
 def product_findings(product, findings):
     return findings.filter(test__engagement__product=product).order_by('numerical_severity')
 
+
+@register.filter
+def debt_context_debt_items(debt_context, debt_items):
+    return debt_items.filter(debt_test__debt_engagement__debt_context=debt_context).order_by('numerical_severity')
 
 @register.filter
 def class_name(value):

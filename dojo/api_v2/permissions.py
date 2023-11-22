@@ -295,6 +295,22 @@ class UserHasEndpointPermission(permissions.BasePermission):
         )
 
 
+class UserHasDebtEndpointPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return check_post_permission(
+            request, Debt_Context, "debt_context", Permissions.Debt_Endpoint_Add
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return check_object_permission(
+            request,
+            obj,
+            Permissions.Debt_Endpoint_View,
+            Permissions.Debt_Endpoint_Edit,
+            Permissions.Debt_Endpoint_Delete,
+        )
+
+
 class UserHasEndpointStatusPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return check_post_permission(

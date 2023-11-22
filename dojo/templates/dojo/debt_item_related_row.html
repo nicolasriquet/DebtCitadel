@@ -30,7 +30,7 @@
         {% endwith %}
     </td>
     <td class="nowrap">{{ similar_debt_item.date|date }}</td>
-    <td>{{ similar_debt_item|debt_item_display_status|safe }}&nbsp;{{ similar_debt_item|import_history }}</td>
+    <td>{{ similar_debt_item|debt_item_display_status|safe }}&nbsp;{{ similar_debt_item|debt_import_history }}</td>
     <td><a href="{% url 'view_debt_test' similar_debt_item.debt_test_id %}">{{ similar_debt_item.debt_test }}</a></td>
     <td><a href="{% url 'view_debt_engagement' similar_debt_item.debt_test.debt_engagement_id %}">{{ similar_debt_item.debt_test.debt_engagement.name }}</a>
     {% if similar_debt_item.debt_test.debt_engagement.version %}

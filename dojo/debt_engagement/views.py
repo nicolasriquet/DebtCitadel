@@ -37,7 +37,7 @@ from dojo.tools.factory import get_scan_types_sorted
 from dojo.utils import add_error_message_to_response, add_success_message_to_response, get_page_items, add_breadcrumb, handle_uploaded_threat, \
     FileIterWrapper, get_cal_event, Debt_Context_Tab, is_scan_file_too_large, async_delete, \
     get_system_setting, get_setting, redirect_to_return_url_or_else, get_return_url, calculate_grade
-from dojo.notifications.helper import create_notification
+from dojo.debt_notifications.helper import create_notification
 from dojo.debt_item.views import find_available_notetypes
 from functools import reduce
 from django.db.models.query import Prefetch, QuerySet
@@ -55,7 +55,7 @@ from dojo.debt_engagement.queries import get_authorized_debt_engagements
 from dojo.user.queries import get_authorized_users
 from dojo.authorization.authorization_decorators import user_is_authorized
 from dojo.importers.importer.importer import DojoDefaultImporter as Importer
-import dojo.notifications.helper as notifications_helper
+import dojo.debt_notifications.helper as notifications_helper
 from dojo.endpoint.utils import save_endpoints_to_add
 
 
@@ -275,7 +275,7 @@ def edit_debt_engagement(request, eid):
 
     debt_context_tab = Debt_Context_Tab(debt_engagement.debt_context, title=title, tab="debt_engagements")
     debt_context_tab.setDebtEngagement(debt_engagement)
-    return render(request, 'dojo/new_debt_eng.html', {
+    return render(request, 'dojo/debt_new_debt_eng.html', {
         'debt_context_tab': debt_context_tab,
         'title': title,
         'form': form,
@@ -456,7 +456,7 @@ def view_debt_engagement(request, eid):
     debt_context_tab = Debt_Context_Tab(debt_context, title="View" + title + " Debt_Engagement", tab="debt_engagements")
     debt_context_tab.setDebtEngagement(eng)
     return render(
-        request, 'dojo/view_debt_eng.html', {
+        request, 'dojo/debt_view_debt_eng.html', {
             'eng': eng,
             'debt_context_tab': debt_context_tab,
             'system_settings': system_settings,

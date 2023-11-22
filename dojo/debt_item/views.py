@@ -110,7 +110,7 @@ from dojo.utils import (
     update_external_issue,
     get_words_for_field,
 )
-from dojo.notifications.helper import create_notification
+from dojo.debt_notifications.helper import create_notification
 
 from django.template.defaultfilters import pluralize
 from django.db.models import Q, QuerySet, Count
@@ -220,7 +220,7 @@ def prefetch_for_similar_debt_items(debt_items):
     ):  # old code can arrive here with debt_contexts being a list because the query was already executed
         prefetched_debt_items = prefetched_debt_items.prefetch_related("reporter")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "jira_issue__debt_jira_project__jira_instance"
+            "debt_jira_issue__debt_jira_project__jira_instance"
         )
         prefetched_debt_items = prefetched_debt_items.prefetch_related("debt_test__debt_test_type")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
@@ -254,7 +254,7 @@ def prefetch_for_similar_debt_items(debt_items):
         prefetched_debt_items = prefetched_debt_items.prefetch_related("notes")
         prefetched_debt_items = prefetched_debt_items.prefetch_related("tags")
         prefetched_debt_items = prefetched_debt_items.prefetch_related(
-            "vulnerability_id_set"
+            "debt_vulnerability_id_set"
         )
     else:
         logger.debug("unable to prefetch because query was already executed")

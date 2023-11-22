@@ -1,0 +1,38 @@
+{% load navigation_tags %}
+{% load display_tags %}
+{% load authorization_tags %}
+{% load static %}
+
+{% if debt_item|has_object_permission:"Debt_Item_Edit" %}
+    {% comment %} {{ similar_debt_item.related_actions }} {% endcomment %}
+    {% if similar_debt_item.related_actions.0.action == 'None'%}
+        <span title="{{similar_debt_item.related_actions.0.reason}}">None</span>
+    {% else %}
+    <div class="dropdown">
+        {{ intro }}
+        <a href="#" data-toggle="dropdown">&nbsp;<i class="fa-solid fa-ellipsis-vertical"></i>&nbsp;</a>
+        <ul class="dropdown-menu dropdown-menu-right" role="menu" id="related_actions_{{similar_debt_item.id}}">
+        {% for action in similar_debt_item.related_actions %}
+            <li role="presentation">
+                {% if action.action == 'reset_debt_item_duplicate_status' %}
+                    <a href="#" onclick="submit_related_action('{% url 'reset_debt_item_duplicate_status' similar_debt_item.id %}'); $('#related_actions_{{similar_debt_item.id}}').dropdown('toggle')">
+                {% elif action.action == 'set_debt_item_as_original' %}
+                    <a href="#" onclick="submit_related_action('{% url 'set_debt_item_as_original' debt_item_id=debt_item_context.id new_original_id=similar_debt_item.id %}'); $('#related_actions_{{similar_debt_item.id}}').dropdown('toggle')">
+                {% elif action.action == 'mark_debt_item_duplicate' %}
+                    <a href="#" onclick="submit_related_action('{% url 'mark_debt_item_duplicate' duplicate_id=similar_debt_item.id original_id=debt_item_context.id %}'); $('#related_actions_{{similar_debt_item.id}}').dropdown('toggle')">
+                {% endif %}
+                    <i class="{{ action.action|debt_item_related_action_classes }}"></i>
+                    <span title="{{ action.reason }}">
+                        {{ action.action|debt_item_related_action_title }}
+                    </span>
+                </a>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+{% else %}
+    <span title="You're not authorized to edit this debt_item">None</span>
+{% endif %}
+
+

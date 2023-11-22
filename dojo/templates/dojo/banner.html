@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "debt_base.html" %}
 {% block content %}
     {{ block.super }}
     <form class="form-horizontal" action="{%  url 'configure_banner' %}" method="post" enctype="multipart/form-data">{% csrf_token %}

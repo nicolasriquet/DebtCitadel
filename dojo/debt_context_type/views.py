@@ -13,7 +13,7 @@ from dojo.forms import Debt_Context_TypeForm, Delete_Debt_Context_TypeForm, Add_
     Edit_Debt_Context_Type_Group_Form, Delete_Debt_Context_Type_GroupForm
 from dojo.models import Debt_Context_Type, Debt_Context_Type_Member, Role, Debt_Context_Type_Group
 from dojo.utils import get_page_items, add_breadcrumb, is_title_in_breadcrumbs, get_setting, async_delete
-from dojo.notifications.helper import create_notification
+from dojo.debt_notifications.helper import create_notification
 from django.db.models import Count, Q
 from django.db.models.query import QuerySet
 from dojo.authorization.authorization import user_has_permission
@@ -42,7 +42,7 @@ def debt_context_type(request):
 
     pts.object_list = prefetch_for_debt_context_type(pts.object_list)
 
-    page_name = _("debt_context Type List")
+    page_name = _("Debt Context Type List")
     add_breadcrumb(title=page_name, top_level=True, request=request)
 
     return render(request, 'dojo/debt_context_type.html', {
@@ -72,7 +72,7 @@ def prefetch_for_debt_context_type(debt_context_types):
 
 @user_has_global_permission(Permissions.Debt_Context_Type_Add)
 def add_debt_context_type(request):
-    page_name = _("Add debt_context Type")
+    page_name = _("Add Debt Context Type")
     form = Debt_Context_TypeForm()
     if request.method == 'POST':
         form = Debt_Context_TypeForm(request.POST)
@@ -93,7 +93,7 @@ def add_debt_context_type(request):
             return HttpResponseRedirect(reverse('debt_context_type'))
     add_breadcrumb(title=page_name, top_level=False, request=request)
 
-    return render(request, 'dojo/new_debt_context_type.html', {
+    return render(request, 'dojo/debt_new_debt_context_type.html', {
         'name': page_name,
         'form': form,
     })
@@ -108,7 +108,7 @@ def view_debt_context_type(request, ptid):
     debt_contexts = get_authorized_debt_contexts(Permissions.Debt_Context_View).filter(debt_context_type=pt)
     debt_contexts = get_page_items(request, debt_contexts, 25)
     add_breadcrumb(title=page_name, top_level=False, request=request)
-    return render(request, 'dojo/view_debt_context_type.html', {
+    return render(request, 'dojo/debt_view_debt_context_type.html', {
         'name': page_name,
         'pt': pt,
         'debt_contexts': debt_contexts,
@@ -151,8 +151,8 @@ def delete_debt_context_type(request, ptid):
         collector.collect([debt_context_type])
         rels = collector.nested()
 
-    add_breadcrumb(title=_("Delete debt_context Type"), top_level=False, request=request)
-    return render(request, 'dojo/delete_debt_context_type.html',
+    add_breadcrumb(title=_("Delete Debt Context Type"), top_level=False, request=request)
+    return render(request, 'dojo/debt_delete_debt_context_type.html',
                   {'debt_context_type': debt_context_type,
                    'form': form,
                    'rels': rels,
@@ -212,7 +212,7 @@ def add_debt_context_type_member(request, ptid):
                                     _('debt_context type members added successfully.'),
                                     extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('view_debt_context_type', args=(ptid, )))
-    add_breadcrumb(title=_("Add debt_context Type Member"), top_level=False, request=request)
+    add_breadcrumb(title=_("Add Debt Context Type Member"), top_level=False, request=request)
     return render(request, 'dojo/new_debt_context_type_member.html', {
         'pt': pt,
         'form': memberform,

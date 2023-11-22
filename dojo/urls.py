@@ -46,7 +46,9 @@ from dojo.product_type.urls import urlpatterns as pt_urls
 from dojo.debt_context_type.urls import urlpatterns as debt_context_type_urls
 from dojo.reports.urls import urlpatterns as reports_urls
 from dojo.search.urls import urlpatterns as search_urls
+from dojo.debt_search.urls import urlpatterns as debt_search_urls
 from dojo.test.urls import urlpatterns as test_urls
+from dojo.debt_test.urls import urlpatterns as debt_test_urls
 from dojo.test_type.urls import urlpatterns as test_type_urls
 from dojo.debt_test_type.urls import urlpatterns as debt_test_type_urls
 from dojo.user.urls import urlpatterns as user_urls
@@ -56,10 +58,13 @@ from dojo.github_issue_link.urls import urlpatterns as github_urls
 from dojo.tool_type.urls import urlpatterns as tool_type_urls
 from dojo.tool_config.urls import urlpatterns as tool_config_urls
 from dojo.tool_product.urls import urlpatterns as tool_product_urls
+from dojo.tool_debt_context.urls import urlpatterns as tool_debt_context_urls
 from dojo.cred.urls import urlpatterns as cred_urls
+from dojo.debt_cred.urls import urlpatterns as debt_cred_urls
 from dojo.sla_config.urls import urlpatterns as sla_urls
 from dojo.system_settings.urls import urlpatterns as system_settings_urls
 from dojo.notifications.urls import urlpatterns as notifications_urls
+from dojo.debt_notifications.urls import urlpatterns as debt_notifications_urls
 from dojo.object.urls import urlpatterns as object_urls
 from dojo.benchmark.urls import urlpatterns as benchmark_urls
 from dojo.notes.urls import urlpatterns as notes_urls
@@ -173,10 +178,12 @@ ur += debt_context_urls
 ur += pt_urls
 ur += debt_context_type_urls
 ur += reports_urls
-ur += search_urls
+#ur += search_urls
+ur += debt_search_urls
 ur += test_type_urls
 ur += debt_test_type_urls
 ur += test_urls
+ur += debt_test_urls
 ur += user_urls
 ur += group_urls
 ur += jira_urls
@@ -184,10 +191,13 @@ ur += github_urls
 ur += tool_type_urls
 ur += tool_config_urls
 ur += tool_product_urls
+ur += tool_debt_context_urls
 ur += cred_urls
+ur += debt_cred_urls
 ur += sla_urls
 ur += system_settings_urls
-ur += notifications_urls
+#ur += notifications_urls
+ur += debt_notifications_urls
 ur += object_urls
 ur += benchmark_urls
 ur += notes_urls

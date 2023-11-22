@@ -1317,6 +1317,15 @@ class DeleteTestForm(forms.ModelForm):
         fields = ['id']
 
 
+class DeleteDebtTestForm(forms.ModelForm):
+    id = forms.IntegerField(required=True,
+                            widget=forms.widgets.HiddenInput())
+
+    class Meta:
+        model = Debt_Test
+        fields = ['id']
+
+
 class CopyTestForm(forms.Form):
     engagement = forms.ModelChoiceField(
         required=True,
@@ -1327,6 +1336,18 @@ class CopyTestForm(forms.Form):
         authorized_lists = kwargs.pop('engagements', None)
         super(CopyTestForm, self).__init__(*args, **kwargs)
         self.fields['engagement'].queryset = authorized_lists
+
+
+class CopyDebtTestForm(forms.Form):
+    debt_engagement = forms.ModelChoiceField(
+        required=True,
+        queryset=Debt_Engagement.objects.none(),
+        error_messages={'required': '*'})
+
+    def __init__(self, *args, **kwargs):
+        authorized_lists = kwargs.pop('debt_engagements', None)
+        super(CopyDebtTestForm, self).__init__(*args, **kwargs)
+        self.fields['debt_engagement'].queryset = authorized_lists
 
 
 class AddFindingForm(forms.ModelForm):
@@ -3679,7 +3700,7 @@ class ToolProductSettingsForm(forms.ModelForm):
         return form_data
 
 
-class ToolDebt_ContextSettingsForm(forms.ModelForm):
+class ToolDebtContextSettingsForm(forms.ModelForm):
     tool_configuration = forms.ModelChoiceField(queryset=Tool_Configuration.objects.all(), label='Tool Configuration')
 
     class Meta:

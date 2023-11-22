@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "debt_base.html" %}
 {% block content %}
 <h3> Delete a Product Group </h3>
 <form class="form-horizontal" action="{%  url 'delete_product_group' groupid %}" method="post">{% csrf_token %}

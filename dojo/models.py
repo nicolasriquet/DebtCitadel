@@ -5189,7 +5189,7 @@ class Debt_Item(models.Model):
         res = re.sub(r'\n\s*\n', '\n', res)
         return res
 
-    def ladebt_test_note(self):
+    def latest_note(self):
         if self.notes.all():
             note = self.notes.all()[0]
             return note.date.strftime("%Y-%m-%d %H:%M:%S") + ': ' + note.author.get_full_name() + ' : ' + note.entry

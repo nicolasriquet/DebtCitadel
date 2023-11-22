@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "debt_base.html" %}
 {% load authorization_tags %}
 {% load i18n %}
 {% load static %}
@@ -149,7 +149,7 @@
     {% endblock %}
     {% block surveys %}
         {% if system_settings.enable_questionnaires and "dojo.view_debt_engagement_survey"|has_configuration_permission:request  %}
-            <div class="row">
+            <!--<div class="row">
                 <div class="col-lg-12">
                     <div class="panel panel-default">
                         <div class="panel-heading">
@@ -224,7 +224,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>-->
         {% endif %}
     {% endblock %}    
     {% block punchcard %}

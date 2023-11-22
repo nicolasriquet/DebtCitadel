@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "debt_base.html" %}
 {% load event_tags %}
 {% load display_tags %}
 {% load i18n %}
@@ -288,7 +288,7 @@
                                     {% if top_ten_debt_contexts %}
                                         <li class="active">
                                             <a data-toggle="tab" href="#tabs-1">
-                                                {% trans "Top 10 Debt_Contexts <br/> by bug severity" %}
+                                                {% trans "Top 10 Debt Contexts <br/> by bug severity" %}
                                             </a>
                                         </li>
                                     {% endif %}

@@ -25,6 +25,22 @@ def get_authorized_users_for_product_type(users, product_type, permission):
         Q(is_superuser=True))
 
 
+def get_authorized_users_for_debt_context_type(users, debt_context_type, permission):
+    roles = get_roles_for_permission(permission)
+    debt_context_type_members = Debt_Context_Type_Member.objects \
+        .filter(debt_context_type=debt_context_type, role__in=roles) \
+        .select_related('user')
+    debt_context_type_groups = Debt_Context_Type_Group.objects \
+        .filter(debt_context_type=debt_context_type, role__in=roles)
+    group_members = Dojo_Group_Member.objects \
+        .filter(group__in=[ptg.group for ptg in debt_context_type_groups]) \
+        .select_related('user')
+    return users.filter(Q(id__in=[ptm.user.id for ptm in debt_context_type_members]) |
+                        Q(id__in=[gm.user.id for gm in group_members]) |
+                        Q(global_role__role__in=roles) |
+                        Q(is_superuser=True))
+
+
 def get_authorized_users_for_product_and_product_type(users, product, permission):
     if users is None:
         users = Dojo_User.objects.filter(is_active=True)

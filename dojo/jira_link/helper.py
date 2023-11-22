@@ -1467,6 +1467,86 @@ def process_jira_project_form(request, instance=None, target=None, product=None,
 
 
 # return True if no errors
+def debt_process_jira_project_form(request, instance=None, target=None, debt_context=None, debt_engagement=None):
+    if not get_system_setting('enable_jira'):
+        return True, None
+
+    error = False
+    jira_project = None
+    # supply empty instance to form so it has default values needed to make has_changed() work
+    # jform = JIRAProjectForm(request.POST, instance=instance if instance else JIRA_Project(), debt_context=debt_context)
+    jform = JIRAProjectForm(request.POST, instance=instance, target=target, debt_context=debt_context, debt_engagement=debt_engagement)
+    # logging has_changed because it sometimes doesn't do what we expect
+    logger.debug('jform has changed: %s', str(jform.has_changed()))
+
+    if jform.has_changed():  # if no data was changed, no need to do anything!
+        logger.debug('jform changed_data: %s', jform.changed_data)
+        logger.debug('jform: %s', vars(jform))
+        logger.debug('request.POST: %s', request.POST)
+
+        # calling jform.is_valid() here with inheritance enabled would call clean() on the JIRA_Project model
+        # resulting in a validation error if no jira_instance or project_key is provided
+        # this validation is done because the form is a model form and cannot be skipped
+        # so we check for inheritance checkbox before validating the form.
+        # seems like it's impossible to write clean code with the Django forms framework.
+        if request.POST.get('jira-project-form-inherit_from_debt_context', False):
+            logger.debug('inherit chosen')
+            if not instance:
+                logger.debug('inheriting but no existing JIRA Project for debt_engagement, so nothing to do')
+            else:
+                error = True
+                raise ValueError('Not allowed to remove existing JIRA Config for an debt_engagement')
+        elif jform.is_valid():
+            try:
+                jira_project = jform.save(commit=False)
+                # could be a new jira_project, so set debt_context_id
+                if debt_engagement:
+                    jira_project.debt_engagement_id = debt_engagement.id
+                    obj = debt_engagement
+                elif debt_context:
+                    jira_project.debt_context_id = debt_context.id
+                    obj = debt_context
+
+                if not jira_project.debt_context_id and not jira_project.debt_engagement_id:
+                    raise ValueError('encountered JIRA_Project without debt_context_id and without debt_engagement_id')
+
+                # only check jira project if form is sufficiently populated
+                if jira_project.jira_instance and jira_project.project_key:
+                    # is_jira_project_valid already adds messages if not a valid jira project
+                    if not is_jira_project_valid(jira_project):
+                        logger.debug('unable to retrieve jira project from jira instance, invalid?!')
+                        error = True
+                    else:
+                        logger.debug(vars(jira_project))
+                        jira_project.save()
+                        # update the in memory instance to make jira_project attribute work and it can be retrieved when pushing
+                        # an epic in the next step
+
+                        obj.jira_project = jira_project
+
+                        messages.add_message(request,
+                                             messages.SUCCESS,
+                                             'JIRA Project config stored successfully.',
+                                             extra_tags='alert-success')
+                        error = False
+                        logger.debug('stored JIRA_Project successfully')
+            except Exception as e:
+                error = True
+                logger.exception(e)
+                pass
+        else:
+            logger.debug(jform.errors)
+            error = True
+
+        if error:
+            messages.add_message(request,
+                                 messages.ERROR,
+                                 'JIRA Project config not stored due to errors.',
+                                 extra_tags='alert-danger')
+    return not error, jform
+
+
+# return True if no errors
 def process_jira_epic_form(request, engagement=None):
     if not get_system_setting('enable_jira'):
         return True, None
