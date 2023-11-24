@@ -25,7 +25,7 @@ from dojo.forms import NoteForm, DebtTestForm, \
     ReImportScanForm, JIRADebtItemForm, JIRAImportScanForm, \
     DebtItemBulkUpdateForm, CopyDebtTestForm
 from dojo.models import IMPORT_UNTOUCHED_FINDING, Debt_Item, Debt_Item_Group, Debt_Test, Note_Type, BurpRawRequestResponse, Endpoint, Stub_Debt_Item, \
-    Debt_Item_Template, Cred_Mapping, Debt_Test_Import, Debt_Context_API_Scan_Configuration, Debt_Test_Import_Debt_Item_Action
+    Debt_Item_Template, Debt_Cred_Mapping, Debt_Test_Import, Debt_Context_API_Scan_Configuration, Debt_Test_Import_Debt_Item_Action
 
 from dojo.tools.factory import get_choices_sorted, get_scan_types_sorted
 from dojo.utils import add_error_message_to_response, add_field_errors_to_response, add_success_message_to_response, get_page_items, get_page_items_and_count, add_breadcrumb, get_cal_event, process_notifications, get_system_setting, \
@@ -54,12 +54,12 @@ def prefetch_for_debt_items(debt_items):
     prefetched_debt_items = debt_items
     if isinstance(debt_items, QuerySet):  # old code can arrive here with prods being a list because the query was already executed
         prefetched_debt_items = prefetched_debt_items.select_related('reporter')
-        prefetched_debt_items = prefetched_debt_items.prefetch_related('jira_issue__jira_project__jira_instance')
+        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_jira_issue__debt_jira_project__jira_instance')
         prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_test__debt_test_type')
-        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_test__debt_engagement__jira_project__jira_instance')
-        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_test__debt_engagement__debt_context__jira_project_set__jira_instance')
+        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_test__debt_engagement__debt_jira_project__jira_instance')
+        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_test__debt_engagement__debt_context__debt_jira_project_set__jira_instance')
         prefetched_debt_items = prefetched_debt_items.prefetch_related('found_by')
-        prefetched_debt_items = prefetched_debt_items.prefetch_related('risk_acceptance_set')
+        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_risk_acceptance_set')
         # we could try to prefetch only the ladebt_test note with SubQuery and OuterRef, but I'm getting that MySql doesn't support limits in subqueries.
         prefetched_debt_items = prefetched_debt_items.prefetch_related('notes')
         prefetched_debt_items = prefetched_debt_items.prefetch_related('tags')
@@ -67,13 +67,13 @@ def prefetch_for_debt_items(debt_items):
         prefetched_debt_items = prefetched_debt_items.prefetch_related(Prefetch('debt_test_import_debt_item_action_set',
                                                                             queryset=Debt_Test_Import_Debt_Item_Action.objects.exclude(action=IMPORT_UNTOUCHED_FINDING)))
 
-        prefetched_debt_items = prefetched_debt_items.prefetch_related('endpoints')
+        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_endpoints')
         prefetched_debt_items = prefetched_debt_items.prefetch_related('status_debt_item')
         prefetched_debt_items = prefetched_debt_items.annotate(active_endpoint_count=Count('status_debt_item__id', filter=Q(status_debt_item__mitigated=False)))
         prefetched_debt_items = prefetched_debt_items.annotate(mitigated_endpoint_count=Count('status_debt_item__id', filter=Q(status_debt_item__mitigated=True)))
         prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_item_group_set__jira_issue')
         prefetched_debt_items = prefetched_debt_items.prefetch_related('duplicate_debt_item')
-        prefetched_debt_items = prefetched_debt_items.prefetch_related('vulnerability_id_set')
+        prefetched_debt_items = prefetched_debt_items.prefetch_related('debt_vulnerability_id_set')
     else:
         logger.debug('unable to prefetch because query was already executed')
 
@@ -144,7 +144,7 @@ class ViewDebtTest(View):
     def get_initial_context(self, request: HttpRequest, debt_test: Debt_Test):
         # Set up the debt_context tab
         debt_context_tab = Debt_Context_Tab(debt_test.debt_engagement.debt_context, title=_("Debt_Test"), tab="debt_engagements")
-        debt_context_tab.setDebt_Engagement(debt_test.debt_engagement)
+        debt_context_tab.setDebtEngagement(debt_test.debt_engagement)
         # Set up the notes and associated info to generate the form with
         notes = debt_test.notes.all()
         note_type_activation = Note_Type.objects.filter(is_active=True).count()
@@ -165,8 +165,8 @@ class ViewDebtTest(View):
             "person": request.user.username,
             "request": request,
             "show_re_upload": any(debt_test.debt_test_type.name in code for code in get_choices_sorted()),
-            "creds": Cred_Mapping.objects.filter(debt_engagement=debt_test.debt_engagement).select_related("cred_id").order_by("cred_id"),
-            "cred_debt_test": Cred_Mapping.objects.filter(debt_test=debt_test).select_related("cred_id").order_by("cred_id"),
+            "creds": Debt_Cred_Mapping.objects.filter(debt_engagement=debt_test.debt_engagement).select_related("cred_id").order_by("cred_id"),
+            "cred_debt_test": Debt_Cred_Mapping.objects.filter(debt_test=debt_test).select_related("cred_id").order_by("cred_id"),
             "jira_project": jira_helper.get_jira_project(debt_test),
             "bulk_edit_form": DebtItemBulkUpdateForm(request.GET),
             'debt_item_groups': debt_test.debt_item_group_set.all().prefetch_related("debt_items", "jira_issue", "creator", "debt_items__vulnerability_id_set"),
@@ -205,7 +205,7 @@ class ViewDebtTest(View):
         return request, False
 
     def get_template(self):
-        return "dojo/view_debt_test.html"
+        return "dojo/debt_view_debt_test.html"
 
     def get(self, request: HttpRequest, debt_test_id: int):
         # Get the initial objects
@@ -508,7 +508,7 @@ class AddDebtItemView(View):
             debt_item.tags = context["form"].cleaned_data['tags']
             debt_item.save()
             # Save and add new endpoints
-            debt_item_helper.add_endpoints(debt_item, context["form"])
+            debt_item_helper.add_debt_endpoints(debt_item, context["form"])
             # Save the debt_item at the end and return
             debt_item.save()
 
@@ -583,14 +583,15 @@ class AddDebtItemView(View):
             # Push things to jira if needed
             debt_item.save(push_to_jira=push_to_jira)
             # Save the burp req resp
-            if "request" in context["form"].cleaned_data or "response" in context["form"].cleaned_data:
-                burp_rr = BurpRawRequestResponse(
-                    debt_item=debt_item,
-                    burpRequestBase64=base64.b64encode(context["form"].cleaned_data["request"].encode()),
-                    burpResponseBase64=base64.b64encode(context["form"].cleaned_data["response"].encode()),
-                )
-                burp_rr.clean()
-                burp_rr.save()
+            #if "request" in context["form"].cleaned_data or "response" in context["form"].cleaned_data:
+            #    burp_rr = BurpRawRequestResponse(
+            #        debt_item=debt_item,
+            #        burpRequestBase64=base64.b64encode(context["form"].cleaned_data["request"].encode()),
+            #        burpResponseBase64=base64.b64encode(context["form"].cleaned_data["response"].encode()),
+            #    )
+            #    burp_rr.clean()
+            #    burp_rr.save()
+
             # Create a notification
             create_notification(
                 event='other',
@@ -611,7 +612,7 @@ class AddDebtItemView(View):
         return debt_item, request, all_forms_valid
 
     def get_template(self):
-        return "dojo/add_debt_items.html"
+        return "dojo/debt_add_debt_items.html"
 
     def get(self, request: HttpRequest, debt_test_id: int):
         # Get the initial objects
@@ -693,7 +694,7 @@ def add_temp_debt_item(request, tid, fid):
             new_debt_item.save(dedupe_option=False)
 
             # Save and add new endpoints
-            debt_item_helper.add_endpoints(new_debt_item, form)
+            debt_item_helper.add_debt_endpoints(new_debt_item, form)
 
             new_debt_item.save()
             if 'jiraform-push_to_jira' in request.POST:
@@ -824,7 +825,7 @@ def re_import_scan_results(request, tid):
             api_scan_configuration = form.cleaned_data.get('api_scan_configuration', None)
             service = form.cleaned_data.get('service', None)
 
-            endpoints_to_add = None  # not available on reimport UI
+            debt_endpoints_to_add = None  # not available on reimport UI
 
             close_old_debt_items = form.cleaned_data.get('close_old_debt_items', True)
 
@@ -862,7 +863,7 @@ def re_import_scan_results(request, tid):
                 debt_test, debt_item_count, new_debt_item_count, closed_debt_item_count, reactivated_debt_item_count, untouched_debt_item_count, debt_test_import = \
                     reimporter.reimport_scan(scan, scan_type, debt_test, active=active, verified=verified,
                                                 tags=None, minimum_severity=minimum_severity,
-                                                endpoints_to_add=endpoints_to_add, scan_date=scan_date,
+                                                debt_endpoints_to_add=debt_endpoints_to_add, scan_date=scan_date,
                                                 version=version, branch_tag=branch_tag, build_id=build_id,
                                                 commit_hash=commit_hash, push_to_jira=push_to_jira,
                                                 close_old_debt_items=close_old_debt_items, group_by=group_by,

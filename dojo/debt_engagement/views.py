@@ -239,13 +239,13 @@ def edit_debt_engagement(request, eid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Debt_Engagement updated successfully.',
+                'Debt Engagement updated successfully.',
                 extra_tags='alert-success')
 
-            success, jira_project_form = jira_helper.process_jira_project_form(request, instance=jira_project, target='debt_engagement', debt_engagement=debt_engagement, debt_context=debt_engagement.debt_context)
+            success, jira_project_form = jira_helper.debt_process_jira_project_form(request, instance=jira_project, target='debt_engagement', debt_engagement=debt_engagement, debt_context=debt_engagement.debt_context)
             error = not success
 
-            success, jira_epic_form = jira_helper.process_jira_epic_form(request, debt_engagement=debt_engagement)
+            success, jira_epic_form = jira_helper.debt_process_jira_epic_form(request, debt_engagement=debt_engagement)
             error = error or not success
 
             if not error:
@@ -300,9 +300,9 @@ def delete_debt_engagement(request, eid):
                 if get_setting("ASYNC_OBJECT_DELETE"):
                     async_del = async_delete()
                     async_del.delete(debt_engagement)
-                    message = 'Debt_Engagement and relationships will be removed in the background.'
+                    message = 'Debt Engagement and relationships will be removed in the background.'
                 else:
-                    message = 'Debt_Engagement and relationships removed.'
+                    message = 'Debt Engagement and relationships removed.'
                     debt_engagement.delete()
                 messages.add_message(
                     request,
@@ -312,7 +312,7 @@ def delete_debt_engagement(request, eid):
                 create_notification(event='other',
                                     title='Deletion of %s' % debt_engagement.name,
                                     debt_context=debt_context,
-                                    description='The debt_engagement "%s" was deleted by %s' % (debt_engagement.name, request.user),
+                                    description='The debt engagement "%s" was deleted by %s' % (debt_engagement.name, request.user),
                                     url=request.build_absolute_uri(reverse('view_debt_engagements', args=(debt_context.id, ))),
                                     recipients=[debt_engagement.lead],
                                     icon="exclamation-triangle")
@@ -328,7 +328,7 @@ def delete_debt_engagement(request, eid):
 
     debt_context_tab = Debt_Context_Tab(debt_context, title="Delete Debt_Engagement", tab="debt_engagements")
     debt_context_tab.setDebtEngagement(debt_engagement)
-    return render(request, 'dojo/delete_debt_engagement.html', {
+    return render(request, 'dojo/debt_delete_debt_engagement.html', {
         'debt_context_tab': debt_context_tab,
         'debt_engagement': debt_engagement,
         'form': form,
@@ -350,7 +350,7 @@ def copy_debt_engagement(request, eid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Debt_Engagement Copied successfully.',
+                'Debt Engagement copied successfully.',
                 extra_tags='alert-success')
             create_notification(event='other',
                                 title='Copying of %s' % debt_engagement.name,
@@ -364,7 +364,7 @@ def copy_debt_engagement(request, eid):
             messages.add_message(
                 request,
                 messages.ERROR,
-                'Unable to copy debt_engagement, please try again.',
+                'Unable to copy debt engagement, please try again.',
                 extra_tags='alert-danger')
 
     debt_context_tab = Debt_Context_Tab(debt_context, title="Copy Debt_Engagement", tab="debt_engagements")
@@ -543,7 +543,7 @@ def add_debt_tests(request, eid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Debt_Test added successfully.',
+                'Debt Test added successfully.',
                 extra_tags='alert-success')
 
             notifications_helper.notify_debt_test_created(new_debt_test)
@@ -566,7 +566,7 @@ def add_debt_tests(request, eid):
         parent=eng, title="Add Debt_Tests", top_level=False, request=request)
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Add Debt_Tests", tab="debt_engagements")
     debt_context_tab.setDebtEngagement(eng)
-    return render(request, 'dojo/add_debt_tests.html', {
+    return render(request, 'dojo/debt_add_debt_tests.html', {
         'debt_context_tab': debt_context_tab,
         'form': form,
         'cred_form': cred_form,
@@ -759,7 +759,7 @@ def close_eng(request, eid):
     messages.add_message(
         request,
         messages.SUCCESS,
-        'Debt_Engagement closed successfully.',
+        'Debt Engagement closed successfully.',
         extra_tags='alert-success')
     create_notification(event='close_debt_engagement',
                         title='Closure of %s' % eng.name,
@@ -775,7 +775,7 @@ def reopen_eng(request, eid):
     messages.add_message(
         request,
         messages.SUCCESS,
-        'Debt_Engagement reopened successfully.',
+        'Debt Engagement reopened successfully.',
         extra_tags='alert-success')
     create_notification(event='other',
                         title='Reopening of %s' % eng.name,

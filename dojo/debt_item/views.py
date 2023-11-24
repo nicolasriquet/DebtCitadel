@@ -81,12 +81,12 @@ from dojo.models import (
     Debt_Item_Template,
     Endpoint_Status,
     FileAccessToken,
-    GITHUB_PKey,
+    Debt_GITHUB_PKey,
     GITHUB_Issue,
     Dojo_User,
     Debt_Cred_Mapping,
     Debt_Test,
-    Product,
+    Debt_Context,
     Debt_Test_Import,
     Debt_Test_Import_Debt_Item_Action,
     User,
@@ -101,7 +101,7 @@ from dojo.utils import (
     process_notifications,
     get_system_setting,
     apply_cwe_to_template,
-    Product_Tab,
+    Debt_Context_Tab,
     Debt_Context_Tab,
     debt_calculate_grade,
     redirect_to_return_url_or_else,
@@ -380,12 +380,12 @@ class ListDebtItems(View, BaseListDebtItems):
         }
         # Look to see if the debt_context was used
         if debt_context_id := self.get_debt_context_id():
-            debt_context = get_object_or_404(Product, id=debt_context_id)
-            user_has_permission_or_403(request.user, debt_context, Permissions.Product_View)
+            debt_context = get_object_or_404(Debt_Context, id=debt_context_id)
+            user_has_permission_or_403(request.user, debt_context, Permissions.Debt_Context_View)
             context["show_debt_context_column"] = False
             context["debt_context_tab"] = Debt_Context_Tab(debt_context, title="debt_items", tab="debt_items")
             context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_context)
-            if github_config := GITHUB_PKey.objects.filter(debt_context=debt_context).first():
+            if github_config := Debt_GITHUB_PKey.objects.filter(debt_context=debt_context).first():
                 context["github_config"] = github_config.git_conf_id
         elif debt_engagement_id := self.get_debt_engagement_id():
             debt_engagement = get_object_or_404(Debt_Engagement, id=debt_engagement_id)
@@ -393,7 +393,7 @@ class ListDebtItems(View, BaseListDebtItems):
             context["show_debt_context_column"] = False
             context["debt_context_tab"] = Debt_Context_Tab(debt_engagement.debt_context, title=debt_engagement.name, tab="debt_engagements")
             context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_engagement)
-            if github_config := GITHUB_PKey.objects.filter(debt_context__debt_engagement=debt_engagement).first():
+            if github_config := Debt_GITHUB_PKey.objects.filter(debt_context__debt_engagement=debt_engagement).first():
                 context["github_config"] = github_config.git_conf_id
 
         return request, context
@@ -741,7 +741,7 @@ class ViewDebtItem(View):
         return context
 
     def get_template(self):
-        return "dojo/view_debt_item.html"
+        return "dojo/debt_view_debt_item.html"
 
     def get(self, request: HttpRequest, debt_item_id: int):
         # Get the initial objects
@@ -836,7 +836,7 @@ class EditDebtItem(View):
         # Determine if github should be used
         if get_system_setting("enable_github"):
             # Ensure there is a github conf correctly configured for the debt_context
-            config_present = GITHUB_PKey.objects.filter(debt_context=debt_item.debt_test.debt_engagement.debt_context)
+            config_present = Debt_GITHUB_PKey.objects.filter(debt_context=debt_item.debt_test.debt_engagement.debt_context)
             if config_present := config_present.exclude(git_conf_id=None):
                 # Set up the args for the form
                 args = [request.POST] if request.method == "POST" else []
@@ -1113,7 +1113,7 @@ class EditDebtItem(View):
         return request, all_forms_valid
 
     def get_template(self):
-        return "dojo/edit_debt_item.html"
+        return "dojo/debt_edit_debt_item.html"
 
     def get(self, request: HttpRequest, debt_item_id: int):
         # Get the initial objects
@@ -1299,7 +1299,7 @@ def close_debt_item(request, fid):
 
     return render(
         request,
-        "dojo/close_debt_item.html",
+        "dojo/debt_close_debt_item.html",
         {
             "debt_item": debt_item,
             "debt_context_tab": debt_context_tab,
@@ -1708,7 +1708,7 @@ def request_debt_item_review(request, fid):
 
     return render(
         request,
-        "dojo/review_debt_item.html",
+        "dojo/debt_review_debt_item.html",
         {"debt_item": debt_item, "debt_context_tab": debt_context_tab, "user": user, "form": form},
     )
 
@@ -1784,7 +1784,7 @@ def clear_debt_item_review(request, fid):
 
     return render(
         request,
-        "dojo/clear_debt_item_review.html",
+        "dojo/debt_clear_debt_item_review.html",
         {"debt_item": debt_item, "debt_context_tab": debt_context_tab, "user": user, "form": form},
     )
 
@@ -1907,7 +1907,7 @@ def choose_debt_item_template_options(request, tid, fid):
     )
     return render(
         request,
-        "dojo/apply_debt_item_template.html",
+        "dojo/debt_apply_debt_item_template.html",
         {
             "debt_item": debt_item,
             "debt_context_tab": debt_context_tab,
@@ -1960,7 +1960,7 @@ def apply_template_to_debt_item(request, fid, tid):
             )
             return render(
                 request,
-                "dojo/apply_debt_item_template.html",
+                "dojo/debt_apply_debt_item_template.html",
                 {
                     "debt_item": debt_item,
                     "debt_context_tab": debt_context_tab,
@@ -2141,7 +2141,7 @@ def promote_to_debt_item(request, fid):
                 gform = GITHUBDebtItemForm(
                     request.POST,
                     prefix="githubform",
-                    enabled=GITHUB_PKey.objects.get(
+                    enabled=Debt_GITHUB_PKey.objects.get(
                         debt_context=test.debt_engagement.debt_context
                     ).push_all_issues,
                 )
@@ -2186,7 +2186,7 @@ def promote_to_debt_item(request, fid):
 
     return render(
         request,
-        "dojo/promote_to_debt_item.html",
+        "dojo/debt_promote_to_debt_item.html",
         {
             "form": form,
             "debt_context_tab": debt_context_tab,
@@ -2488,9 +2488,9 @@ def download_debt_item_pic(request, token):
         return response
 
 
-@user_is_authorized(Product, Permissions.Debt_Item_Edit, "pid")
+@user_is_authorized(Debt_Context, Permissions.Debt_Item_Edit, "pid")
 def merge_debt_item_debt_context(request, pid):
-    debt_context = get_object_or_404(Product, pk=pid)
+    debt_context = get_object_or_404(Debt_Context, pk=pid)
     debt_item_to_update = request.GET.getlist("debt_item_to_update")
     debt_items = None
 
@@ -2674,7 +2674,7 @@ def merge_debt_item_debt_context(request, pid):
 
     return render(
         request,
-        "dojo/merge_debt_items.html",
+        "dojo/debt_merge_debt_items.html",
         {
             "form": form,
             "name": "Merge debt_items",
@@ -2705,7 +2705,7 @@ def debt_item_bulk_update_all(request, pid=None):
         if request.POST.get("delete_bulk_debt_items"):
             if form.is_valid() and debt_item_to_update:
                 if pid is not None:
-                    debt_context = get_object_or_404(Product, id=pid)
+                    debt_context = get_object_or_404(Debt_Context, id=pid)
                     user_has_permission_or_403(
                         request.user, debt_context, Permissions.Debt_Item_Delete
                     )
@@ -2739,7 +2739,7 @@ def debt_item_bulk_update_all(request, pid=None):
         else:
             if form.is_valid() and debt_item_to_update:
                 if pid is not None:
-                    debt_context = get_object_or_404(Product, id=pid)
+                    debt_context = get_object_or_404(Debt_Context, id=pid)
                     user_has_permission_or_403(
                         request.user, debt_context, Permissions.Debt_Item_Edit
                     )

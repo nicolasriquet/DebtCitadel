@@ -21,11 +21,11 @@ from django.utils.translation import gettext_lazy as _
 import tagulous
 
 from dojo.endpoint.utils import endpoint_get_or_create, endpoint_filter, \
-    validate_endpoints_to_add
+    validate_endpoints_to_add, validate_debt_endpoints_to_add
 from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_Item_Group, \
     Product_Type, Debt_Context_Type, Product, Debt_Context, Note_Type, \
     Check_List, SLA_Configuration, User, Engagement, Debt_Engagement, Test, Debt_Test, Test_Type, Debt_Test_Type, Notes, Risk_Acceptance, \
-    Development_Environment, Dojo_User, Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
+    Development_Environment, Dojo_User, Endpoint, Debt_Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
     JIRA_Issue, JIRA_Project, Debt_JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
     Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
     Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
@@ -1448,8 +1448,8 @@ class AddDebtItemForm(forms.ModelForm):
     impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
-    endpoints = forms.ModelMultipleChoiceField(Endpoint.objects.none(), required=False, label='Systems / Endpoints')
-    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
+    debt_endpoints = forms.ModelMultipleChoiceField(Debt_Endpoint.objects.none(), required=False, label='Systems / Endpoints')
+    debt_endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Debt_Endpoints to add",
                                        help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
                                                  "Each must be valid.",
                                        widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
@@ -1465,7 +1465,7 @@ class AddDebtItemForm(forms.ModelForm):
 
     # the only reliable way without hacking internal fields to get predicatble ordering is to make it explicit
     field_order = ('title', 'date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'description', 'mitigation', 'impact', 'request', 'response', 'steps_to_reproduce',
-                   'severity_justification', 'endpoints', 'endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
+                   'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
                    'risk_accepted', 'under_defect_review')
 
     def __init__(self, *args, **kwargs):
@@ -1478,7 +1478,7 @@ class AddDebtItemForm(forms.ModelForm):
         super(AddDebtItemForm, self).__init__(*args, **kwargs)
 
         if debt_context:
-            self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=debt_context)
+            self.fields['debt_endpoints'].queryset = Debt_Endpoint.objects.filter(debt_context=debt_context)
 
         if req_resp:
             self.fields['request'].initial = req_resp[0]
@@ -1498,18 +1498,18 @@ class AddDebtItemForm(forms.ModelForm):
             raise forms.ValidationError('Active debt_items cannot '
                                         'be risk accepted.')
 
-        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        debt_endpoints_to_add_list, errors = validate_debt_endpoints_to_add(cleaned_data['debt_endpoints_to_add'])
         if errors:
             raise forms.ValidationError(errors)
         else:
-            self.endpoints_to_add_list = endpoints_to_add_list
+            self.debt_endpoints_to_add_list = debt_endpoints_to_add_list
 
         return cleaned_data
 
     class Meta:
         model = Debt_Item
         exclude = ('reporter', 'url', 'numerical_severity', 'under_review', 'reviewers', 'cve', 'inherited_tags',
-                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoints', 'sla_start_date')
+                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'debt_endpoints', 'sla_start_date')
 
 
 class AdHocFindingForm(forms.ModelForm):
@@ -1637,7 +1637,7 @@ class AdHocDebtItemForm(forms.ModelForm):
         super(AdHocDebtItemForm, self).__init__(*args, **kwargs)
 
         if debt_context:
-            self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=debt_context)
+            self.fields['debt_endpoints'].queryset = Debt_Endpoint.objects.filter(debt_context=debt_context)
 
         if req_resp:
             self.fields['request'].initial = req_resp[0]
@@ -1654,11 +1654,11 @@ class AdHocDebtItemForm(forms.ModelForm):
             raise forms.ValidationError('False positive debt_items cannot '
                                         'be verified.')
 
-        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        debt_endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
         if errors:
             raise forms.ValidationError(errors)
         else:
-            self.endpoints_to_add_list = endpoints_to_add_list
+            self.debt_endpoints_to_add_list = debt_endpoints_to_add_list
 
         return cleaned_data
 

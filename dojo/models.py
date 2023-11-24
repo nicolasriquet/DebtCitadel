@@ -2040,7 +2040,7 @@ class Debt_Engagement(models.Model):
     def delete(self, *args, **kwargs):
         logger.debug('%d debt_engagement delete', self.id)
         import dojo.debt_item.helper as helper
-        helper.prepare_duplicates_for_delete(debt_engagement=self)
+        helper.debt_prepare_duplicates_for_delete(debt_engagement=self)
         super().delete(*args, **kwargs)
         calculate_grade(self.debt_context)
 
@@ -5355,7 +5355,7 @@ class Stub_Debt_Item(models.Model):
     date = models.DateField(default=get_current_date, blank=False, null=False)
     severity = models.CharField(max_length=200, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    test = models.ForeignKey(Test, editable=False, on_delete=models.CASCADE)
+    debt_test = models.ForeignKey(Debt_Test, editable=False, on_delete=models.CASCADE)
     reporter = models.ForeignKey(Dojo_User, editable=False, default=1, on_delete=models.RESTRICT)
 
     class Meta:
@@ -5365,7 +5365,7 @@ class Stub_Debt_Item(models.Model):
         return self.title
 
     def get_breadcrumbs(self):
-        bc = self.test.get_breadcrumbs()
+        bc = self.debt_test.get_breadcrumbs()
         bc += [{'title': "Potential Debt Item: " + str(self),
                 'url': reverse('view_potential_debt_item', args=(self.id,))}]
         return bc
@@ -5463,7 +5463,7 @@ class Debt_Item_Group(TimeStampedModel):
                         ('debt_item_title', 'Debt Item Title')]
 
     name = models.CharField(max_length=255, blank=False, null=False)
-    test = models.ForeignKey(Test, on_delete=models.CASCADE)
+    debt_test = models.ForeignKey(Debt_Test, on_delete=models.CASCADE)
     debt_items = models.ManyToManyField(Debt_Item)
     creator = models.ForeignKey(Dojo_User, on_delete=models.RESTRICT)
 
@@ -5534,7 +5534,7 @@ class Debt_Item_Group(TimeStampedModel):
 
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('view_test', args=[str(self.test.id)])
+        return reverse('view_debt_test', args=[str(self.debt_test.id)])
 
     class Meta:
         ordering = ['id']
@@ -6038,6 +6038,18 @@ class GITHUB_PKey(models.Model):
 
     def __str__(self):
         return self.product.name + " | " + self.git_project
+
+
+class Debt_GITHUB_PKey(models.Model):
+    debt_context = models.ForeignKey(Debt_Context, on_delete=models.CASCADE)
+
+    git_project = models.CharField(max_length=200, blank=True, verbose_name=_('Github project'), help_text=_('Specify your project location. (:user/:repo)'))
+    git_conf = models.ForeignKey(GITHUB_Conf, verbose_name=_('Github Configuration'),
+                                 null=True, blank=True, on_delete=models.CASCADE)
+    git_push_notes = models.BooleanField(default=False, blank=True, help_text=_("Notes added to findings will be automatically added to the corresponding github issue"))
+
+    def __str__(self):
+        return self.debt_context.name + " | " + self.git_project
 
 
 class JIRA_Instance(models.Model):

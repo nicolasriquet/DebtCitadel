@@ -10,8 +10,9 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from jira import JIRA
 from jira.exceptions import JIRAError
-from dojo.models import Finding, Finding_Group, Risk_Acceptance, Stub_Finding, Test, Engagement, Product, \
-    JIRA_Issue, JIRA_Project, System_Settings, Notes, JIRA_Instance, User
+from dojo.models import (Finding, Debt_Item, Finding_Group, Debt_Item_Group, Risk_Acceptance, Stub_Finding, Stub_Debt_Item,
+                         Test, Debt_Test, Engagement, Debt_Engagement, Product, Debt_Context, JIRA_Issue, JIRA_Project,
+                         System_Settings, Notes, JIRA_Instance, User)
 from requests.auth import HTTPBasicAuth
 from dojo.notifications.helper import create_notification
 from django.contrib import messages
@@ -19,7 +20,7 @@ from dojo.celery import app
 from dojo.decorators import dojo_async_task, dojo_model_from_id, dojo_model_to_id
 from dojo.utils import truncate_with_dots, prod_name, get_file_images
 from django.urls import reverse
-from dojo.forms import JIRAProjectForm, JIRAEngagementForm
+from dojo.forms import JIRAProjectForm, JIRAEngagementForm, JIRADebtEngagementForm
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,136 @@ def get_jira_project(obj, use_inheritance=True):
         jira_project = jira_projects[0] if len(jira_projects) > 0 else None
         if jira_project:
             logger.debug('found jira_project %s for %s', jira_project, product)
+            return jira_project
+
+    logger.debug('no jira_project found for %s', obj)
+    return None
+
+
+def get_jira_project(obj, use_inheritance=True):
+    if not is_jira_enabled():
+        return None
+
+    if obj is None:
+        return None
+
+    # logger.debug('get jira project for: ' + str(obj.id) + ':' + str(obj))
+
+    if isinstance(obj, JIRA_Project):
+        return obj
+
+    if isinstance(obj, JIRA_Issue):
+        if obj.jira_project:
+            return obj.jira_project
+        # some old jira_issue records don't have a jira_project, so try to go via the finding instead
+        elif hasattr(obj, 'finding') and obj.finding:
+            return get_jira_project(obj.finding, use_inheritance=use_inheritance)
+        elif hasattr(obj, 'engagement') and obj.engagement:
+            return get_jira_project(obj.finding, use_inheritance=use_inheritance)
+        else:
+            return None
+
+    if isinstance(obj, Finding) or isinstance(obj, Stub_Finding):
+        finding = obj
+        return get_jira_project(finding.test)
+
+    if isinstance(obj, Finding_Group):
+        return get_jira_project(obj.test)
+
+    if isinstance(obj, Test):
+        test = obj
+        return get_jira_project(test.engagement)
+
+    if isinstance(obj, Engagement):
+        engagement = obj
+        jira_project = None
+        try:
+            jira_project = engagement.jira_project  # first() doesn't work with prefetching
+            if jira_project:
+                logger.debug('found jira_project %s for %s', jira_project, engagement)
+                return jira_project
+        except JIRA_Project.DoesNotExist:
+            pass  # leave jira_project as None
+
+        if use_inheritance:
+            logger.debug('delegating to product %s for %s', engagement.product, engagement)
+            return get_jira_project(engagement.product)
+        else:
+            logger.debug('not delegating to product %s for %s', engagement.product, engagement)
+            return None
+
+    if isinstance(obj, Product):
+        # TODO refactor relationships, but now this would brake APIv1 (and v2?)
+        product = obj
+        jira_projects = product.jira_project_set.all()  # first() doesn't work with prefetching
+        jira_project = jira_projects[0] if len(jira_projects) > 0 else None
+        if jira_project:
+            logger.debug('found jira_project %s for %s', jira_project, product)
+            return jira_project
+
+    logger.debug('no jira_project found for %s', obj)
+    return None
+
+
+def get_debt_jira_project(obj, use_inheritance=True):
+    if not is_jira_enabled():
+        return None
+
+    if obj is None:
+        return None
+
+    # logger.debug('get jira project for: ' + str(obj.id) + ':' + str(obj))
+
+    if isinstance(obj, JIRA_Project):
+        return obj
+
+    if isinstance(obj, JIRA_Issue):
+        if obj.jira_project:
+            return obj.jira_project
+        # some old jira_issue records don't have a jira_project, so try to go via the debt_item instead
+        elif hasattr(obj, 'debt_item') and obj.debt_item:
+            return get_jira_project(obj.debt_item, use_inheritance=use_inheritance)
+        elif hasattr(obj, 'debt_engagement') and obj.debt_engagement:
+            return get_jira_project(obj.debt_item, use_inheritance=use_inheritance)
+        else:
+            return None
+
+    if isinstance(obj, Debt_Item) or isinstance(obj, Stub_Debt_Item):
+        debt_item = obj
+        return get_jira_project(debt_item.debt_test)
+
+    if isinstance(obj, Debt_Item_Group):
+        return get_jira_project(obj.debt_test)
+
+    if isinstance(obj, Debt_Test):
+        debt_test = obj
+        return get_jira_project(debt_test.debt_engagement)
+
+    if isinstance(obj, Debt_Engagement):
+        debt_engagement = obj
+        jira_project = None
+        try:
+            jira_project = debt_engagement.jira_project  # first() doesn't work with prefetching
+            if jira_project:
+                logger.debug('found jira_project %s for %s', jira_project, debt_engagement)
+                return jira_project
+        except JIRA_Project.DoesNotExist:
+            pass  # leave jira_project as None
+
+        if use_inheritance:
+            logger.debug('delegating to debt_context %s for %s', debt_engagement.debt_context, debt_engagement)
+            return get_jira_project(debt_engagement.debt_context)
+        else:
+            logger.debug('not delegating to debt_context %s for %s', debt_engagement.debt_context, debt_engagement)
+            return None
+
+    if isinstance(obj, Debt_Context):
+        # TODO refactor relationships, but now this would brake APIv1 (and v2?)
+        debt_context = obj
+        jira_projects = debt_context.jira_project_set.all()  # first() doesn't work with prefetching
+        jira_project = jira_projects[0] if len(jira_projects) > 0 else None
+        if jira_project:
+            logger.debug('found jira_project %s for %s', jira_project, debt_context)
             return jira_project
 
     logger.debug('no jira_project found for %s', obj)
@@ -1466,6 +1597,86 @@ def process_jira_project_form(request, instance=None, target=None, product=None,
     return not error, jform
 
 
+
+def debt_process_jira_project_form(request, instance=None, target=None, debt_context=None, debt_engagement=None):
+    if not get_system_setting('enable_jira'):
+        return True, None
+
+    error = False
+    jira_project = None
+    # supply empty instance to form so it has default values needed to make has_changed() work
+    # jform = JIRAProjectForm(request.POST, instance=instance if instance else JIRA_Project(), debt_context=debt_context)
+    jform = JIRAProjectForm(request.POST, instance=instance, target=target, debt_context=debt_context, debt_engagement=debt_engagement)
+    # logging has_changed because it sometimes doesn't do what we expect
+    logger.debug('jform has changed: %s', str(jform.has_changed()))
+
+    if jform.has_changed():  # if no data was changed, no need to do anything!
+        logger.debug('jform changed_data: %s', jform.changed_data)
+        logger.debug('jform: %s', vars(jform))
+        logger.debug('request.POST: %s', request.POST)
+
+        # calling jform.is_valid() here with inheritance enabled would call clean() on the JIRA_Project model
+        # resulting in a validation error if no jira_instance or project_key is provided
+        # this validation is done because the form is a model form and cannot be skipped
+        # so we check for inheritance checkbox before validating the form.
+        # seems like it's impossible to write clean code with the Django forms framework.
+        if request.POST.get('jira-project-form-inherit_from_debt_context', False):
+            logger.debug('inherit chosen')
+            if not instance:
+                logger.debug('inheriting but no existing JIRA Project for debt_engagement, so nothing to do')
+            else:
+                error = True
+                raise ValueError('Not allowed to remove existing JIRA Config for an debt_engagement')
+        elif jform.is_valid():
+            try:
+                jira_project = jform.save(commit=False)
+                # could be a new jira_project, so set debt_context_id
+                if debt_engagement:
+                    jira_project.debt_engagement_id = debt_engagement.id
+                    obj = debt_engagement
+                elif debt_context:
+                    jira_project.debt_context_id = debt_context.id
+                    obj = debt_context
+
+                if not jira_project.debt_context_id and not jira_project.debt_engagement_id:
+                    raise ValueError('encountered JIRA_Project without debt_context_id and without debt_engagement_id')
+
+                # only check jira project if form is sufficiently populated
+                if jira_project.jira_instance and jira_project.project_key:
+                    # is_jira_project_valid already adds messages if not a valid jira project
+                    if not is_jira_project_valid(jira_project):
+                        logger.debug('unable to retrieve jira project from jira instance, invalid?!')
+                        error = True
+                    else:
+                        logger.debug(vars(jira_project))
+                        jira_project.save()
+                        # update the in memory instance to make jira_project attribute work and it can be retrieved when pushing
+                        # an epic in the next step
+
+                        obj.jira_project = jira_project
+
+                        messages.add_message(request,
+                                             messages.SUCCESS,
+                                             'JIRA Project config stored successfully.',
+                                             extra_tags='alert-success')
+                        error = False
+                        logger.debug('stored JIRA_Project successfully')
+            except Exception as e:
+                error = True
+                logger.exception(e)
+                pass
+        else:
+            logger.debug(jform.errors)
+            error = True
+
+        if error:
+            messages.add_message(request,
+                                 messages.ERROR,
+                                 'JIRA Project config not stored due to errors.',
+                                 extra_tags='alert-danger')
+    return not error, jform
+
+
 # return True if no errors
 def debt_process_jira_project_form(request, instance=None, target=None, debt_context=None, debt_engagement=None):
     if not get_system_setting('enable_jira'):
@@ -1587,6 +1798,50 @@ def process_jira_epic_form(request, engagement=None):
             logger.debug('invalid jira epic form')
     else:
         logger.debug('no jira_project for this engagement, skipping epic push')
+    return not error, jira_epic_form
+
+
+# return True if no errors
+def debt_process_jira_epic_form(request, debt_engagement=None):
+    if not get_system_setting('enable_jira'):
+        return True, None
+
+    logger.debug('checking jira epic form for debt_engagement: %i:%s', debt_engagement.id if debt_engagement else 0, debt_engagement)
+    # push epic
+    error = False
+    jira_epic_form = JIRADebtEngagementForm(request.POST, instance=debt_engagement)
+
+    jira_project = get_jira_project(debt_engagement)  # uses inheritance to get from debt_context if needed
+
+    if jira_project:
+        if jira_epic_form.is_valid():
+            if jira_epic_form.cleaned_data.get('push_to_jira'):
+                logger.debug('pushing debt_engagement to JIRA')
+                epic_name = debt_engagement.name
+                if jira_epic_form.cleaned_data.get('epic_name'):
+                    epic_name = jira_epic_form.cleaned_data.get('epic_name')
+                epic_priority = None
+                if jira_epic_form.cleaned_data.get('epic_priority'):
+                    epic_priority = jira_epic_form.cleaned_data.get('epic_priority')
+                if push_to_jira(debt_engagement, epic_name=epic_name, epic_priority=epic_priority):
+                    logger.debug('Push to JIRA for Epic queued successfully')
+                    messages.add_message(
+                        request,
+                        messages.SUCCESS,
+                        'Push to JIRA for Epic queued succesfully, check alerts on the top right for errors',
+                        extra_tags='alert-success')
+                else:
+                    error = True
+                    logger.debug('Push to JIRA for Epic failey')
+                    messages.add_message(
+                        request,
+                        messages.ERROR,
+                        'Push to JIRA for Epic failed, check alerts on the top right for errors',
+                        extra_tags='alert-danger')
+        else:
+            logger.debug('invalid jira epic form')
+    else:
+        logger.debug('no jira_project for this debt_engagement, skipping epic push')
     return not error, jira_epic_form
 
 

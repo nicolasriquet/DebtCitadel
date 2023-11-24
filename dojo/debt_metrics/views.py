@@ -617,7 +617,7 @@ def simple_debt_metrics(request):
 
     add_breadcrumb(title=page_name, top_level=True, request=request)
 
-    return render(request, 'dojo/simple_debt_metrics.html', {
+    return render(request, 'dojo/debt_simple_debt_metrics.html', {
         'debt_items': debt_items_by_debt_context_type,
         'name': page_name,
         'metric': True,

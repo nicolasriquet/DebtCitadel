@@ -178,7 +178,7 @@ def edit_debt_context_type(request, ptid):
             return HttpResponseRedirect(reverse("debt_context_type"))
 
     add_breadcrumb(title=page_name, top_level=False, request=request)
-    return render(request, 'dojo/edit_debt_context_type.html', {
+    return render(request, 'dojo/debt_edit_debt_context_type.html', {
         'name': page_name,
         'pt_form': pt_form,
         'pt': pt,

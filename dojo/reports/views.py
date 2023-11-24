@@ -230,6 +230,11 @@ def test_report(request, tid):
     return generate_report(request, test)
 
 
+@user_is_authorized(Debt_Test, Permissions.Debt_Test_View, 'tid')
+def debt_test_report(request, tid):
+    debt_test = get_object_or_404(Debt_Test, id=tid)
+    return generate_report(request, debt_test)
+
 @user_is_authorized(Endpoint, Permissions.Endpoint_View, 'eid')
 def endpoint_report(request, eid):
     endpoint = get_object_or_404(Endpoint, id=eid)

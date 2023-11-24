@@ -21,12 +21,12 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
                         <li role="presentation">
-                            <a href="{% url 'view_debt_context_metrics' prod.id %}?type=Debt_Item">
+                            <a href="{% url 'view_debt_context_metrics' debt_context.id %}?type=Debt_Item">
                                 <i class="fa-solid fa-file-lines"></i> Measure Debt_Items
                             </a>
                         </li>
                         <li role="presentation">
-                            <a href="{% url 'view_debt_context_metrics' prod.id %}?type=Endpoint">
+                            <a href="{% url 'view_debt_context_metrics' debt_context.id %}?type=Endpoint">
                                 <i class="fa-solid fa-file-lines"></i> Measure Affected Endpoints
                             </a>
                         </li>
@@ -52,7 +52,7 @@
                                 <div class="pull-right inline-block text-right">
                                     <span class=" fa-2x">{{ verified_objs|length }}</span>
                                     <span><a
-                                            href="{% url 'debt_context_verified_debt_items' prod.id %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                            href="{% url 'debt_context_verified_debt_items' debt_context.id %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                             title="Debt_Items that are open/active and verified">Verified
                                         {{ view }}{{ verified_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -80,7 +80,7 @@
 
                                 <div class="pull-right inline-block text-right">
                                     <span class=" fa-2x">{{ open_objs|length }}</span>
-                                    <span><a href="{% url 'debt_context_open_debt_items' prod.id %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                    <span><a href="{% url 'debt_context_open_debt_items' debt_context.id %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                         title="Debt_Items that are open/active, but not (yet) verified">Open
                                         {{ view }}{{ open_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -109,7 +109,7 @@
                                 <div class="pull-right text-right">
                                     <span class="fa-2x">{{ accepted_objs|length }}</span>
                                     <span><a
-                                            href="{% url 'accepted_debt_items' %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                            href="{% url 'accepted_debt_items' %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                             title="Debt_Items that have been accepted in a risk acceptance.">Risk Accepted
                                     {{ view }}s <i class="fa-solid fa-circle-right"></i></a>
                                 </span>
@@ -136,7 +136,7 @@
 
                                 <div class="text-right pull-right">
                                     <span class="fa-2x">{{ closed_objs|length }}</span>
-                                    <span><a href="{% url 'closed_debt_items' %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                    <span><a href="{% url 'closed_debt_items' %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                              title="Debt_Items that are closed and mitigated.">Closed
                                         {{ view }}{{ closed_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -164,7 +164,7 @@
 
                                 <div class="text-right pull-right">
                                     <span class="fa-2x">{{ false_positive_objs|length }}</span>
-                                    <span><a href="{% url 'debt_context_false_positive_debt_items' prod.id %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                    <span><a href="{% url 'debt_context_false_positive_debt_items' debt_context.id %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                              title="Debt_Items that are marked as false postive.">False-postive
                                         {{ view }}{{ false_positive_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -193,7 +193,7 @@
                                 <div class="pull-right inline-block text-right">
                                     <span class=" fa-2x">{{ out_of_scope_objs|length }}</span>
                                     <span><a
-                                            href="{% url 'debt_context_out_of_scope_debt_items' prod.id %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                            href="{% url 'debt_context_out_of_scope_debt_items' debt_context.id %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                             title="Debt_Items that are marked as out of scope.">Out Of Scope
                                         {{ view }}{{ out_of_scope_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -221,7 +221,7 @@
 
                                 <div class="text-right pull-right">
                                     <span class="fa-2x">{{ all_objs|length }}</span>
-                                    <span><a href="{% url 'debt_context_all_debt_items' prod.id %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                    <span><a href="{% url 'debt_context_all_debt_items' debt_context.id %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                             title="All debt_items.">Total
                                         {{ view }}{{ all_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -249,7 +249,7 @@
 
                                 <div class="pull-right inline-block text-right">
                                     <span class=" fa-2x">{{ inactive_objs|length }}</span>
-                                    <span><a href="{% url 'debt_context_inactive_debt_items' prod.id %}?debt_test__debt_engagement__debt_context={{ prod.id }}"
+                                    <span><a href="{% url 'debt_context_inactive_debt_items' debt_context.id %}?debt_test__debt_engagement__debt_context={{ debt_context.id }}"
                                              title="Debt_Items that are not active but not mitigated for some reason">Inactive
                                         {{ view }}{{ inactive_objs|length|pluralize }} <i
                                                 class="fa-solid fa-circle-right"></i></a>
@@ -535,7 +535,7 @@
             ];
 
             $(document).ready(function() {
-                fetch_burndown_metrics({{ prod.id }});
+                fetch_burndown_metrics({{ debt_context.id }});
             })
 
             function fetch_burndown_metrics(pid) {

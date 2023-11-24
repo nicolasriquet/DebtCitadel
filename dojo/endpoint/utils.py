@@ -12,7 +12,7 @@ from django.core.validators import validate_ipv46_address
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Count
 
-from dojo.models import Endpoint, DojoMeta
+from dojo.models import Endpoint, Debt_Endpoint, DojoMeta
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,62 @@ def endpoint_filter(**kwargs):
     return qs
 
 
+def debt_endpoint_filter(**kwargs):
+    qs = Debt_Endpoint.objects.all()
+
+    if kwargs.get('protocol'):
+        qs = qs.filter(protocol__iexact=kwargs['protocol'])
+    else:
+        qs = qs.filter(protocol__isnull=True)
+
+    if kwargs.get('userinfo'):
+        qs = qs.filter(userinfo__exact=kwargs['userinfo'])
+    else:
+        qs = qs.filter(userinfo__isnull=True)
+
+    if kwargs.get('host'):
+        qs = qs.filter(host__iexact=kwargs['host'])
+    else:
+        qs = qs.filter(host__isnull=True)
+
+    if kwargs.get('port'):
+        if (kwargs.get('protocol')) and \
+                (kwargs['protocol'].lower() in SCHEME_PORT_MAP) and \
+                (SCHEME_PORT_MAP[kwargs['protocol'].lower()] == kwargs['port']):
+            qs = qs.filter(Q(port__isnull=True) | Q(port__exact=SCHEME_PORT_MAP[kwargs['protocol'].lower()]))
+        else:
+            qs = qs.filter(port__exact=kwargs['port'])
+    else:
+        if (kwargs.get('protocol')) and (kwargs['protocol'].lower() in SCHEME_PORT_MAP):
+            qs = qs.filter(Q(port__isnull=True) | Q(port__exact=SCHEME_PORT_MAP[kwargs['protocol'].lower()]))
+        else:
+            qs = qs.filter(port__isnull=True)
+
+    if kwargs.get('path'):
+        qs = qs.filter(path__exact=kwargs['path'])
+    else:
+        qs = qs.filter(path__isnull=True)
+
+    if kwargs.get('query'):
+        qs = qs.filter(query__exact=kwargs['query'])
+    else:
+        qs = qs.filter(query__isnull=True)
+
+    if kwargs.get('fragment'):
+        qs = qs.filter(fragment__exact=kwargs['fragment'])
+    else:
+        qs = qs.filter(fragment__isnull=True)
+
+    if kwargs.get('debt_context'):
+        qs = qs.filter(debt_context__exact=kwargs['debt_context'])
+    elif kwargs.get('debt_context_id'):
+        qs = qs.filter(debt_context_id__exact=kwargs['debt_context_id'])
+    else:
+        qs = qs.filter(debt_context__isnull=True)
+
+    return qs
+
+
 def endpoint_get_or_create(**kwargs):
 
     qs = endpoint_filter(**kwargs)
@@ -86,6 +142,19 @@ def endpoint_get_or_create(**kwargs):
     else:
         raise MultipleObjectsReturned()
 
+
+def debt_endpoint_get_or_create(**kwargs):
+
+    qs = debt_endpoint_filter(**kwargs)
+
+    if qs.count() == 0:
+        return Debt_Endpoint.objects.get_or_create(**kwargs)
+
+    elif qs.count() == 1:
+        return qs.first(), False
+
+    else:
+        raise MultipleObjectsReturned()
 
 def clean_hosts_run(apps, change):
     def err_log(message, html_log, endpoint_html_log, endpoint):
@@ -287,6 +356,36 @@ def validate_endpoints_to_add(endpoints_to_add):
     return endpoint_list, errors
 
 
+def validate_debt_endpoints_to_add(debt_endpoints_to_add):
+    errors = []
+    debt_endpoint_list = []
+    debt_endpoints = debt_endpoints_to_add.split()
+    for debt_endpoint in debt_endpoints:
+        try:
+            if '://' in debt_endpoint:  # is it full uri?
+                debt_endpoint_ins = Debt_Endpoint.from_uri(debt_endpoint)  # from_uri validate URI format + split to components
+            else:
+                # from_uri parse any '//localhost', '//127.0.0.1:80', '//foo.bar/path' correctly
+                # format doesn't follow RFC 3986 but users use it
+                debt_endpoint_ins = Debt_Endpoint.from_uri('//' + debt_endpoint)
+            debt_endpoint_ins.clean()
+            debt_endpoint_list.append([
+                debt_endpoint_ins.protocol,
+                debt_endpoint_ins.userinfo,
+                debt_endpoint_ins.host,
+                debt_endpoint_ins.port,
+                debt_endpoint_ins.path,
+                debt_endpoint_ins.query,
+                debt_endpoint_ins.fragment
+            ])
+        except ValidationError as ves:
+            for ve in ves:
+                errors.append(
+                    ValidationError("Invalid debt endpoint {}: {}".format(debt_endpoint, ve))
+                )
+    return debt_endpoint_list, errors
+
+
 def save_endpoints_to_add(endpoint_list, product):
     processed_endpoints = []
     for e in endpoint_list:
@@ -302,6 +401,23 @@ def save_endpoints_to_add(endpoint_list, product):
         )
         processed_endpoints.append(endpoint)
     return processed_endpoints
+
+
+def save_debt_endpoints_to_add(debt_endpoint_list, debt_context):
+    processed_debt_endpoints = []
+    for e in debt_endpoint_list:
+        debt_endpoint, created = debt_endpoint_get_or_create(
+            protocol=e[0],
+            userinfo=e[1],
+            host=e[2],
+            port=e[3],
+            path=e[4],
+            query=e[5],
+            fragment=e[6],
+            product=debt_context
+        )
+        processed_debt_endpoints.append(debt_endpoint)
+    return processed_debt_endpoints
 
 
 def endpoint_meta_import(file, product, create_endpoints, create_tags, create_meta, origin='UI', request=None):

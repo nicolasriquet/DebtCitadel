@@ -22,6 +22,8 @@ urlpatterns = [
             name='debt_engagement_report'),
     re_path(r'^test/(?P<tid>\d+)/report$', views.test_report,
         name='test_report'),
+    re_path(r'^debt_test/(?P<tid>\d+)/report$', views.debt_test_report,
+            name='debt_test_report'),
     re_path(r'^endpoint/(?P<eid>\d+)/report$', views.endpoint_report,
         name='endpoint_report'),
     re_path(r'^endpoint/host/(?P<eid>\d+)/report$', views.endpoint_host_report,

@@ -36,7 +36,7 @@ from dojo.product.queries import get_authorized_products
 from dojo.debt_context_type.queries import get_authorized_debt_context_types
 from dojo.debt_context.queries import get_authorized_debt_contexts
 from dojo.engagement.queries import get_authorized_engagements
-from dojo.test.queries import get_authorized_tests
+from dojo.debt_test.queries import get_authorized_debt_tests
 from dojo.finding.queries import get_authorized_findings
 from dojo.debt_item.queries import get_authorized_debt_items
 from dojo.endpoint.queries import get_authorized_endpoints
@@ -2364,7 +2364,7 @@ class FindingFilter(FindingFilterWithTags):
             self.form.fields['test__engagement'].queryset = Engagement.objects.filter(
                 product_id=self.pid
             ).all()
-            self.form.fields['test'].queryset = get_authorized_tests(Permissions.Test_View, product=self.pid).prefetch_related('test_type')
+            self.form.fields['test'].queryset = get_authorized_debt_tests(Permissions.Test_View, product=self.pid).prefetch_related('test_type')
         else:
             self.form.fields[
                 'test__engagement__product__prod_type'].queryset = get_authorized_product_types(Permissions.Product_Type_View)
@@ -2488,7 +2488,7 @@ class DebtItemFilter(DebtItemFilterWithTags):
     )
 
     not_test__tags = ModelMultipleChoiceFilter(
-        field_name='test__tags__name',
+        field_name='debt_test__tags__name',
         to_field_name='name',
         exclude=True,
         label='Test without tags',
@@ -2497,7 +2497,7 @@ class DebtItemFilter(DebtItemFilterWithTags):
     )
 
     not_test__engagement__tags = ModelMultipleChoiceFilter(
-        field_name='test__engagement__tags__name',
+        field_name='debt_test__debt_engagement__tags__name',
         to_field_name='name',
         exclude=True,
         label='Engagement without tags',
@@ -2506,7 +2506,7 @@ class DebtItemFilter(DebtItemFilterWithTags):
     )
 
     not_test__engagement__debt_context__tags = ModelMultipleChoiceFilter(
-        field_name='test__engagement__debt_context__tags__name',
+        field_name='debt_test__debt_engagement__debt_context__tags__name',
         to_field_name='name',
         exclude=True,
         label='Debt_Context without tags',
@@ -2530,8 +2530,8 @@ class DebtItemFilter(DebtItemFilterWithTags):
              'risk_acceptance__created__date'),
             ('last_reviewed', 'last_reviewed'),
             ('title', 'title'),
-            ('test__engagement__debt_context__name',
-             'test__engagement__debt_context__name'),
+            ('debt_test__debt_engagement__debt_context__name',
+             'debt_test__debt_engagement__debt_context__name'),
             ('service', 'service'),
         ),
         field_labels={
@@ -2540,7 +2540,7 @@ class DebtItemFilter(DebtItemFilterWithTags):
             'risk_acceptance__created__date': 'Acceptance Date',
             'mitigated': 'Mitigated Date',
             'title': 'Debt_Item Name',
-            'test__engagement__debt_context__name': 'Debt_Context Name',
+            'debt_test__debt_engagement__debt_context__name': 'Debt_Context Name',
         }
     )
 
@@ -2549,7 +2549,7 @@ class DebtItemFilter(DebtItemFilterWithTags):
         fields = get_debt_item_filterset_fields()
 
         exclude = ['url', 'description', 'mitigation', 'impact',
-                   'endpoints', 'references',
+                   'debt_endpoints', 'references',
                    'thread_id', 'notes', 'scanner_confidence',
                    'numerical_severity', 'line', 'duplicate_debt_item',
                    'hash_code',
@@ -2571,21 +2571,21 @@ class DebtItemFilter(DebtItemFilterWithTags):
 
         # Don't show the debt_context filter on the debt_context debt_item view
         if self.pid:
-            del self.form.fields['test__engagement__debt_context']
-            del self.form.fields['test__engagement__debt_context__prod_type']
+            del self.form.fields['debt_test__debt_engagement__debt_context']
+            del self.form.fields['debt_test__debt_engagement__debt_context__debt_context_type']
             # TODO add authorized check to be sure
-            self.form.fields['test__engagement'].queryset = Engagement.objects.filter(
+            self.form.fields['test__engagement'].queryset = Debt_Engagement.objects.filter(
                 debt_context_id=self.pid
             ).all()
-            self.form.fields['test'].queryset = get_authorized_tests(Permissions.Test_View, debt_context=self.pid).prefetch_related('test_type')
+            self.form.fields['debt_test'].queryset = get_authorized_debt_tests(Permissions.Test_View, debt_context=self.pid).prefetch_related('debt_test_type')
         else:
             self.form.fields[
-                'test__engagement__debt_context__prod_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
-            self.form.fields['test__engagement'].queryset = get_authorized_engagements(Permissions.Engagement_View)
-            del self.form.fields['test']
+                'debt_test__debt_engagement__debt_context__debt_context_type'].queryset = get_authorized_debt_context_types(Permissions.Debt_Context_Type_View)
+            self.form.fields['debt_test__debt_engagement'].queryset = get_authorized_engagements(Permissions.Engagement_View)
+            del self.form.fields['debt_test']
 
-        if self.form.fields.get('test__engagement__debt_context'):
-            self.form.fields['test__engagement__debt_context'].queryset = get_authorized_debt_contexts(Permissions.Debt_Context_View)
+        if self.form.fields.get('debt_test__debt_engagement__debt_context'):
+            self.form.fields['debt_test__debt_engagement__debt_context'].queryset = get_authorized_debt_contexts(Permissions.Debt_Context_View)
         if self.form.fields.get('debt_item_group', None):
             self.form.fields['debt_item_group'].queryset = get_authorized_debt_item_groups(Permissions.Debt_Item_Group_View)
         self.form.fields['reporter'].queryset = get_authorized_users(Permissions.Debt_Item_View)
