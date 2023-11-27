@@ -83,7 +83,7 @@ def debt_context(request):
 
     # print(debt_context_list.object_list.explain)
 
-    add_breadcrumb(title=_("Debt Context List"), top_level=not len(request.GET), request=request)
+    add_breadcrumb(title=_("Debt Contexts List"), top_level=not len(request.GET), request=request)
 
     return render(request, 'dojo/debt_context.html', {
         'debt_context_list': debt_context_list,
@@ -1230,7 +1230,7 @@ class AdHocDebtItemView(View):
             return Debt_Engagement.objects.get(debt_context=debt_context, name=_("Ad Hoc Debt Engagement"))
         except Debt_Engagement.DoesNotExist:
             return Debt_Engagement.objects.create(
-                name=_("Ad Hoc Debt_Engagement"),
+                name=_("Ad Hoc Debt Engagement"),
                 target_start=timezone.now(),
                 target_end=timezone.now(),
                 active=False, debt_context=debt_context)

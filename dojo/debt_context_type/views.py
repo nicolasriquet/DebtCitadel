@@ -42,7 +42,7 @@ def debt_context_type(request):
 
     pts.object_list = prefetch_for_debt_context_type(pts.object_list)
 
-    page_name = _("Debt Context Type List")
+    page_name = _("Debt Context Types List")
     add_breadcrumb(title=page_name, top_level=True, request=request)
 
     return render(request, 'dojo/debt_context_type.html', {

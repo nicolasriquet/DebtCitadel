@@ -251,7 +251,7 @@
                         {% elif duplicate_cluster and debt_item.duplicate %}
                             <th title="Debt_Items that are also marked as duplicates of the same original debt_item">Duplicate Cluster</th>
                         {% endif %}
-                        <th>Type</th>
+                        <!--<th>Type</th>-->
                         <th>Date discovered</th>
                         <th>Age</th>
                         {% if debt_item.publish_date %}
@@ -268,9 +268,9 @@
                             <th>Date Mitigated</th>
                             <th>Mitigated By</th>
                         {% endif %}
-                            <th>CWE</th>
+                            <!--<th>CWE</th>
                             <th>Vulnerability Id</th>
-                        <th>Found by</th>
+                        <th>Found by</th>-->
                     {% endblock header_head %}
                 </tr>
                 <tr>
@@ -335,7 +335,7 @@
                                         <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
                                         <li>
                                             <a class="" href="{% url 'view_debt_item' debt_item.duplicate_debt_item.id %}">
-                                            <i class="fa-solid fa-bug" title="valentino"></i> {{ debt_item.duplicate_debt_item|debt_item_extended_title }}</i>
+                                            <i class="fa-solid fa-bug" title="valentino"></i> {{ debt_item.duplicate_debt_item|debt_item_extended_title }}
                                             </a>
                                         </li>
                                         </ul>
@@ -358,7 +358,7 @@
                                     {% for duplicate in duplicate_cluster|slice:"5" %}
                                         <li>
                                             <a class="" href="{% url 'view_debt_item' duplicate.id %}">
-                                            <i class="fa-solid fa-bug"></i> {{ duplicate|debt_item_extended_title }}</i>
+                                            <i class="fa-solid fa-bug"></i> {{ duplicate|debt_item_extended_title }}
                                             </a>
                                         </li>
                                     {%  endfor %}
@@ -374,7 +374,7 @@
                             </div>
                         </td>
                         {% endif %}
-                        <td>
+                        <!--<td>
                             {% if debt_item.static_debt_item and debt_item.dynamic_debt_item > 0 %}
                                 Static/Dynamic
                             {% elif debt_item.static_debt_item > 0 %}
@@ -382,7 +382,7 @@
                             {% else %}
                                 Dynamic
                             {% endif %}
-                        </td>
+                        </td>-->
                         <td>{{ debt_item.date }}</td>
                         <td>{{ debt_item.age }} days</td>
                         {% if debt_item.publish_date %}
@@ -399,14 +399,14 @@
                             <td>{{ debt_item.mitigated }}</td>
                             <td>{{ debt_item.mitigated_by }}</td>
                         {% endif %}
-                            <td>
-                            {% if debt_item.cwe > 0 %}
-                                <a target="_blank" href="{{ debt_item.cwe|cwe_url }}">
-                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_item.cwe }}
-                                </a>
-                            {% endif %}
-                            </td>
-                        <td>
+                        <!--<td>
+                        {% if debt_item.cwe > 0 %}
+                            <a target="_blank" href="{{ debt_item.cwe|cwe_url }}">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_item.cwe }}
+                            </a>
+                        {% endif %}
+                        </td>-->
+                        <!--<td>
                         {% with debt_item|first_vulnerability_id as first_vulnerability_id %}
                         {% if first_vulnerability_id %}
                             {% if first_vulnerability_id|has_vulnerability_url %}
@@ -417,10 +417,10 @@
                                 {{ first_vulnerability_id }}
                             {% endif %}
                         {% endif %}
-                        </td>
-                        <td> {% for scanner in found_by %}
+                        </td>-->
+                        <!--<td> {% for scanner in found_by %}
                             {{ scanner }}
-                        {% endfor %}</td>
+                        {% endfor %}</td>-->
                         {% endwith %}
                     {% endblock header_body %}
                 </tr>
@@ -700,12 +700,12 @@
 
         <div class="panel panel-default">
             <div class="panel-heading">
-                <h4 class="has-filters">Similar Debt_Items ({{ similar_debt_items.paginator.count }})
+                <h4 class="has-filters">Similar Debt Items ({{ similar_debt_items.paginator.count }})
                     <i class="fa-solid fa-circle-question has-popover" data-trigger="hover"
-                       data-content="Opening this panel shows debt_items that are not exact duplicates,
-                        but have similar values for Vulnerability Id, CWE, file_path, line number, unique_id_from_tool.
+                       data-content="Opening this panel shows Debt Items that are not exact duplicates,
+                        but have similar values for [TO DO].
                         It has a filter panel where filtering can be made less or more strict, and across
-                        debt_context boundaries. The resulting debt_items can be view, marked as duplicate or original.
+                        Debt Context boundaries. The resulting Debt Items can be view, marked as duplicate or original.
                         Clear filters will empty all filters. Restart will start over by matching against the fields
                         mentioned above."
                         data-placement="bottom" data-container="body">
@@ -754,7 +754,7 @@
                                 <span>Active</span>
                             </label>
                             <label style="font-size: 80%; font-weight: normal; display: block">
-                                <input id="id_bulk_false_p" label="false_positive name="false_positive" type="checkbox"/>
+                                <input id="id_bulk_false_p" label="false_positive" name="false_positive" type="checkbox"/>
                                 <span>False Positive</span>
                             </label>
                             <label style="font-size: 80%; font-weight: normal; display: block">
@@ -779,7 +779,7 @@
     </div>
 
     <!--Import History begin -->
-    {% if 'TRACK_IMPORT_HISTORY'|setting_enabled and ladebt_test_debt_test_import_debt_item_action %}
+    {% if 'TRACK_IMPORT_HISTORY'|setting_enabled and debt_test_import_debt_item_action %}
         <div class="panel panel-default collapse in">
             <div class="panel-heading">
                 <div class="clearfix">
@@ -929,7 +929,15 @@
                 </div>
             </div>
         {% endif %}
-
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>Impact <span class="pull-right"><a data-toggle="collapse" href="#vuln_impact"><i
+                        class="glyphicon glyphicon-chevron-{% if debt_item.impact %}up{%else%}down{%endif%}"></i></a></span></h4>
+            </div>
+            <div id="vuln_impact" class="panel-body collapse {% if debt_item.impact %}in{%endif%}">
+                <pre>{{ debt_item.impact|markdown_render|default_if_none:"" }}</pre>
+            </div>
+        </div>
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h4>Mitigation <span class="pull-right"><a data-toggle="collapse" href="#vuln_mitigation"><i
@@ -972,17 +980,8 @@
                 </div>
             </div>
         {% endif %}
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <h4>Impact <span class="pull-right"><a data-toggle="collapse" href="#vuln_impact"><i
-                        class="glyphicon glyphicon-chevron-{% if debt_item.impact %}up{%else%}down{%endif%}"></i></a></span></h4>
-            </div>
-            <div id="vuln_impact" class="panel-body collapse {% if debt_item.impact %}in{%endif%}">
-                <pre>{{ debt_item.impact|markdown_render|default_if_none:"" }}</pre>
-            </div>
-        </div>
 
-        <div class="panel panel-default" id="steps">
+        <!--<div class="panel panel-default" id="steps">
             <div class="panel-heading">
                 <h4>Steps To Reproduce <span class="pull-right"><a data-toggle="collapse" href="#vuln_reproduce"><i
                         class="glyphicon glyphicon-chevron-{% if debt_item.steps_to_reproduce %}up{%else%}down{%endif%}"></i></a></span></h4>
@@ -990,9 +989,9 @@
             <div id="vuln_reproduce" class="panel-body collapse {% if debt_item.steps_to_reproduce %}in{%endif%}">
                 <pre>{{ debt_item.steps_to_reproduce|markdown_render|default_if_none:"" }}</pre>
             </div>
-        </div>
+        </div>-->
 
-        <div class="panel panel-default">
+        <!--<div class="panel panel-default">
             <div class="panel-heading">
                 <h4>Severity Justification <span class="pull-right"><a data-toggle="collapse" href="#sev_just"><i
                         class="glyphicon glyphicon-chevron-{% if debt_item.severity_justification %}up{%else%}down{%endif%}"></i></a></span></h4>
@@ -1000,9 +999,9 @@
             <div id="sev_just" class="panel-body collapse {% if debt_item.severity_justification %}in{%endif%}">
                 <pre>{{ debt_item.severity_justification|markdown_render|default_if_none:"" }}</pre>
             </div>
-        </div>
+        </div>-->
 
-        <div class="panel panel-default">
+        <!--<div class="panel panel-default">
             <div class="panel-heading">
                 <h4>References <span class="pull-right"><a data-toggle="collapse" href="#vuln_refs"><i
                         class="glyphicon glyphicon-chevron-{% if debt_item.references %}up{%else%}down{%endif%}"></i></a></span></h4>
@@ -1010,10 +1009,10 @@
             <div id="vuln_refs" class="panel-body collapse {% if debt_item.references %}in{%endif%}">
                 <pre>{{ debt_item.get_references_with_links|markdown_render|default_if_none:"" }}</pre>
             </div>
-        </div>
+        </div>-->
 
         <!--Cred Begin-->
-        {% if  debt_item.static_debt_item != True and system_settings.enable_credentials %}
+        <!--{% if  debt_item.static_debt_item != True and system_settings.enable_credentials %}
             <div class="row">
                 <div class="col-md-12" id="cred">
                     <div class="panel panel-default">
@@ -1121,7 +1120,7 @@
                         {% endif %}
                     </div>
                 </div>
-            </div>
+            </div>-->
             <!--Cred end -->
         {% endif %}
     </div>
@@ -1134,7 +1133,7 @@
     </div>
 
     <div class="protip">
-       <i class="fa-solid fa-lightbulb"></i> <strong>ProTip!</strong> Type <kbd>e</kbd> to edit any debt_item, <kbd>p</kbd> and <kbd>n</kbd> to navigate to the previous or next debt_item.
+       <i class="fa-solid fa-lightbulb"></i> <strong>ProTip!</strong> Type <kbd>e</kbd> to edit any Debt Item, <kbd>p</kbd> and <kbd>n</kbd> to navigate to the previous or next Debt Item.
     </div>
 {% endblock %}
 {% block postscript %}
@@ -1148,11 +1147,11 @@
         var lastID = {{debt_items_list_lastElement}};
         if(currentID != firstID)
         {
-            $('.PrevAndNext_Buttons').append('<a href="{% url 'view_debt_item' prev_debt_item_id %}" class="btn btn-primary">Previous Debt_Item</a> ');
+            $('.PrevAndNext_Buttons').append('<a href="{% url 'view_debt_item' prev_debt_item_id %}" class="btn btn-primary">Previous Debt Item</a> ');
         }
         if(currentID != lastID)
         {
-            $('.PrevAndNext_Buttons').append('<a href="{% url 'view_debt_item' next_debt_item_id %}" class="btn btn-primary">Next Debt_Item</a>');
+            $('.PrevAndNext_Buttons').append('<a href="{% url 'view_debt_item' next_debt_item_id %}" class="btn btn-primary">Next Debt Item</a>');
         }
         //Ensures dropdown has proper zindex
         $('.table-responsive').on('show.bs.dropdown', function () {
@@ -1459,11 +1458,11 @@
                 { "data": "found_date" },
                 { "data": "status" },
                 { "data": "debt_test" },
-                { "data": "debt_engagement" },
                 { "data": "debt_context" },
-                { "data": "cwe" },
-                { "data": "cve" },
-                { "data": "file_path" },
+                { "data": "debt_engagement" },
+                //{ "data": "cwe" },
+                //{ "data": "cve" },
+                //{ "data": "file_path" },
                 {% if system_settings.enable_jira %}
                     { "data": "jira_id" },
                 {% endif %}
@@ -1488,7 +1487,7 @@
                     orthogonal: 'export'
                 },
                 filename: fileDated,
-                title: 'Similar Debt_Items List'
+                title: 'Similar Debt Items List'
             };
 
             // Mapping of table columns to objects for proper cleanup and data formatting
@@ -1546,3 +1545,4 @@
 
     {% include "dojo/filter_js_snippet.html" %}
 {% endblock %}
+</div>

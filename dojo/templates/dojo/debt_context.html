@@ -9,7 +9,7 @@
             <div class="panel panel-default">
                 <div class="panel-heading tight">
                     <h3 class="has-filters">
-                        Debt Context List
+                        Debt Contexts List
                         <div class="dropdown pull-right">
                             <button id="show-filters" data-toggle="collapse" data-target="#the-filters" class="btn btn-primary toggle-filters"> <i class="fa-solid fa-filter"></i> <i class="caret"></i> </button>
                             <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1"
@@ -29,7 +29,7 @@
 
                                 <li role="presentation">
                                     <a href="{% url 'debt_context_debt_items_report' %}">
-                                        <i class="fa-solid fa-file-lines"></i> Findings Report
+                                        <i class="fa-solid fa-file-lines"></i> Debt Items Report
                                     </a>
                                 </li>
                             </ul>
@@ -63,7 +63,7 @@
                             <th class="text-center">GitHub</th>
                             {% endif %}
                             <th class="text-center"> Active (Verified) Debt Items</th>
-                            <th class="text-center"> Vulnerable Hosts / Endpoints</th>
+                            <!--<th class="text-center"> Vulnerable Hosts / Endpoints</th>-->
                             <th> Contact</th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                             <th>{% dojo_sort request 'Debt Context Type' 'debt_context_type__name' %}</th>
@@ -90,26 +90,26 @@
                                           </li>
                                         {% endif %}
                                           <li role="separator" class="divider"></li>
+                                          {% if debt_context|has_object_permission:"Debt_Item_Add" %}
+                                              <li><a href="{% url 'ad_hoc_debt_item' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Debt Item</a></li>
+                                          {% endif %}
+                                          <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}"><i class="fa-solid fa-rectangle-list"></i> View Open Debt Items</a></li>
+                                          <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}?severity=Critical"><i class="fa-solid fa-triangle-exclamation"></i> View Critical Debt Items</a></li>
+                                          <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}?date=2"><i class="fa-solid fa-calendar-days"></i> View Last 7 Days Debt Items</a></li>
+                                          <li role="separator" class="divider"></li>
+                                          {% if debt_context|has_object_permission:"Engagement_Add" %}
+                                              <li><a href="{% url 'new_eng_for_debt_context' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Engagement</a></li>
+                                          {% endif %}
                                           <li><a href="{% url 'view_engagements' debt_context.id %}"><i class="fa-solid fa-calendar-days"></i> View Engagements</a></li>
-                                        {% if debt_context|has_object_permission:"Engagement_Add" %}
-                                          <li><a href="{% url 'new_eng_for_debt_context' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Engagement</a></li>
-                                        {% endif %}
-                                          <li role="separator" class="divider"></li>
-                                          <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}"><i class="fa-solid fa-rectangle-list"></i> View Open Findings</a></li>
-                                          <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}?severity=Critical"><i class="fa-solid fa-triangle-exclamation"></i> View Critical Findings</a></li>
-                                          <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}?date=2"><i class="fa-solid fa-calendar-days"></i> View Last 7 Days Findings</a></li>
-                                        {% if debt_context|has_object_permission:"Finding_Add" %}
-                                          <li><a href="{% url 'ad_hoc_debt_item' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Finding</a></li>
-                                        {% endif %}
-                                          <li role="separator" class="divider"></li>
+                                          <!--<li role="separator" class="divider"></li>
                                           <li><a href="{% url 'endpoint' %}?debt_context={{ debt_context.id }}"><i class="fa-solid fa-rectangle-list"></i> View Endpoints</a></li>
                                           <li><a href="{% url 'endpoint_host' %}?debt_context={{ debt_context.id }}"><i class="fa-solid fa-rectangle-list"></i> View Hosts</a></li>
                                           <li><a href="{% url 'vulnerable_endpoints' %}?debt_context={{ debt_context.id }}"><i class="fa-solid fa-sitemap"></i> View Vulnerable Endpoints</a></li>
                                           <li><a href="{% url 'vulnerable_endpoint_hosts' %}?debt_context={{ debt_context.id }}"><i class="fa-solid fa-sitemap"></i> View Vulnerable Hosts</a></li>
-                                          <li><a href="{% url 'debt_context_endpoint_report' debt_context.id %}"><i class="fa-solid fa-file-lines"></i> Endpoint Report</a></li>
-                                        {% if debt_context|has_object_permission:"Endpoint_Add" %}
+                                          <li><a href="{% url 'debt_context_endpoint_report' debt_context.id %}"><i class="fa-solid fa-file-lines"></i> Endpoint Report</a></li>-->
+                                        <!--{% if debt_context|has_object_permission:"Endpoint_Add" %}
                                           <li><a href="{% url 'add_endpoint' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Endpoint</a></li>
-                                        {% endif %}
+                                        {% endif %}-->
                                         {% if debt_context|has_object_permission:"Debt_Context_Edit" %}
                                           <li role="separator" class="divider"></li>
                                           <li role="presentation">
@@ -122,7 +122,7 @@
                                               <i class="fa-solid fa-pen-to-square"></i> Edit Custom Fields
                                             </a>
                                           </li>
-                                          <li role="separator" class="divider"></li>
+                                          <!--<li role="separator" class="divider"></li>
                                           <li role="presentation">
                                               <a class="" href="{% url 'add_api_scan_configuration' debt_context.id %}">
                                                   <i class="fa-solid fa-rectangle-list"></i> Add Scan API Configuration
@@ -132,7 +132,7 @@
                                               <a title="View API Scan configurations" href="{% url 'view_api_scan_configurations' debt_context.id %}">
                                                 <i class="fa-solid fa-clock-rotate-left"></i> View Scan API Configurations
                                               </a>
-                                          </li>
+                                          </li>-->
                                         {% endif %}
                                         {% if system_settings.enable_debt_context_tracking_files %}
                                           <li role="separator" class="divider"></li>
@@ -247,14 +247,14 @@
                                         0
                                     {% endif %}
                                 </td>
-                                <td class="text-center">
+                                <!--<td class="text-center">
                                   {% if debt_context.endpoint_count %}
                                     <a href="{% url 'vulnerable_endpoint_hosts' %}?debt_context={{ debt_context.id }}"><b>{{ debt_context.endpoint_host_count }}</b></a> /
                                     <a href="{% url 'vulnerable_endpoints' %}?debt_context={{ debt_context.id }}"><b>{{ debt_context.endpoint_count }}</b></a>
                                     {% else %}
                                       0
                                   {% endif %}
-                                </td>
+                                </td>-->
                                 <td>
                                   {% if debt_context.debt_context_manager %}
                                     {% if debt_context.debt_context_manager != "0" %}
@@ -325,7 +325,7 @@
                     orthogonal: 'export'
                 },
                 filename: fileDated,
-                title: 'Debt Context List'
+                title: 'Debt Contexts List'
             };
 
             // Mapping of table columns to objects for proper cleanup and data formatting
@@ -376,7 +376,7 @@
                     }},
                     {% endif %}
                     { "data": "debt_items" },
-                    { "data": "endpoints" },
+                    //{ "data": "endpoints" },
                     { "data": "contacts" },
                     { "data": "debt_context_type" },
                 ],

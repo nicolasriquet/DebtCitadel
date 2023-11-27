@@ -14,30 +14,6 @@
     {{ block.super }}
     {% block debt_item_stats_tiles %}
         <div class="row status">
-            {% block active_debt_engagements %}
-                <div class="col-lg-3 col-md-6">
-                    <div class="panel panel-blue">
-                        <div class="panel-heading">
-                            <div class="row">
-                                <div class="col-xs-3">
-                                    <i class="fa-solid fa-bullseye fa-5x"></i>
-                                </div>
-                                <div class="col-xs-9 text-right">
-                                    <div class="huge">{{ debt_engagement_count }}</div>
-                                    <div>{% trans "Active Debt Engagements" %}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <a href="{% url 'debt_engagement' %}">
-                            <div class="panel-footer">
-                                <span class="pull-left">{% trans "View Debt Engagement Details" %}</span>
-                                <span class="pull-right"><i class="fa-solid fa-circle-right"></i></span>
-                                <div class="clearfix"></div>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-            {% endblock %}
             {% block last_seven_days %}
                 <div class="col-lg-3 col-md-6">
                     <div class="panel panel-red">
@@ -103,6 +79,30 @@
                         <a href="{% url 'accepted_debt_items' %}?duplicate=2&debt_risk_acceptance__created__date=2">
                             <div class="panel-footer">
                                 <span class="pull-left">{% trans "View Debt Item Details" %}</span>
+                                <span class="pull-right"><i class="fa-solid fa-circle-right"></i></span>
+                                <div class="clearfix"></div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            {% endblock %}
+            {% block active_debt_engagements %}
+                <div class="col-lg-3 col-md-6">
+                    <div class="panel panel-blue">
+                        <div class="panel-heading">
+                            <div class="row">
+                                <div class="col-xs-3">
+                                    <i class="fa-solid fa-bullseye fa-5x"></i>
+                                </div>
+                                <div class="col-xs-9 text-right">
+                                    <div class="huge">{{ debt_engagement_count }}</div>
+                                    <div>{% trans "Active Debt Engagements" %}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="{% url 'debt_engagement' %}">
+                            <div class="panel-footer">
+                                <span class="pull-left">{% trans "View Debt Engagement Details" %}</span>
                                 <span class="pull-right"><i class="fa-solid fa-circle-right"></i></span>
                                 <div class="clearfix"></div>
                             </div>

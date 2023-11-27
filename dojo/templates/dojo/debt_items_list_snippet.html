@@ -316,12 +316,12 @@
                                         {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                                         {% dojo_sort request 'Name' 'title' %}
                                     </th>
-                                    <th>
+                                    <!--<th>
                                         {% trans "CWE" %}
                                     </th>
                                     <th>
                                         {% trans "Vulnerability Id" %}
-                                    </th>
+                                    </th>-->
                                     <th class="nowrap">
                                         {% if filter_name == 'Closed' %}
                                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
@@ -372,9 +372,9 @@
                                             {% dojo_sort request 'Debt Context' 'test__debt_engagement__debt_context__name' %}
                                         </th>
                                     {% endif %}
-                                    <th>
+                                    <!--<th>
                                         {% trans "Service" %}
-                                    </th>
+                                    </th>-->
                                     <th>
                                         {% trans "Planned Remediation" %}
                                     </th>
@@ -573,7 +573,7 @@
                                             {% endif %}
                                             {% include "dojo/snippets/tags.html" with tags=debt_item.tags.all %}
                                         </td>
-                                        <td class="nowrap">
+                                        <!--<td class="nowrap">
                                             {% if debt_item.cwe > 0 %}
                                                 <a target="_blank" href="{{ debt_item.cwe|cwe_url }}">
                                                     <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_item.cwe|default:"" }}
@@ -592,7 +592,7 @@
                                                     {% endif %}
                                                 {% endif %}
                                             {% endwith %}
-                                        </td>
+                                        </td>-->
                                         <td class="nowrap">
                                             {% if filter_name == 'Closed' %}
                                                 {{ debt_item.mitigated|date }}
@@ -673,9 +673,9 @@
                                                 alt="{{ debt_item.debt_test.debt_engagement.debt_context }}">{{ debt_item.debt_test.debt_engagement.debt_context }}</a>
                                             </td>
                                         {% endif %}
-                                        <td>
+                                        <!--<td>
                                             {% if debt_item.service %}{{ debt_item.service }}{% endif %}
-                                        </td>
+                                        </td>-->
                                         <td class="nowrap">
                                             {% if debt_item.planned_remediation_date %}{{ debt_item.planned_remediation_date }}{% endif %}
                                         </td>
@@ -712,8 +712,8 @@
                     { "data": "debt_item" , render: function (data, type, row) {
                             return type === 'export' ? getDojoExportValueFromTag(data, 'a') :  data;
                     }},
-                    { "data": "cwe" },
-                    { "data": "cve" },
+                    //{ "data": "cwe" },
+                    //{ "data": "cve" },
                     { "data": "found_date" },
                     { "data": "debt_item_age" },
                 {% if system_settings.enable_debt_item_sla %}
@@ -735,7 +735,7 @@
                 {% if show_debt_context_column and debt_context_tab is None %}
                     { "data": "debt_context" },
                 {% endif %}
-                { "data": "service" },
+                //{ "data": "service" },
                 { "data": "planned_remediation_date" },
             ];
         {% endblock datatables_columns %}

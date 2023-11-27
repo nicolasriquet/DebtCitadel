@@ -4385,7 +4385,7 @@ class Debt_Item(models.Model):
                                               help_text=_("Text describing why a certain severity was associated with this flaw."))
     debt_endpoints = models.ManyToManyField(Debt_Endpoint,
                                             blank=True,
-                                            verbose_name=_('Debt_Endpoints'),
+                                            verbose_name=_('Debt Endpoints'),
                                             help_text=_("The hosts within the debt_context that are susceptible to this flaw. + The status of the debt_endpoint associated with this flaw (Vulnerable, Mitigated, ...)."),
                                             through=Debt_Endpoint_Status)
     references = models.TextField(null=True,
@@ -4396,7 +4396,7 @@ class Debt_Item(models.Model):
     debt_test = models.ForeignKey(Debt_Test,
                                   editable=False,
                                   on_delete=models.CASCADE,
-                                  verbose_name=_('Debt_Test'),
+                                  verbose_name=_('Debt Test'),
                                   help_text=_("The debt_test that is associated with this flaw."))
     active = models.BooleanField(default=True,
                                  verbose_name=_('Active'),

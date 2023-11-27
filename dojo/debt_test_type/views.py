@@ -50,7 +50,7 @@ def add_debt_test_type(request):
                                  extra_tags='alert-success')
             return HttpResponseRedirect(reverse('debt_test_type'))
     add_breadcrumb(title="Add Test Type", top_level=False, request=request)
-    return render(request, 'dojo/new_debt_test_type.html', {
+    return render(request, 'dojo/debt_new_debt_test_type.html', {
         'name': 'Add Test Type',
         'metric': False,
         'user': request.user,
@@ -73,7 +73,7 @@ def edit_debt_test_type(request, ptid):
             return HttpResponseRedirect(reverse('debt_test_type'))
 
     add_breadcrumb(title="Edit Test Type", top_level=False, request=request)
-    return render(request, 'dojo/edit_debt_test_type.html', {
+    return render(request, 'dojo/debt_edit_debt_test_type.html', {
         'name': 'Edit Test Type',
         'metric': False,
         'user': request.user,

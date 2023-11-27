@@ -281,7 +281,7 @@
                                                 </li>
                                                 <li>
                                                     <a href="{% url 'debt_test_type' %}">
-                                                        {% trans "Debt Test Types" %}
+                                                        {% trans "Debt Identification Methods" %}
                                                     </a>
                                                 </li>
                                                 <li>
@@ -658,6 +658,15 @@
                                                 <span class="caret"></span>
                                             </a>
                                             <ul class="dropdown-menu">
+                                                {% if debt_context_tab.debt_context|has_object_permission:"Debt_Item_Add" %}
+                                                    <li>
+                                                        <a href="{% url 'ad_hoc_debt_item' debt_context_tab.debt_context.id %}">
+                                                            <i class="fa-solid fa-plus"></i>
+                                                            {% trans "Add New Debt Item" %}
+                                                        </a>
+                                                    </li>
+                                                    <li role="separator" class="divider"></li>
+                                                {% endif %}
                                                 <li>
                                                     <a href="{% url 'debt_context_open_debt_items' debt_context_tab.debt_context.id %}">
                                                         <i class="fa-solid fa-rectangle-list"></i>
@@ -701,15 +710,6 @@
                                                         &nbsp;&nbsp;{% trans "View Closed Debt Items" %}
                                                     </a>
                                                 </li>
-                                                {% if debt_context_tab.debt_context|has_object_permission:"Debt_Item_Add" %}
-                                                    <li role="separator" class="divider"></li>
-                                                    <li>
-                                                        <a href="{% url 'ad_hoc_debt_item' debt_context_tab.debt_context.id %}">
-                                                            <i class="fa-solid fa-plus"></i>
-                                                            {% trans "Add New Debt Item" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
                                                 <!--{% if debt_context_tab.debt_context|has_object_permission:"Import_Scan_Result" %}
                                                     <li>
                                                         <a href="{% url 'import_scan_results_debt_context' debt_context_tab.debt_context.id %}">
@@ -732,12 +732,6 @@
                                                 <span class="caret"></span>
                                             </a>
                                             <ul class="dropdown-menu">
-                                                <li>
-                                                    <a href="{% url 'view_debt_engagements' debt_context_tab.debt_context.id %}">
-                                                        <i class="fa-solid fa-calendar-days"></i>
-                                                        {% trans "View Debt Engagements" %}
-                                                    </a>
-                                                </li>
                                                 {% if debt_context_tab.debt_context|has_object_permission:"Debt_Engagement_Add" %}
                                                     <li role="separator" class="divider"></li>
                                                     <li>
@@ -754,6 +748,12 @@
                                                         </a>
                                                     </li>-->
                                                 {% endif %}
+                                                <li>
+                                                    <a href="{% url 'view_debt_engagements' debt_context_tab.debt_context.id %}">
+                                                        <i class="fa-solid fa-calendar-days"></i>
+                                                        {% trans "View Debt Engagements" %}
+                                                    </a>
+                                                </li>
                                             </ul>
                                         </li>
                                         <!-- Metrics Tab -->

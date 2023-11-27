@@ -484,10 +484,10 @@ def debt_metrics(request, mtype):
 
     filters = dict()
     if view == 'Debt_Item':
-        page_name = _('Debt_Context Type Metrics by Debt_Items')
+        page_name = _('Debt Context Type Metrics by Debt_Items')
         filters = debt_item_querys(debt_context_type, request)
     elif view == 'Endpoint':
-        page_name = _('Debt_Context Type Metrics by Affected Endpoints')
+        page_name = _('Debt Context Type Metrics by Affected Endpoints')
         filters = endpoint_querys(debt_context_type, request)
 
     in_period_counts, in_period_details, age_detail = get_in_period_details([

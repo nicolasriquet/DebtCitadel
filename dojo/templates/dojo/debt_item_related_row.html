@@ -32,6 +32,7 @@
     <td class="nowrap">{{ similar_debt_item.date|date }}</td>
     <td>{{ similar_debt_item|debt_item_display_status|safe }}&nbsp;{{ similar_debt_item|debt_import_history }}</td>
     <td><a href="{% url 'view_debt_test' similar_debt_item.debt_test_id %}">{{ similar_debt_item.debt_test }}</a></td>
+    <td><a href="{% url 'view_debt_context' similar_debt_item.debt_test.debt_engagement.debt_context.id %}">{{ similar_debt_item.debt_test.debt_engagement.debt_context.name }}</a>
     <td><a href="{% url 'view_debt_engagement' similar_debt_item.debt_test.debt_engagement_id %}">{{ similar_debt_item.debt_test.debt_engagement.name }}</a>
     {% if similar_debt_item.debt_test.debt_engagement.version %}
         <sup>
@@ -40,8 +41,7 @@
         </sup>
     {% endif %}
     </td>
-    <td><a href="{% url 'view_debt_context' similar_debt_item.debt_test.debt_engagement.debt_context.id %}">{{ similar_debt_item.debt_test.debt_engagement.debt_context.name }}</a>
-    <td>
+    <!--<td>
         {% if similar_debt_item.cwe > 0 %}
         <a target="_blank" href="{{ similar_debt_item.cwe|cwe_url }}">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ similar_debt_item.cwe }}
@@ -56,7 +56,7 @@
             data-clipboard-text="{{similar_debt_item.file_path}}{% if similar_debt_item.line > 0 %} (Line {{ similar_debt_item.line }}){% endif %}"></i></td>
     {% else %}
         <td></td>
-    {% endif%}
+    {% endif%}-->
 
     {% if system_settings.enable_jira %}
         <td>

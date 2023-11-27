@@ -5,7 +5,7 @@
 
 {% block content %}
     {{ block.super }}
-    <h3 id="id_heading"> Debt_Context Type {{ pt.name }}</h3>
+    <h3 id="id_heading"> Debt Context Type {{ pt.name }}</h3>
     <div class="row">
         <div id="debt_tests" class="col-md-8">
             <div class="panel panel-default">
@@ -32,7 +32,7 @@
                             </li>
                             <li>
                                 <a class="" href="{% url 'debt_context_type_report' pt.id %}">
-                                <i class="fa-solid fa-file-lines"></i> {% trans "Debt_Context Type Report" %} </a>
+                                <i class="fa-solid fa-file-lines"></i> {% trans "Debt Context Type Report" %} </a>
                             </li>
                             {% if pt|has_object_permission:"Debt_Context_Type_Delete" %}
                             <li role="separator" class="divider"></li>
@@ -53,7 +53,7 @@
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <div class="clearfix">
-                        <h4 class="pull-left">{% trans "Debt_Contexts" %}</h4>
+                        <h4 class="pull-left">{% trans "Debt Contexts" %}</h4>
                         {% if pt|has_object_permission:"Debt_Context_Type_Add_Debt_Context" %}
                         <div class="dropdown pull-right">
                             <div class="btn-group">
@@ -135,8 +135,8 @@
                                 <i class="fa-solid fa-circle-question"></i></a>
                             {% if pt|has_object_permission:"Debt_Context_Type_Manage_Members" %}
                             <div class="dropdown pull-right">
-                                <button class="btn btn-primary dropdown-toggle" label="Actions" type="button" id="dropdownMenuAddDebt_ContextTypeMember"
-                                        data-toggle="dropdown" aria-expanded="true" aria-label="{% trans "Add Debt_Context Type Member" %}">
+                                <button class="btn btn-primary dropdown-toggle" label="Actions" type="button" id="dropdownMenuAddDebtContextTypeMember"
+                                        data-toggle="dropdown" aria-expanded="true" aria-label="{% trans "Add Debt Context Type Member" %}">
                                     <span class="fa-solid fa-bars"></span>
                                     <span class="caret"></span>
                                 </button>
@@ -208,8 +208,8 @@
                             <i class="fa-solid fa-circle-question"></i></a>
                         {% if pt|has_object_permission:"Debt_Context_Type_Group_Add" %}
                         <div class="dropdown pull-right">
-                            <button class="btn btn-primary dropdown-toggle" label="Actions" type="button" id="dropdownMenuAddDebt_ContextTypeGroup"
-                                    data-toggle="dropdown" aria-expanded="true" aria-label="{% trans "Add Debt_Context Type Group" %}">
+                            <button class="btn btn-primary dropdown-toggle" label="Actions" type="button" id="dropdownMenuAddDebtContextTypeGroup"
+                                    data-toggle="dropdown" aria-expanded="true" aria-label="{% trans "Add Debt Context Type Group" %}">
                                 <span class="fa-solid fa-bars"></span>
                                 <span class="caret"></span>
                             </button>
@@ -283,7 +283,7 @@
                     <table class="table table-striped">
                       <tbody>
                         <tr>
-                          <td style="width: 150px;"><strong>{% trans "Critical debt_context" %}</strong></td>
+                          <td style="width: 150px;"><strong>{% trans "Critical debt context" %}</strong></td>
                           <td>
                             {% if pt.critical_debt_context %}
                             <i class="text-success fa-solid fa-check"></i>
@@ -293,7 +293,7 @@
                         </td>
                     </tr>
                         <tr>
-                            <td style="width: 150px;"><strong>{% trans "Key debt_context" %}</strong></td>
+                            <td style="width: 150px;"><strong>{% trans "Key debt context" %}</strong></td>
                             <td>
                                 {% if pt.key_debt_context %}
                                 <i class="text-success fa-solid fa-check"></i>

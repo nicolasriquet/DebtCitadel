@@ -597,7 +597,7 @@ class AddDebtItemView(View):
                 event='other',
                 title=_('Addition of %(title)s') % {'title': debt_item.title},
                 debt_item=debt_item,
-                description=_('Debt_Item "%(title)s" was added by %(user)s') % {
+                description=_('Debt Item "%(title)s" was added by %(user)s') % {
                     'title': debt_item.title, 'user': request.user
                 },
                 url=reverse("view_debt_item", args=(debt_item.id,)),
@@ -606,7 +606,7 @@ class AddDebtItemView(View):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                _('Debt_Item added successfully.'),
+                _('Debt Item added successfully.'),
                 extra_tags='alert-success')
 
         return debt_item, request, all_forms_valid

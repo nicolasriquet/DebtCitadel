@@ -8,7 +8,7 @@
             <div class="panel panel-default">
                 <div class="panel-heading tight">
                     <h3 class="has-filters">
-                        Debt Test Type List
+                        Debt Identification Methods List
                         <div class="dropdown pull-right">
                             <button id="show-filters" data-toggle="collapse" data-target="#the-filters" class="btn btn-primary toggle-filters"> <i class="fa-solid fa-filter"></i> <i class="caret"></i> </button>
                             {% if "dojo.add_debt_test_type"|has_configuration_permission:request %}
@@ -21,7 +21,7 @@
                                 aria-labelledby="dropdownMenu1">
                                     <li role="presentation">
                                         <a href="{%  url 'add_debt_test_type' %}">
-                                            <i class="fa-solid fa-plus"></i> New Debt Test Type </a>
+                                            <i class="fa-solid fa-plus"></i> New Debt Identification Method </a>
                                     </li>
                             </ul>
                             {% endif %}
