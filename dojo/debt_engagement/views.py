@@ -457,7 +457,7 @@ def view_debt_engagement(request, eid):
     debt_context_tab.setDebtEngagement(eng)
     return render(
         request, 'dojo/debt_view_debt_eng.html', {
-            'eng': eng,
+            'debt_engagement': eng,
             'debt_context_tab': debt_context_tab,
             'system_settings': system_settings,
             'debt_tests': paged_debt_tests,

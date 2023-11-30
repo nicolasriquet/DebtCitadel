@@ -100,7 +100,7 @@
         <div class="table-responsive">
             <table class="table-striped table table-condensed table-hover centered">
                 <tr>
-                    <th>{% trans "Debt_Engagement" %}</th>
+                    <th>{% trans "Identification Campaign" %}</th>
                     <th>{% trans "Environment" %}</th>
                     <th>{% trans "Dates" %}</th>
                     <th>{% trans "Updated" %}</th>
@@ -326,7 +326,7 @@
                                 {% trans "Name" %}
                             </th>
                             <th>
-                                {% trans "Debt_Items" %}
+                                {% trans "Debt Items" %}
                             </th>
                             <th>
                                 {% trans "Vulnerability Ids" %}
@@ -414,7 +414,7 @@
                                         {% for debt_item in group.debt_items.all %}
                                             {{ debt_item.title }}<br>
                                         {% endfor %}
-                                        " data-container="body" data-original-title="Debt_Items" title="">
+                                        " data-container="body" data-original-title="Debt Items" title="">
                                         <a href="{% url 'view_debt_test' debt_test.id %}?debt_item_group={{ group.id }}">{{ group.debt_items.all|length }}</a>
                                     </i>
                                 </td>
@@ -509,7 +509,7 @@
         <div class="panel-heading tight">
             <div class="clearfix">
                 <h4 class="has-filters">
-                    {% trans "Debt_Items" %} ({{ debt_items.total_count }}) <small>{{ debt_test.id|debt_get_severity_count:"debt_test" }}</small>
+                    {% trans "Debt Items" %} ({{ debt_items.total_count }}) <small>{{ debt_test.id|debt_get_severity_count:"debt_test" }}</small>
                     <div class="dropdown pull-right"></div>
                     <div id="debt_test-pulldown" class="dropdown pull-right">
                         &nbsp;
@@ -532,13 +532,13 @@
                                 role="menu"
                                 aria-labelledby="dropdownMenu_debt_test_add">
                                 <li role="presentation">
-                                    <a title="Add Debt_Item" href="{% url 'add_debt_items' debt_test.id %}">
-                                        <span class="fa-solid fa-bug"></span> {% trans "New Debt_Item" %}
+                                    <a title="Add Debt Item" href="{% url 'add_debt_items' debt_test.id %}">
+                                        <span class="fa-solid fa-bug"></span> {% trans "New Debt Item" %}
                                     </a>
                                 </li>
                                 <li role="presentation">
-                                    <a title="Add Debt_Item from Template" href="{% url 'search' debt_test.id %}">
-                                        <span class="icon-add-template"></span> {% trans "Debt_Item From Template" %}
+                                    <a title="Add Debt Item from Template" href="{% url 'search' debt_test.id %}">
+                                        <span class="icon-add-template"></span> {% trans "Debt Item From Template" %}
                                     </a>
                                 </li>
                             </ul>
@@ -606,8 +606,8 @@
                                     class="btn btn-info btn-sm btn-secondary"
                                     data-toggle="tooltip"
                                     data-placement="bottom"
-                                    title="Merge Debt_Items">
-                                <a class="white-color merge" href="#" alt="Merge Debt_Items">
+                                    title="Merge Debt Items">
+                                <a class="white-color merge" href="#" alt="Merge Debt Items">
                                     <i class="fa-solid fa-down-left-and-up-right-to-center"></i>
                                 </a>
                             </button>
@@ -617,8 +617,8 @@
                                     class="btn btn-info btn-sm btn-secondary"
                                     data-toggle="tooltip"
                                     data-placement="bottom"
-                                    title="Delete Debt_Items">
-                                <a class="white-color delete-bulk" href="#" alt="Delete Debt_Items">
+                                    title="Delete Debt Items">
+                                <a class="white-color delete-bulk" href="#" alt="Delete Debt Items">
                                     <i class="fa-solid fa-trash"></i>
                                 </a>
                             </button>
@@ -665,7 +665,7 @@
                                        class="datepicker form-control hasDatepicker"
                                        name="date"
                                        type="date"
-                                       alt="Select the date the Debt_Items were discovered"/>
+                                       alt="Select the date the Debt Items were discovered"/>
                                 <br />
                                 <label>
                                     <b>{% trans "Planned Remediation Date" %}</b>
@@ -675,7 +675,7 @@
                                     class="datepicker form-control hasDatepicker"
                                     name="planned_remediation_date"
                                     type="date"
-                                    alt="Select the date the Debt_Item will be remediated"/>
+                                    alt="Select the date the Debt Item will be remediated"/>
                                 <br />
                                 <label style="display: block">
                                     {% trans "Planned Remediation version" %}
@@ -915,11 +915,17 @@
                                 <th>
                                     {% trans "Name" %}
                                 </th>
-                                <th>
+                                <!--<th>
                                     {% trans "CWE" %}
                                 </th>
                                 <th>
                                     {% trans "Vulnerability Id" %}
+                                </th>-->
+                                <th>
+                                    {% trans "Intentionality" %}
+                                </th>
+                                <th>
+                                    {% trans "Attitude" %}
                                 </th>
                                 <th>
                                     {% trans "Date" %}
@@ -1021,33 +1027,33 @@
                                                     {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                                         <li role="presentation">
                                                             <a href="{% url 'touch_debt_item' debt_item.id %}?return_url={{ request.get_full_path|urlencode }}">
-                                                                <i class="fa-solid fa-clock"></i> {% trans "Touch Debt_Item" %}
+                                                                <i class="fa-solid fa-clock"></i> {% trans "Touch Debt Item" %}
                                                             </a>
                                                         </li>
                                                     {% endif %}
                                                     {% if debt_item|has_object_permission:"Debt_Item_Add" %}
                                                         <li role="presentation">
                                                             <a href="{% url 'mktemplate' debt_item.id %}">
-                                                                <i class="fa-solid fa-copy"></i> {% trans "Make Debt_Item a Template" %}
+                                                                <i class="fa-solid fa-copy"></i> {% trans "Make Debt Item a Template" %}
                                                             </a>
                                                         </li>
                                                     {% endif %}
                                                     {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                                         <li role="presentation">
                                                             <a href="{% url 'find_template_to_apply' debt_item.id %}">
-                                                                <i class="fa-solid fa-copy"></i> {% trans "Apply Template to Debt_Item" %}
+                                                                <i class="fa-solid fa-copy"></i> {% trans "Apply Template to Debt Item" %}
                                                             </a>
                                                         </li>
                                                         {% if debt_item.active %}
                                                             <li role="presentation">
                                                                 <a href="{% url 'close_debt_item' debt_item.id %}">
-                                                                    <i class="fa-solid fa-fire-extinguisher"></i> {% trans "Close Debt_Item" %}
+                                                                    <i class="fa-solid fa-fire-extinguisher"></i> {% trans "Close Debt Item" %}
                                                                 </a>
                                                             </li>
                                                         {% else %}
                                                             <li role="presentation">
                                                                 <a href="{% url 'reopen_debt_item' debt_item.id %}">
-                                                                    <i class="fa-solid fa-bug"></i> {% trans "Open Debt_Item" %}
+                                                                    <i class="fa-solid fa-bug"></i> {% trans "Open Debt Item" %}
                                                                 </a>
                                                             </li>
                                                         {% endif %}
@@ -1165,7 +1171,13 @@
                                         {% endif %}
                                         {% include "dojo/snippets/tags.html" with tags=debt_item.tags.all %}
                                     </td>
-                                    <td class="nowrap">
+                                    <td>
+                                        {{ debt_item.intentionality }}
+                                    </td>
+                                    <td>
+                                        {{ debt_item.attitude }}
+                                    </td>
+                                    <!--<td class="nowrap">
                                         {% if debt_item.cwe > 0 %}
                                             <a target="_blank"
                                             href="https://cwe.mitre.org/data/definitions/{{ debt_item.cwe }}.html">
@@ -1185,7 +1197,7 @@
                                                 {% endif %}
                                             {% endif %}
                                         {% endwith %}
-                                    </td>
+                                    </td>-->
                                     <td class="nowrap">
                                         {{ debt_item.date }}
                                     </td>
@@ -1275,7 +1287,7 @@
         <div class="panel-heading">
             <div class="clearfix">
                 <h4 class="pull-left">
-                    {% trans "Potential Debt_Items" %}
+                    {% trans "Potential Debt Items" %}
                 </h4>
                 {% if debt_test|has_object_permission:"Debt_Item_Add" %}
                     <form id="quick-add-form" method="post" class="pull-right">
@@ -1284,13 +1296,13 @@
                             <input id="quick_add_debt_item"
                                 name="title"
                                 type="text"
-                                placeholder="Add a potential debt_item..."
+                                placeholder="Add a potential Debt Item..."
                                 class="form-control"/>
                             <input type="hidden" value="tid" name="{{ debt_test.id }}"/>
                             <span class="input-group-btn">
                                 <button id="the_button" class="btn btn-success" type="submit">
                                     <i id="fa-icon" class="fa-solid fa-plus fa-fw"></i>
-                                    {% trans "Add Potential Debt_Item" %}
+                                    {% trans "Add potential Debt Item" %}
                                 </button>
                             </span>
                         </div>
@@ -1349,7 +1361,7 @@
                         <td>
                             <div class="btn-group">
                                 {% if debt_test|has_object_permission:"Debt_Item_Add" %}
-                                    <a class="btn btn-sm btn-warning"href="{% url 'promote_to_debt_item' debt_item.id %}">{% trans "Promote To Debt_Item" %}</a>
+                                    <a class="btn btn-sm btn-warning"href="{% url 'promote_to_debt_item' debt_item.id %}">{% trans "Promote To Debt Item" %}</a>
                                 {% endif %}
                                 {% if debt_test|has_object_permission:"Debt_Item_Edit" %}
                                     <form method="post"
@@ -1377,7 +1389,8 @@
     </div>
     <!-- Stub Debt_Items end-->
     <!--Cred Begin-->
-    {% if system_settings.enable_credentials %}
+    <!--Cred Begin-->
+    <!--{% if system_settings.enable_credentials %}
         <div class="row">
             <div class="col-md-12" id="cred">
                 <div class="panel panel-default">
@@ -1464,7 +1477,7 @@
                                 {% endfor %}
                                 <tr>
                                     <td colspan="7">
-                                        {% trans "Credentials Configured for this" %} <strong>{% trans "Debt_Engagement" %}</strong>
+                                        {% trans "Credentials Configured for this" %} <strong>{% trans "Identification Campaign" %}</strong>
                                     </td>
                                 </tr>
                                 {% for cred in creds %}
@@ -1510,10 +1523,10 @@
                 </div>
             </div>
         </div>
-    {% endif %}
+    {% endif %}-->
     <!--Cred end -->
-    <!--Files beign -->
-    <div class="row">
+    <!--Files begin -->
+    <!--<div class="row">
         <div class="col-md-12" id="cred">
             <div class="panel panel-default">
                 <div class="panel-heading">
@@ -1552,7 +1565,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div>-->
     <!--Files end -->
     {% include "dojo/snippets/comments.html" with notes=notes object=debt_test destination="debt_test" %}
     <div class="protip">
@@ -1575,8 +1588,10 @@
                 { "data": "debt_item" , render: function (data, type, row) {
                     return type === 'export' ? getDojoExportValueFromTag(data, 'a') :  data;
                 }},
-                { "data": "cwe" },
-                { "data": "cve" },
+                //{ "data": "cwe" },
+                //{ "data": "cve" },
+                { "data": "intentionality" },
+                { "data": "attitude" },
                 { "data": "date" },
                 { "data": "age" },
                 {% if system_settings.enable_debt_item_sla %}
@@ -1643,7 +1658,7 @@
                     orthogonal: 'export'
                 },
                 filename: fileDated,
-                title: 'Debt_Items List'
+                title: 'Debt Items List'
             };
 
             // Mapping of table columns to objects for proper cleanup and data formatting
@@ -1942,7 +1957,7 @@
             });
 
             $('[id^=delete-debt_item-menu-]').on('click', function () {
-              if (confirm('Are you sure you want to delete this debt_item?'))
+              if (confirm('Are you sure you want to delete this Debt Item?'))
               {
                   var form_element = "form#" + this.id + "-form";
                   $( form_element ).submit();
@@ -1950,7 +1965,7 @@
             });
 
             $('a.delete-bulk').on('click', function (e) {
-                if (confirm('Are you sure you want to delete these debt_items?'))
+                if (confirm('Are you sure you want to delete these Debt Items?'))
                 {
                     var hidden_input = $('<input type="hidden" value="delete_bulk_debt_items" name="delete_bulk_debt_items">')
                     $('form#bulk_change_form').append(hidden_input);
@@ -1959,7 +1974,7 @@
             });
 
             $( document ).on( "click", "button.delete-debt_item", function (e) {
-                return confirm('Are you sure you want to delete this debt_item?')
+                return confirm('Are you sure you want to delete this Debt Item?')
             });
 
             $('a#add_notes_link').on('click', function (e) {
@@ -1985,7 +2000,7 @@
 
             $('form#quick-add-form').on("submit", function (e) {
                 if ($("input#quick_add_debt_item").val().length == 0) {
-                  alert('Potential debt_item description needs a value.');
+                  alert('Potential Debt Item description needs a value.');
                   e.preventDefault();
                   return false;
                 }
@@ -2020,7 +2035,7 @@
                         var severity = $("<td></td>").append(fseverity);
                         var reporter = $("<td>{{ request.user.username }}</td>");
                         var date = $("<td></td>").append(fdate);
-                        var td_info = '<td><div class="btn-group"><a class="btn btn-sm btn-warning" href="/stub_debt_item/[id]/promote">Promote To Debt_Item</a> <form method="post" action="/stub_debt_item/[id]/delete" style="display: inline" class="form-inline form"><input type="hidden" name="id" value="[id]"/><input type="hidden" name="csrfmiddlewaretoken" value="' + $('input[name=csrfmiddlewaretoken]').val() + '"><button type="submit" class="btn btn-danger btn-sm delete-debt_item">Delete</button></form></div></td>';
+                        var td_info = '<td><div class="btn-group"><a class="btn btn-sm btn-warning" href="/stub_debt_item/[id]/promote">Promote To Debt Item</a> <form method="post" action="/stub_debt_item/[id]/delete" style="display: inline" class="form-inline form"><input type="hidden" name="id" value="[id]"/><input type="hidden" name="csrfmiddlewaretoken" value="' + $('input[name=csrfmiddlewaretoken]').val() + '"><button type="submit" class="btn btn-danger btn-sm delete-debt_item">Delete</button></form></div></td>';
                         var actions = $(td_info.replace(/\[id\]/g, fid));
 
                         row.append(title, severity, reporter, date, actions).appendTo("#stub_debt_items tbody");

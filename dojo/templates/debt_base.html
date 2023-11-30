@@ -19,7 +19,7 @@
             {% elif debt_context_tab.title %}
                 {{ debt_context_tab.title }} |
             {% endif %}
-            DebtDojoTool
+            Debt Citadel
         </title>
         {% block add_css_before %}
         {% endblock %}
@@ -219,13 +219,13 @@
                                     {% block sidebar-items %}
                                         <li>
                                             <a href="{% url 'debt_dashboard' %}" aria-disabled="true" aria-expanded="false" aria-label="Dashboard">
-                                                <i class="fa-solid fa-gauge fa-fw"></i>
+                                                <i class="fa-solid fa-house fa-fw"></i>
                                                 <span>{% trans "Dashboard" %}</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a id="debt-context-side-menu" href="{% url 'debt_context' %}" aria-expanded="false" aria-label="Debt Context">
-                                                <i class="fa-solid fa-list-ul fa-fw"></i>
+                                                <i class="fa-solid fa-briefcase fa-fw"></i>
                                                 <span>{% trans "Debt Contexts" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
@@ -258,8 +258,45 @@
                                             <!-- /.nav-second-level -->
                                         </li>
                                         <li>
+                                            <a href="{% url 'open_debt_items' %}" aria-expanded="false" aria-label="Debt Items">
+                                                <i class="fa-solid fa-bomb fa-fw"></i>
+                                                <span>{% trans "Debt Items" %}</span>
+                                                <span class="glyphicon arrow"></span>
+                                            </a>
+                                            <ul class="nav nav-second-level">
+                                                <li>
+                                                    <a href="{% url 'open_debt_items' %}">
+                                                        {% trans "Open Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'all_debt_items' %}">
+                                                        {% trans "All Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'closed_debt_items' %}">
+                                                        {% trans "Paid Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{% url 'accepted_debt_items' %}">
+                                                        {% trans "Risk Accepted Debt Items" %}
+                                                    </a>
+                                                </li>
+                                                {% if "Debt_Item_View"|has_global_permission %}
+                                                    <li>
+                                                        <a href="{% url 'templates' %}">
+                                                            {% trans "Debt Item Templates" %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
+                                            <!-- /.nav-second-level -->
+                                        </li>
+                                        <li>
                                             <a href="{% url 'debt_engagement' %}" aria-expanded="false" aria-label="Debt Debt_Engagements">
-                                                <i class="fa-solid fa-inbox fa-fw"></i>
+                                                <i class="fa-solid fa-crosshairs fa-fw"></i>
                                                 <span>{% trans "Debt Debt_Engagements" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
@@ -281,7 +318,7 @@
                                                 </li>
                                                 <li>
                                                     <a href="{% url 'debt_test_type' %}">
-                                                        {% trans "Debt Identification Methods" %}
+                                                        {% trans "Identification Methods" %}
                                                     </a>
                                                 </li>
                                                 <li>
@@ -289,43 +326,6 @@
                                                         {% trans "Environments" %}
                                                     </a>
                                                 </li>
-                                            </ul>
-                                            <!-- /.nav-second-level -->
-                                        </li>
-                                        <li>
-                                            <a href="{% url 'open_debt_items' %}" aria-expanded="false" aria-label="Debt Items">
-                                                <i class="fa-solid fa-bug fa-fw"></i>
-                                                <span>{% trans "Debt Items" %}</span>
-                                                <span class="glyphicon arrow"></span>
-                                            </a>
-                                            <ul class="nav nav-second-level">
-                                                <li>
-                                                    <a href="{% url 'open_debt_items' %}">
-                                                        {% trans "Open Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'all_debt_items' %}">
-                                                        {% trans "All Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'closed_debt_items' %}">
-                                                        {% trans "Closed Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'accepted_debt_items' %}">
-                                                        {% trans "Risk Accepted Debt Items" %}
-                                                    </a>
-                                                </li>
-                                                {% if "Debt_Item_View"|has_global_permission %}
-                                                    <li>
-                                                        <a href="{% url 'templates' %}">
-                                                            {% trans "Debt Item Templates" %}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
                                             </ul>
                                             <!-- /.nav-second-level -->
                                         </li>
@@ -452,12 +452,12 @@
                                             </li>
                                         {% endif %}
                                         {% if system_settings.enable_calendar %}
-                                        <li>
+                                        <!--<li>
                                             <a href="{% url 'debt_engagement_calendar' %}" aria-disabled="true" aria-expanded="false" aria-label="Calendar">
                                                 <i class="fa-solid fa-calendar-days fa-fw"></i>
                                                 <span>{% trans "Calendar" %}</span>
                                             </a>
-                                        </li>
+                                        </li>-->
                                         {% endif %}
                                         {% if system_settings.enable_questionnaires %}
                                             {% if "dojo.view_debt_engagement_survey"|has_configuration_permission:request or "dojo.view_question"|has_configuration_permission:request %}
@@ -508,18 +508,18 @@
                                                     </li>
                                                 {% endif %}
                                                 {% if system_settings.enable_github  and "dojo.view_github_conf"|has_configuration_permission:request%}
-                                                    <li>
+                                                    <!--<li>
                                                         <a href="{% url 'github' %}">
                                                             {% trans "GitHub" %}
                                                         </a>
-                                                    </li>
+                                                    </li>-->
                                                 {% endif %}
                                                 {% if system_settings.enable_jira and "dojo.view_jira_instance"|has_configuration_permission:request %}
-                                                    <li>
+                                                    <!--<li>
                                                         <a href="{% url 'jira' %}">
                                                             {% trans "JIRA" %}
                                                         </a>
-                                                    </li>
+                                                    </li>-->
                                                 {% endif %}
                                                 {% if "dojo.change_bannerconf"|has_configuration_permission:request %}
                                                     <li>
@@ -540,11 +540,11 @@
                                                         {% trans "Notifications" %}
                                                     </a>
                                                 </li>
-                                                <li>
+                                                <!--<li>
                                                     <a href="{% url 'regulations' %}">
                                                         {% trans "Regulations" %}
                                                     </a>
-                                                </li>
+                                                </li>-->
                                                 {% if system_settings.enable_debt_item_sla and "dojo.view_sla_configuration"|has_configuration_permission:request %}
                                                     <li>
                                                         <a href="{% url 'sla_config' %}">
@@ -560,18 +560,18 @@
                                                     </li>
                                                 {% endif %}
                                                 {% if "dojo.view_tool_configuration"|has_configuration_permission:request %}
-                                                    <li>
+                                                    <!--<li>
                                                         <a href="{% url 'tool_config' %}">
                                                             {% trans "Tool Configuration" %}
                                                         </a>
-                                                    </li>
+                                                    </li>-->
                                                 {% endif %}
                                                 {% if "dojo.view_tool_type"|has_configuration_permission:request %}
-                                                    <li>
+                                                    <!--<li>
                                                         <a href="{% url 'tool_type' %}">
                                                             {% trans "Tool Type" %}
                                                         </a>
-                                                    </li>
+                                                    </li>-->
                                                 {% endif %}
                                             </ul>
                                         </li>
@@ -579,7 +579,7 @@
                                     {% block support-tab %}
                                         <li>
                                             <a href="{% url 'support' %}" aria-disabled="true" aria-expanded="false" aria-label="Support">
-                                                <i class="fa-solid fa-life-ring fa-fw"></i>
+                                                <i class="fa-solid fa-circle-info fa-fw"></i>
                                                 <span>{% trans "About" %}</span>
                                             </a>
                                         </li>
@@ -707,7 +707,7 @@
                                                 <li>
                                                     <a href="{% url 'debt_context_closed_debt_items' debt_context_tab.debt_context.id %}">
                                                         <i class="fa-solid fa-fire-extinguisher"></i>
-                                                        &nbsp;&nbsp;{% trans "View Closed Debt Items" %}
+                                                        &nbsp;&nbsp;{% trans "View Paid Debt Items" %}
                                                     </a>
                                                 </li>
                                                 <!--{% if debt_context_tab.debt_context|has_object_permission:"Import_Scan_Result" %}
@@ -1041,18 +1041,18 @@
                                     <br/>
                                 </p>
                                 <p>
-                                    DebtDojoTool
+                                    Debt Citadel
                                 </p>
                                 <p>
                                     &copy; 2023-{% now "Y" %} Nicolas Riquet.
                                 </p>
                                 <p>
-                                    DebtDojoTool is licensed under the <a
+                                    Debt Citadel is licensed under the <a
                                         href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD
                                     License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
                                 </p>
                                 <p>
-                                    DebtDojoTool is based on DefectDojo {% dojo_version %} ( {% dojo_current_hash %} ), &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
+                                    Debt Citadel is based on DefectDojo {% dojo_version %} ( {% dojo_current_hash %} ), &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
                                 </p>
                                 <!--<p>
                                     Detailed DefectDojo documentation can be found in our <a

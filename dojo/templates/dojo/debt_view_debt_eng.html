@@ -25,72 +25,72 @@
                             <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
-                                {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
+                                {% if debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
                                     <li role="presentation">
-                                        <a class="" href="{% url 'edit_debt_engagement' eng.id %}">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit Debt_Engagement
+                                        <a class="" href="{% url 'edit_debt_engagement' debt_engagement.id %}">
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit Identification Campaign
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="" href="{% url 'copy_debt_engagement' eng.id %}?return_url={{ request.get_full_path|urlencode }}"/>
-                                        <i class="fa-solid fa-copy"></i> Copy Debt_Engagement
+                                        <a class="" href="{% url 'copy_debt_engagement' debt_engagement.id %}?return_url={{ request.get_full_path|urlencode }}"/>
+                                        <i class="fa-solid fa-copy"></i> Copy Identification Campaign
                                         </a>
                                     </li>
                                     <li role="presentation">
-                                        {% if eng.active %}
-                                            <a class="" href="{% url 'close_debt_engagement' eng.id %}">
-                                            <i class="fa-solid fa-xmark"></i> Close Debt_Engagement
+                                        {% if debt_engagement.active %}
+                                            <a class="" href="{% url 'close_debt_engagement' debt_engagement.id %}">
+                                            <i class="fa-solid fa-xmark"></i> Close Identification Campaign
                                             </a>
                                         {% else %}
-                                            <a class="" href="{% url 'reopen_debt_engagement' eng.id %}">
-                                            <i class="fa-solid fa-rotate-left"></i> Reopen Debt_Engagement
+                                            <a class="" href="{% url 'reopen_debt_engagement' debt_engagement.id %}">
+                                            <i class="fa-solid fa-rotate-left"></i> Reopen Identification Campaign
                                             </a>
                                         {% endif %}
                                     </li>
                                 {% endif %}
                                 <li role="presentation">
-                                    <a href="{% url 'debt_engagement_report' eng.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
+                                    <a href="{% url 'debt_engagement_report' debt_engagement.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
                                     <i class="fa-solid fa-file-lines"></i> Report
                                     </a>
                                 </li>
                                 <li role="presentation">
-                                    <a href="{% url 'debt_engagement_ics' eng.id %}">
+                                    <a href="{% url 'debt_engagement_ics' debt_engagement.id %}">
                                     <i class="fa-solid fa-calendar-plus"></i> Add To Calendar
                                     </a>
                                 </li>
                                 <li role="presentation">
-                                    <a href="{% url 'action_history' eng|content_type eng.id %}">
+                                    <a href="{% url 'action_history' debt_engagement|content_type debt_engagement.id %}">
                                     <i class="fa-solid fa-clock-rotate-left"></i> View History
                                     </a>
                                 </li>
-                                {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
+                                {% if debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
                                     <li role="separator" class="divider"></li>
                                     <li role="presentation">
-                                        {% if eng.test_strategy %}
-                                            <a target="_blank" href="{{ eng.test_strategy }}"><i class="fa-solid fa-file-lines"></i> View Test
+                                        {% if debt_engagement.debt_test_strategy %}
+                                            <a target="_blank" href="{{ debt_engagement.debt_test_strategy }}"><i class="fa-solid fa-file-lines"></i> View Identification Session
                                             Strategy </a>
                                         {% else %}
-                                            <a href="{% url 'edit_debt_engagement' eng.id %}"><i class="fa-solid fa-file-lines"></i> Add a Test Strategy</a>
+                                            <a href="{% url 'edit_debt_engagement' debt_engagement.id %}"><i class="fa-solid fa-file-lines"></i> Add a Identification Session Strategy</a>
                                         {% endif %}
                                     </li>
                                     {% if threat != 'none' %}
                                         <li role="presentation">
-                                            <a href="{% url 'view_threatmodel' eng.id %}"><i class="fa-solid fa-file-lines"></i> Download Threat Model</a>
+                                            <a href="{% url 'view_threatmodel' debt_engagement.id %}"><i class="fa-solid fa-file-lines"></i> Download Threat Model</a>
                                         </li>
                                         <li role="presentation">
-                                            <a href="{% url 'upload_threatmodel' eng.id %}"><i class="fa-solid fa-file-lines"></i> Upload Threat Model</a>
+                                            <a href="{% url 'upload_threatmodel' debt_engagement.id %}"><i class="fa-solid fa-file-lines"></i> Upload Threat Model</a>
                                         </li>
                                     {% else %}
                                         <li role="presentation">
-                                            <a href="{% url 'upload_threatmodel' eng.id %}"><i class="fa-solid fa-file-lines"></i> Upload Threat Model</a>
+                                            <a href="{% url 'upload_threatmodel' debt_engagement.id %}"><i class="fa-solid fa-file-lines"></i> Upload Threat Model</a>
                                         </li>
                                     {% endif %}
                                 {% endif %}
-                                {% if eng|has_object_permission:"Debt_Engagement_Delete" %}
+                                {% if debt_engagement|has_object_permission:"Debt_Engagement_Delete" %}
                                     <li role="separator" class="divider"></li>
                                     <li role="presentation">
-                                        <a class="text-danger" href="{% url 'delete_debt_engagement' eng.id %}">
-                                        <i class="fa-solid fa-trash"></i> Delete Debt_Engagement
+                                        <a class="text-danger" href="{% url 'delete_debt_engagement' debt_engagement.id %}">
+                                        <i class="fa-solid fa-trash"></i> Delete Identification Campaign
                                         </a>
                                     </li>
                                 {% endif %}
@@ -99,23 +99,23 @@
                     </div>
                 </div>
                 <div class="panel-body">
-                    {% if eng.description %}
-                        {{ eng.description|markdown_render }}
+                    {% if debt_engagement.description %}
+                        {{ debt_engagement.description|markdown_render }}
                     {% else %}
                         <small class="text-muted"><em>There is no description.</em></small>
                     {% endif %}
                 </div>
             </div>
-            {% if eng.preset %}
+            {% if debt_engagement.preset %}
                 <div class="row">
-                    <div id="tests" class="col-md-12">
+                    <div id="debt_tests" class="col-md-12">
                         <div class="panel panel-default">
                             <div class="panel-heading">
                                 <div class="clearfix">
                                     <h4 class="pull-left">
-                                        Debt_Engagement Presets <small>{{ eng.preset.title|truncatechars_html:60 }}</small>
+                                        Identification Campaign Presets <small>{{ debt_engagement.preset.title|truncatechars_html:60 }}</small>
                                     </h4>
-                                    {% if eng.debt_context|has_object_permission:"Debt_Context_Edit" %}
+                                    {% if debt_engagement.debt_context|has_object_permission:"Debt_Context_Edit" %}
                                         <div class="dropdown pull-right">
                                             <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1"
                                                 data-toggle="dropdown" aria-expanded="true">
@@ -124,13 +124,13 @@
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
                                                 <li role="presentation">
-                                                    <a class="" href="{% url 'add_debt_engagement_presets' eng.debt_context.id %}">
-                                                    <i class="fa-solid fa-plus"></i> Add Debt_Engagement Preset
+                                                    <a class="" href="{% url 'add_debt_engagement_presets' debt_engagement.debt_context.id %}">
+                                                    <i class="fa-solid fa-plus"></i> Add Identification Campaign Preset
                                                     </a>
                                                 </li>
                                                 <li role="presentation">
-                                                    <a class="" href="{% url 'edit_debt_engagement_presets' eng.debt_context.id eng.preset.id %}">
-                                                    <i class="fa-solid fa-pen-to-square"></i> Edit Debt_Engagement Preset
+                                                    <a class="" href="{% url 'edit_debt_engagement_presets' debt_engagement.debt_context.id debt_engagement.preset.id %}">
+                                                    <i class="fa-solid fa-pen-to-square"></i> Edit Identification Campaign Preset
                                                     </a>
                                                 </li>
                                             </ul>
@@ -142,19 +142,19 @@
                                 <table class="tablesorter-bootstrap table table-condensed table-striped">
                                     <thead>
                                         <tr>
-                                            <th>Test Type</th>
+                                            <th>Identification Method</th>
                                             <th>Network</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
                                             <td>
-                                                {% if preset_test_type.count > 1 %}
-                                                    {% for test in preset_test_type %}
-                                                        {{test.name}}{%if not forloop.last%},{%endif%}
+                                                {% if preset_debt_test_type.count > 1 %}
+                                                    {% for debt_test in preset_debt_test_type %}
+                                                        {{debt_test.name}}{%if not forloop.last%},{%endif%}
                                                     {% endfor %}
                                                 {% else %}
-                                                    {{ preset_test_type.0.name }}
+                                                    {{ preset_debt_test_type.0.name }}
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -171,13 +171,13 @@
                                 </table>
                             </div>
                             <div class="panel-body">
-                                {% if eng.preset.notes %}
-                                    <strong>Notes: </strong>{{ eng.preset.notes|markdown_render }}
+                                {% if debt_engagement.preset.notes %}
+                                    <strong>Notes: </strong>{{ debt_engagement.preset.notes|markdown_render }}
                                 {% else %}
-                                    <small class="text-muted"><em>No test notes found.</em></small>
+                                    <small class="text-muted"><em>No debt_test notes found.</em></small>
                                 {% endif %}
-                                {% if eng.preset.scope %}
-                                    <strong>Scope: </strong>{{ eng.preset.scope|markdown_render }}
+                                {% if debt_engagement.preset.scope %}
+                                    <strong>Scope: </strong>{{ debt_engagement.preset.scope|markdown_render }}
                                 {% else %}
                                     <small class="text-muted"><em>Testing scope not specified.</em></small>
                                 {% endif %}
@@ -187,12 +187,12 @@
                 </div>
             {% endif %}
             <div class="row">
-                <div id="tests" class="col-md-12">
+                <div id="debt_tests" class="col-md-12">
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <div class="clearfix">
                                 <h4>
-                                    Tests ({{tests.paginator.count}}) <small>{{ eng.id|debt_get_severity_count:"debt_engagement" }}</small>
+                                    Identification Sessions ({{debt_tests.paginator.count}}) <small>{{ debt_engagement.id|debt_get_severity_count:"debt_engagement" }}</small>
                                     <div class="dropdown pull-right">
                                         <button id="show-filters" data-toggle="collapse" data-target="#the-filters" class="btn btn-primary toggle-filters"> <i class="fa-solid fa-filter"></i> <i class="caret"></i> </button>
                                         <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1"
@@ -201,28 +201,28 @@
                                         <span class="caret"></span>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
-                                            {% if eng|has_object_permission:"Test_Add" %}
+                                            {% if debt_engagement|has_object_permission:"Test_Add" %}
                                                 <li role="presentation">
-                                                    <a class="" href="{% url 'add_tests' eng.id %}">
-                                                    <i class="fa-solid fa-plus"></i> Add Tests
+                                                    <a class="" href="{% url 'add_debt_tests' debt_engagement.id %}">
+                                                    <i class="fa-solid fa-plus"></i> Add Identification Sessions
                                                     </a>
                                                 </li>
                                             {% endif %}
-                                            {% if eng|has_object_permission:"Import_Scan_Result" %}
+                                            {% if debt_engagement|has_object_permission:"Import_Scan_Result" %}
                                                 <li role="presentation">
-                                                    <a class="" href="{% url 'import_scan_results' eng.id %}">
+                                                    <a class="" href="{% url 'import_scan_results' debt_engagement.id %}">
                                                     <i class="fa-solid fa-upload"></i> Import Scan Results
                                                     </a>
                                                 </li>
                                                 <li class="divider"></li>
                                             {% endif %}
                                             <li role="presentation">
-                                                <a href="{% url 'debt_engagement_open_debt_items' eng.id %}">
+                                                <a href="{% url 'debt_engagement_open_debt_items' debt_engagement.id %}">
                                                 <i class="fa-solid fa-file-lines"></i> View Open Debt_Items
                                                 </a>
                                             </li>
                                             <li role="presentation">
-                                                <a href="{% url 'debt_engagement_all_debt_items' eng.id %}">
+                                                <a href="{% url 'debt_engagement_all_debt_items' debt_engagement.id %}">
                                                 <i class="fa-solid fa-file-lines"></i> View All Debt_Items
                                                 </a>
                                             </li>
@@ -234,9 +234,9 @@
                         <div id="the-filters" class="is-filters panel-body collapse {% if filter.form.has_changed %}in{% endif %}">
                             {% include "dojo/filter_snippet.html" with form=filter.form %}
                         </div>
-                    {% if tests %}
+                    {% if debt_tests %}
                         <div class="clearfix pagination-in-panel">
-                            {% include "dojo/paging_snippet.html" with page=tests page_size=True %}
+                            {% include "dojo/paging_snippet.html" with page=debt_tests page_size=True %}
                         </div>
                         <div class="table-responsive">
                             <table class="tablesorter-bootstrap table table-condensed table-striped">
@@ -246,7 +246,7 @@
                                         <th>Title / Type</th>
                                         <th>Date</th>
                                         <th>Lead</th>
-                                        <th>Total Debt_Items</th>
+                                        <th>Total Debt Items</th>
                                         <th>Active (Verified)</th>
                                         <th>Mitigated</th>
                                         <th>Duplicates</th>
@@ -257,96 +257,96 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for test in tests %}
+                                    {% for debt_test in debt_tests %}
                                         <tr>
                                             <td>
                                                 <div class="dropdown">
-                                                    <a href="#" id="test-menu" class="dropdown-toggle pull-left" data-toggle="dropdown">&nbsp;<i class="fa-solid fa-ellipsis-vertical"></i>&nbsp;</a>
+                                                    <a href="#" id="debt_test-menu" class="dropdown-toggle pull-left" data-toggle="dropdown">&nbsp;<i class="fa-solid fa-ellipsis-vertical"></i>&nbsp;</a>
                                                     <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
                                                         <li>
-                                                            <a class="" href="{% url 'view_test' test.id %}">
+                                                            <a class="" href="{% url 'view_debt_test' debt_test.id %}">
                                                             <i class="fa-solid fa-rectangle-list"></i> View</a>
                                                         </li>
-                                                        {% if test|has_object_permission:"Test_Edit" %}
+                                                        {% if debt_test|has_object_permission:"Test_Edit" %}
                                                             <li>
-                                                                <a class="" href="{% url 'edit_test' test.id %}">
+                                                                <a class="" href="{% url 'edit_debt_test' debt_test.id %}">
                                                                 <i class="fa-solid fa-pen-to-square"></i> Edit</a>
                                                             </li>
                                                             <li>
-                                                                <a class="" href="{% url 'copy_test' test.id %}">
+                                                                <a class="" href="{% url 'copy_debt_test' debt_test.id %}">
                                                                 <i class="fa-solid fa-copy"></i> Copy</a>
                                                             </li>
                                                         {% endif %}
-                                                        {% if test|has_object_permission:"Debt_Item_Add" %}
+                                                        {% if debt_test|has_object_permission:"Debt_Item_Add" %}
                                                             <li class="divider"></li>
                                                             <li>
-                                                                <a class="" href="{% url 'add_debt_items' test.id %}">
+                                                                <a class="" href="{% url 'add_debt_items' debt_test.id %}">
                                                                 <i class="fa-solid fa-plus"></i> Add Debt_Item to Test
                                                                 </a>
                                                             </li>
                                                             <li>
-                                                                <a title="Add Debt_Item from Template" href="{% url 'search' test.id %}">
+                                                                <a title="Add Debt_Item from Template" href="{% url 'search' debt_test.id %}">
                                                                 <span class="icon-add-template"></span> Debt_Item From Template
                                                                 </a>
                                                             </li>
                                                         {% endif %}
-                                                        {% if test|has_object_permission:"Import_Scan_Result" %}
+                                                        {% if debt_test|has_object_permission:"Import_Scan_Result" %}
                                                             <li class="divider"></li>
-                                                            <li><a class="" href="{% url 're_import_scan_results' test.id %}">
+                                                            <li><a class="" href="{% url 're_import_scan_results' debt_test.id %}">
                                                                 <i class="fa-solid fa-upload"></i> Re-Upload Scan Results
                                                                 </a>
                                                             </li>
                                                         {% endif %}
                                                         <li class="divider"></li>
                                                         <li role="presentation">
-                                                            <a href="{% url 'test_report' test.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
-                                                            <i class="fa-solid fa-file-lines"></i> Test Report
+                                                            <a href="{% url 'debt_test_report' debt_test.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
+                                                            <i class="fa-solid fa-file-lines"></i> Identification Session Report
                                                             </a>
                                                         </li>
-                                                        {% if test|has_object_permission:"Test_Delete" %}
+                                                        {% if debt_test|has_object_permission:"Test_Delete" %}
                                                             <li class="divider"></li>
                                                             <li>
-                                                                <a class="text-danger" href="{% url 'delete_test' test.id %}">
+                                                                <a class="text-danger" href="{% url 'delete_debt_test' debt_test.id %}">
                                                                 <i class="fa-solid fa-trash"></i> Delete</a>
                                                             </li>
                                                         {% endif %}
                                                     </ul>
                                                 </div>
                                             </td>
-                                            <td><a title="{{ test.description }}" href="{% url 'view_test' test.id %}">{{ test }}</a>
-                                                {% if test.version %}
+                                            <td><a title="{{ debt_test.description }}" href="{% url 'view_debt_test' debt_test.id %}">{{ debt_test }}</a>
+                                                {% if debt_test.version %}
                                                     <sup>
-                                                    <a target="_blank" class="tag-label tag-version" data-toggle="tooltip" data-placement="bottom" title="Debt_Context Version: {{ test.version }}">
-                                                    {{ test.version }}</a>
+                                                    <a target="_blank" class="tag-label tag-version" data-toggle="tooltip" data-placement="bottom" title="Debt_Context Version: {{ debt_test.version }}">
+                                                    {{ debt_test.version }}</a>
                                                     </sup>
                                                 {% endif %}
-                                                {% include "dojo/snippets/tags.html" with tags=test.tags.all %}
+                                                {% include "dojo/snippets/tags.html" with tags=debt_test.tags.all %}
                                             </td>
-                                            <td>{{ test.target_start|date }} - {{ test.target_end|date }}</td>
+                                            <td>{{ debt_test.target_start|date }} - {{ debt_test.target_end|date }}</td>
                                             <td>
-                                                {% if test.lead.get_full_name and test.lead.get_full_name.strip %}
-                                                    {{ test.lead.get_full_name }}
-                                                {% elif test.lead %}
-                                                    {{ test.lead }}
+                                                {% if debt_test.lead.get_full_name and debt_test.lead.get_full_name.strip %}
+                                                    {{ debt_test.lead.get_full_name }}
+                                                {% elif debt_test.lead %}
+                                                    {{ debt_test.lead }}
                                                 {% endif %}
                                             </td>
-                                            <td><a href="{% url 'view_test' test.id %}">{{ test.count_debt_items_test_all }}</a></td>
+                                            <td><a href="{% url 'view_debt_test' debt_test.id %}">{{ debt_test.count_debt_items_debt_test_all }}</a></td>
                                             <td>
-                                                <a href="{% url 'view_test' test.id %}?active=true">{{ test.count_debt_items_test_active }}</a>&nbsp;
-                                                (<a href="{% url 'view_test' test.id %}?active=true&verified=true">{{ test.count_debt_items_test_active_verified }}</a>)
+                                                <a href="{% url 'view_debt_test' debt_test.id %}?active=true">{{ debt_test.count_debt_items_debt_test_active }}</a>&nbsp;
+                                                (<a href="{% url 'view_debt_test' debt_test.id %}?active=true&verified=true">{{ debt_test.count_debt_items_debt_test_active_verified }}</a>)
                                             </td>
-                                            <td><a href="{% url 'view_test' test.id %}?is_mitigated=true">{{ test.count_debt_items_test_mitigated }}</a></td>
-                                            <td><a href="{% url 'view_test' test.id %}?duplicate=true">{{ test.count_debt_items_test_dups }}</a></td>
+                                            <td><a href="{% url 'view_debt_test' debt_test.id %}?is_mitigated=true">{{ debt_test.count_debt_items_debt_test_mitigated }}</a></td>
+                                            <td><a href="{% url 'view_debt_test' debt_test.id %}?duplicate=true">{{ debt_test.count_debt_items_debt_test_dups }}</a></td>
                                             <td class="nowrap">
-                                                {% if test.notes.count %}
-                                                    <a href="{% url 'view_test' test.id %}#vuln_notes" alt="{{ test.notes.count }} comment{{ test.notes.count|pluralize }}">
-                                                    <span class="glyphicon glyphicon-comment"></span> {{ test.notes.count }}
+                                                {% if debt_test.notes.count %}
+                                                    <a href="{% url 'view_debt_test' debt_test.id %}#vuln_notes" alt="{{ debt_test.notes.count }} comment{{ debt_test.notes.count|pluralize }}">
+                                                    <span class="glyphicon glyphicon-comment"></span> {{ debt_test.notes.count }}
                                                     </a>
                                                 {% endif %}
                                             </td>
                                             {% if 'TRACK_IMPORT_HISTORY'|setting_enabled %}
                                                 <td>
-                                                    {{ test.total_reimport_count }}
+                                                    {{ debt_test.total_reimport_count }}
                                                 </td>
                                             {% endif %}
                                         </tr>
@@ -355,11 +355,11 @@
                             </table>
                         </div>
                         <div class="clearfix pagination-in-panel">
-                            {% include "dojo/paging_snippet.html" with page=tests page_size=True %}
+                            {% include "dojo/paging_snippet.html" with page=debt_tests page_size=True %}
                         </div>
                     {% else %}
                         <div class="panel-body">
-                            <small class="text-muted"><em>No Identification Campaigns found.</em></small>
+                            <small class="text-muted"><em>No Identification Sessions found.</em></small>
                         </div>
                     {% endif %}
                     </div>
@@ -370,10 +370,10 @@
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <h4> Risk Acceptance
-                                {% if eng.debt_context.enable_full_risk_acceptance %}
-                                    {% if eng|has_object_permission:"Risk_Acceptance" %}
+                                {% if debt_engagement.debt_context.enable_full_risk_acceptance %}
+                                    {% if debt_engagement|has_object_permission:"Risk_Acceptance" %}
                                         <a title="Add Risk Acceptance..." class="pull-right btn btn-sm btn-primary"
-                                            href="{% url 'add_risk_acceptance' eng.id %}?return_url={{ request.get_full_path|urlencode }}"><span class="fa-solid fa-plus"></span></a>
+                                            href="{% url 'add_risk_acceptance' debt_engagement.id %}?return_url={{ request.get_full_path|urlencode }}"><span class="fa-solid fa-plus"></span></a>
                                         </a>
                                     {% endif %}
                                 {% endif %}
@@ -404,16 +404,16 @@
                                                         <li class="dropdown" style="list-style:none;position:absolute">
                                                             <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="true">&nbsp;<b class="fa-solid fa-ellipsis-vertical"></b>&nbsp;</a>
                                                             <ul class="dropdown-menu">
-                                                                {% with debt_engagement=eng %}
+                                                                {% with debt_engagement=debt_engagement %}
                                                                     {% include 'dojo/snippets/risk_acceptance_actions_snippet.html' with include_view=True %}
                                                                 {% endwith %}
                                                             </ul>
                                                         </li>
                                                     </ul>
                                                 </td>
-                                                <td><a href="{% url 'view_risk_acceptance' eng.id risk_acceptance.id %}">{{ risk_acceptance.created|date }}</a></td>
+                                                <td><a href="{% url 'view_risk_acceptance' debt_engagement.id risk_acceptance.id %}">{{ risk_acceptance.created|date }}</a></td>
                                                 <td>{{ risk_acceptance.accepted_by }}</td>
-                                                <td><a href="{% url 'view_risk_acceptance' eng.id risk_acceptance.id %}">{{ risk_acceptance.name }}</a></td>
+                                                <td><a href="{% url 'view_risk_acceptance' debt_engagement.id risk_acceptance.id %}">{{ risk_acceptance.name }}</a></td>
                                                 <td>
                                                     {{ risk_acceptance.get_decision_display|default_if_none:"" }}
                                                     {% if risk_acceptance.decision_details %}
@@ -431,7 +431,7 @@
                                                 </td>
                                                 <td>{{ risk_acceptance.accepted_debt_items_count }}</td>
                                                 {% if risk_acceptance.filename %}
-                                                    <td><a href="{% url 'download_risk_acceptance' eng.id risk_acceptance.id %}">Yes</a>
+                                                    <td><a href="{% url 'download_risk_acceptance' debt_engagement.id risk_acceptance.id %}">Yes</a>
                                                         &nbsp;<i style="position:absolute;" class="fa has-popover fa-info-circle" title="Uploaded proof" data-trigger="hover" data-placement="bottom" data-container="body" data-html="true"
                                                             data-content="{{ risk_acceptance.filename }}"></i>
                                                     </td>
@@ -459,21 +459,21 @@
                     </h4>
                 </div>
                 <div id="add_feat" class="panel-body collapse">
-                    {% if eng.debt_engagement_type == "Interactive" and system_settings.enable_checklists %}
+                    {% if debt_engagement.debt_engagement_type == "Interactive" and system_settings.enable_checklists %}
                         <div class="panel panel-default">
                             <div class="panel-heading">
                                 <h4> Checklist<span class="pull-right">
                                     &nbsp;
                                     <a name="collapsible" data-toggle="collapse" href="#add_feat_check_list">
                                     <i class="glyphicon glyphicon-chevron-down"></i></a></span>
-                                    {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
+                                    {% if debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
                                         {% if check %}
                                             <a title="Edit Checklist" class="btn btn-primary pull-right"
-                                                href="{% url 'complete_checklist' eng.id %}">
+                                                href="{% url 'complete_checklist' debt_engagement.id %}">
                                             <span class="fa-solid fa-pen-to-square"></span></a>
                                         {% else %}
                                             <a title="Complete Checklist" class="btn btn-sm btn-primary pull-right"
-                                                href="{% url 'complete_checklist' eng.id %}">
+                                                href="{% url 'complete_checklist' debt_engagement.id %}">
                                             <span class="fa-solid fa-pen-to-square"></span></a></a>
                                         {% endif %}
                                     {% endif %}
@@ -536,8 +536,8 @@
                                     &nbsp;
                                     <a name="collapsible" data-toggle="collapse" href="#add_feat_survey">
                                     <i class="glyphicon glyphicon-chevron-down"></i></a></span>
-                                    {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
-                                    {% debt_add_surveys eng %}
+                                    {% if debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
+                                    {% debt_add_surveys debt_engagement %}
                                     {% endif %}
                                 </h4>
                             </div>
@@ -545,7 +545,7 @@
                                 <div class="row">
                                     <div class="col-md-12">
                                         <div class="panel panel-default">
-                                            {% debt_show_surveys eng users %}
+                                            {% debt_show_surveys debt_engagement users %}
                                         </div>
                                     </div>
                                     <div class="modal fade" id="shareQuestionnaireModal" tabindex="-1" role="dialog" aria-labelledby="shareSurveyModalLabel">
@@ -559,7 +559,7 @@
                                                 <div class="modal-body">
                                                     <p id="questionnaireURL"></p>
                                                     <div class="alert alert-info" role="alert">
-                                                        <b>Note:</b> Only users that are authorized for {{ eng.debt_context}} will be allowed to answer
+                                                        <b>Note:</b> Only users that are authorized for {{ debt_engagement.debt_context}} will be allowed to answer
                                                         this questionnaire.
                                                     </div>
                                                 </div>
@@ -581,7 +581,7 @@
                             </h4>
                         </div>
                         <div id="add_feat_notes" class="panel-body collapse">
-                            {% if eng|has_object_permission:"Note_Add" %}
+                            {% if debt_engagement|has_object_permission:"Note_Add" %}
                                 <form class="form-horizontal" action="" method="post">
                                     {% csrf_token %}
                                     {% include "dojo/form_fields.html" with form=form %}
@@ -604,9 +604,9 @@
                                         <div>
                                             <div class="panel panel-default">
                                                 <div class="panel-comments">
-                                                    {% if user.username == note.author.username or eng|has_object_permission:"Note_Delete" or user.is_superuser %}
+                                                    {% if user.username == note.author.username or debt_engagement|has_object_permission:"Note_Delete" or user.is_superuser %}
                                                         <div class="pull-right">
-                                                            <form method="post" action="{% url 'delete_note' note.id 'debt_engagement' eng.id %}">
+                                                            <form method="post" action="{% url 'delete_note' note.id 'debt_engagement' debt_engagement.id %}">
                                                                 {% csrf_token %}
                                                                 <input type="hidden" aria-label="id" name="id" value="{{note.id}}" id="id_id" />
                                                                 <button type="submit" aria-label="Delete Note" class="btn-delete">
@@ -615,9 +615,9 @@
                                                             </form>
                                                         </div>
                                                     {% endif %}
-                                                    {% if user.username == note.author.username or eng|has_object_permission:"Note_Edit" %}
+                                                    {% if user.username == note.author.username or debt_engagement|has_object_permission:"Note_Edit" %}
                                                         <div class="pull-right">
-                                                            <form method="get" action="{% url 'edit_note' note.id 'debt_engagement' eng.id %}">
+                                                            <form method="get" action="{% url 'edit_note' note.id 'debt_engagement' debt_engagement.id %}">
                                                                 {% csrf_token %}
                                                                 <input type="hidden" aria-label="id" name="id" value="{{note.id}}" id="id_id" />
                                                                 <button type="submit" aria-label="Edit Note" class="btn-edit">
@@ -626,9 +626,9 @@
                                                             </form>
                                                         </div>
                                                     {% endif %}
-                                                    {% if user.username == note.author.username or eng|has_object_permission:"Note_View_History" %}
+                                                    {% if user.username == note.author.username or debt_engagement|has_object_permission:"Note_View_History" %}
                                                         <div class="pull-right">
-                                                            <form method="get" action="{% url 'note_history' note.id 'debt_engagement' eng.id %}">
+                                                            <form method="get" action="{% url 'note_history' note.id 'debt_engagement' debt_engagement.id %}">
                                                                 {% csrf_token %}
                                                                 <input type="hidden" aria-label="id" name="id" value="{{note.id}}" id="id_id" />
                                                                 <button type="submit" aria-label="history" class="btn-history">
@@ -673,9 +673,9 @@
                                 &nbsp;
                                 <a data-toggle="collapse" href="#add_feat_files">
                                 <i class="glyphicon glyphicon-chevron-down"></i></a></span>
-                                {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
+                                {% if debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
                                     <a title="Manage Files" name="Manage Files" class="btn btn-sm btn-primary pull-right"
-                                        href="{% url 'manage_files' oid=eng.id obj_type='Debt_Engagement' %}">
+                                        href="{% url 'manage_files' oid=debt_engagement.id obj_type='Debt_Engagement' %}">
                                     <span class="fa-solid fa-pen-to-square"></span></a>
                                 {% endif %}
                             </h4>
@@ -684,7 +684,7 @@
                             {% for file in files %}
                                 <div class="col-md-2" style="text-align: center">
                                     <div class="row">
-                                        {% url 'access_file' fid=file.id oid=eng.id obj_type='Debt_Engagement' as image_url %}
+                                        {% url 'access_file' fid=file.id oid=debt_engagement.id obj_type='Debt_Engagement' as image_url %}
                                         <a href="{{ image_url }}" target="_blank">
                                             {% if file|get_thumbnail %}
                                                 <img src="{{ image_url }}" alt="thumbnail" style="width:150px">
@@ -708,18 +708,18 @@
             <div class="panel panel-default-secondary">
                 <div class="panel-heading">
                     <h3 class="panel-title"><span class="fa-solid fa-circle-info fa-fw" aria-hidden="true"></span> 
-                        {% if eng.name %}
-                            {{ eng.name }}
+                        {% if debt_engagement.name %}
+                            {{ debt_engagement.name }}
                         {% else %}
-                            Debt_Engagement for <a href="{% url 'view_debt_context' eng.debt_context.id %}">{{ eng.debt_context }}</a>
+                            Identification Campaign for <a href="{% url 'view_debt_context' debt_engagement.debt_context.id %}">{{ debt_engagement.debt_context }}</a>
                         {% endif %}
-                        {% if eng.version %}
+                        {% if debt_engagement.version %}
                             <sup>
-                            <a target="_blank" class="tag-label tag-version" data-toggle="tooltip" data-placement="bottom" title="Debt_Context Version: {{ eng.version }}">
-                            {{ eng.version }}</a>
+                            <a target="_blank" class="tag-label tag-version" data-toggle="tooltip" data-placement="bottom" title="Debt_Context Version: {{ debt_engagement.version }}">
+                            {{ debt_engagement.version }}</a>
                             </sup>
                         {% endif %}
-                        {% include "dojo/snippets/tags.html" with tags=eng.tags.all %}
+                        {% include "dojo/snippets/tags.html" with tags=debt_engagement.tags.all %}
                     </h3>
                 </div>
                 <div class="table-responsive">
@@ -728,32 +728,32 @@
                             <tr>
                                 <td style="width: 150px;"><strong>Status</strong></td>
                                 <td>
-                                    {% if eng.status == "Blocked" %}
+                                    {% if debt_engagement.status == "Blocked" %}
                                         <em class="text-danger">
-                                    {% elif eng.status == "On Hold" %}
+                                    {% elif debt_engagement.status == "On Hold" %}
                                         <em class="text-warning">
                                     {% else %}
                                         <em>
                                     {% endif %}
-                                    {{ eng.status }}
+                                    {{ debt_engagement.status }}
                                     </em>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Dates</strong></td>
-                                <td><a target="#" data-toggle="tooltip" data-placement="bottom" title="{{ eng.target_start|date:"l, jS F Y" }} - {{ eng.target_end|date:"l, jS F Y" }}">
-                                    {{ eng.target_start|date:"jS F" }} - {{ eng.target_end|date:"jS F" }}
+                                <td><a target="#" data-toggle="tooltip" data-placement="bottom" title="{{ debt_engagement.target_start|date:"l, jS F Y" }} - {{ debt_engagement.target_end|date:"l, jS F Y" }}">
+                                    {{ debt_engagement.target_start|date:"jS F" }} - {{ debt_engagement.target_end|date:"jS F" }}
                                     </a>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Length</strong></td>
                                 <td>
-                                    {{ eng.target_start|datediff_time:eng.target_end }}
-                                    {% if eng.is_overdue and eng.status != 'Completed'%}
+                                    {{ debt_engagement.target_start|datediff_time:debt_engagement.target_end }}
+                                    {% if debt_engagement.is_overdue and debt_engagement.status != 'Completed'%}
                                         <sup>
                                             <div class="tag-label warning-color">
-                                                {{ eng.target_end|overdue }} overdue
+                                                {{ debt_engagement.target_end|overdue }} overdue
                                             </div>
                                         </sup>
                                     {% endif %}
@@ -762,7 +762,7 @@
                             <tr>
                                 <td>
                                     <strong>
-                                        {% if eng.debt_engagement_type == "Interactive" %}
+                                        {% if debt_engagement.debt_engagement_type == "Interactive" %}
                                             Lead
                                         {% else %}
                                             Service Account
@@ -770,10 +770,10 @@
                                     </strong>
                                 </td>
                                 <td>
-                                    {% if eng.lead.get_full_name and eng.lead.get_full_name.strip %}
-                                        {{ eng.lead.get_full_name }}
-                                    {% elif eng.lead %}
-                                        {{ eng.lead }}
+                                    {% if debt_engagement.lead.get_full_name and debt_engagement.lead.get_full_name.strip %}
+                                        {{ debt_engagement.lead.get_full_name }}
+                                    {% elif debt_engagement.lead %}
+                                        {{ debt_engagement.lead }}
                                     {% else %}
                                         None Assigned
                                     {% endif %}
@@ -782,42 +782,42 @@
                             <tr>
                                 <td><strong>Tracker</strong></td>
                                 <td>
-                                    {% if eng.tracker %}
-                                        <a target="_blank" data-toggle="tooltip" data-placement="top" title="{{ eng.tracker }}" href="{{ eng.tracker }}" alt="Development epic or ticket for development requirements.">
-                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ eng.tracker|last_value }}</a>
+                                    {% if debt_engagement.tracker %}
+                                        <a target="_blank" data-toggle="tooltip" data-placement="top" title="{{ debt_engagement.tracker }}" href="{{ debt_engagement.tracker }}" alt="Development epic or ticket for development requirements.">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_engagement.tracker|last_value }}</a>
                                     {% else %}
-                                        {{ eng.tracker|notspecified}}
+                                        {{ debt_engagement.tracker|notspecified}}
                                     {% endif %}
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Repo</strong></td>
                                 <td>
-                                    {% if eng.source_code_management_uri %}
-                                        <a target="_blank" data-toggle="tooltip" data-placement="top" title="{{ eng.source_code_management_uri }}" href="{{ eng.source_code_management_uri }}">
-                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ eng.source_code_management_uri|last_value }}
+                                    {% if debt_engagement.source_code_management_uri %}
+                                        <a target="_blank" data-toggle="tooltip" data-placement="top" title="{{ debt_engagement.source_code_management_uri }}" href="{{ debt_engagement.source_code_management_uri }}">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_engagement.source_code_management_uri|last_value }}
                                         </a>
                                     {% else %}
-                                        {{ eng.source_code_management_uri|notspecified}}
+                                        {{ debt_engagement.source_code_management_uri|notspecified}}
                                     {% endif %}
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>Test Strategy</strong></td>
+                                <td><strong>Identification Session Strategy</strong></td>
                                 <td>
-                                    {% if eng.test_strategy %}
-                                        <a target="_blank" data-toggle="tooltip" data-placement="top" title="{{ eng.test_strategy }}" href="{{ eng.test_strategy }}">
-                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ eng.test_strategy|last_value }}
+                                    {% if debt_engagement.debt_test_strategy %}
+                                        <a target="_blank" data-toggle="tooltip" data-placement="top" title="{{ debt_engagement.debt_test_strategy }}" href="{{ debt_engagement.debt_test_strategy }}">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_engagement.debt_test_strategy|last_value }}
                                         </a>
                                     {% else %}
-                                        {{ eng.test_strategy|notspecified}}
+                                        {{ debt_engagement.debt_test_strategy|notspecified}}
                                     {% endif %}
                                 </td>
                             </tr>
                             {% if jissue and jira_project %}
                                 <tr>
                                     <td><strong>Jira</strong></td>
-                                    <td><a href="{{ eng | jira_issue_url }}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> {{ eng | jira_key }}
+                                    <td><a href="{{ debt_engagement | jira_issue_url }}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_engagement | jira_key }}
                                         <small>(epic)</small>
                                         </a>
                                     </td>
@@ -826,8 +826,8 @@
                                 <tr>
                                     <td><strong>JIRA</strong></td>
                                     <td>
-                                        <a href="{{ eng | jira_project_url }}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> {{ eng | jira_key }}
-                                            {% if jira_project.debt_engagement is not eng %}
+                                        <a href="{{ debt_engagement | jira_project_url }}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> {{ debt_engagement | jira_key }}
+                                            {% if jira_project.debt_engagement is not debt_engagement %}
                                                 <small>(inherited)</small>
                                             {% else %}
                                                 <small>(project)</small>
@@ -838,26 +838,26 @@
                             {% endif %}
                             <tr>
                                 <td><strong>Updated</strong></td>
-                                <td><a target="_blank" data-toggle="tooltip" data-placement="bottom" title="{{ eng.updated|default_if_none:"" }}">
-                                    {{ eng.updated|naturaltime|default_if_none:"" }}</a>
+                                <td><a target="_blank" data-toggle="tooltip" data-placement="bottom" title="{{ debt_engagement.updated|default_if_none:"" }}">
+                                    {{ debt_engagement.updated|naturaltime|default_if_none:"" }}</a>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Created</strong></td>
-                                <td><a target="_blank" data-toggle="tooltip" data-placement="bottom" title="{{ eng.created|default_if_none:"" }}">
-                                    {{ eng.created|naturaltime|default_if_none:"" }}</a>
+                                <td><a target="_blank" data-toggle="tooltip" data-placement="bottom" title="{{ debt_engagement.created|default_if_none:"" }}">
+                                    {{ debt_engagement.created|naturaltime|default_if_none:"" }}</a>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-            {% if eng.debt_engagement_type == "CI/CD" %}
+            {% if debt_engagement.debt_engagement_type == "CI/CD" %}
                 <div>
                     <div class="panel panel-default-secondary">
                         <div class="panel-heading">
                             <h3 class="panel-title"><span class="fa-solid fa-server" aria-hidden="true"></span>
-                                CI/CD Debt_Engagement Details
+                                CI/CD Identification Campaign Details
                             </h3>
                         </div>
                         <div class="table-responsive">
@@ -865,43 +865,43 @@
                                 <tbody>
                                     <tr>
                                         <td style="width: 150px;"><strong>Build ID</strong></td>
-                                        <td>{{ eng.build_id|notspecified }}</td>
+                                        <td>{{ debt_engagement.build_id|notspecified }}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Commit Hash</strong></td>
-                                        <td>{{ eng.commit_hash|notspecified|truncatechars_html:13 }}</td>
+                                        <td>{{ debt_engagement.commit_hash|notspecified|truncatechars_html:13 }}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Branch/Tag</strong></td>
-                                        <td>{{ eng.branch_tag|notspecified }}</td>
+                                        <td>{{ debt_engagement.branch_tag|notspecified }}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Orchestration</strong></td>
                                         <td>
-                                            {% if eng.orchestration_engine.id %}
-                                                <a href="{% url 'edit_tool_config' eng.orchestration_engine.id %}">{{ eng.orchestration_engine.name }}</a>
+                                            {% if debt_engagement.orchestration_engine.id %}
+                                                <a href="{% url 'edit_tool_config' debt_engagement.orchestration_engine.id %}">{{ debt_engagement.orchestration_engine.name }}</a>
                                             {% else %}
-                                                {{ eng.orchestration_engine.name|notspecified }}
+                                                {{ debt_engagement.orchestration_engine.name|notspecified }}
                                             {% endif %}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td><strong>SCM Server</strong></td>
                                         <td>
-                                            {% if eng.source_code_management_server.id %}
-                                                <a href="{% url 'edit_tool_config' eng.source_code_management_server.id %}">{{ eng.source_code_management_server.name }}</a>
+                                            {% if debt_engagement.source_code_management_server.id %}
+                                                <a href="{% url 'edit_tool_config' debt_engagement.source_code_management_server.id %}">{{ debt_engagement.source_code_management_server.name }}</a>
                                             {% else %}
-                                                {{ eng.source_code_management_server.name|notspecified }}
+                                                {{ debt_engagement.source_code_management_server.name|notspecified }}
                                             {% endif %}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td><strong>Build Server</strong></td>
                                         <td>
-                                            {% if eng.build_server.id %}
-                                                <a href="{% url 'edit_tool_config' eng.build_server.id %}">{{ eng.build_server.name }}</a>
+                                            {% if debt_engagement.build_server.id %}
+                                                <a href="{% url 'edit_tool_config' debt_engagement.build_server.id %}">{{ debt_engagement.build_server.name }}</a>
                                             {% else %}
-                                                {{ eng.build_server.name|notspecified }}
+                                                {{ debt_engagement.build_server.name|notspecified }}
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -917,9 +917,9 @@
                         <div class="panel-heading">
                             <h4><span class="fa-solid fa-key" aria-hidden="true"></span>
                                 Credentials
-                                {% if creds and eng|has_object_permission:"Debt_Engagement_Edit" %}
+                                {% if creds and debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
                                     <a title="Add New Credential" class="pull-right btn btn-sm btn-primary"
-                                        href="{% url 'new_cred_debt_context_debt_engagement' eng.id %}"><span class="fa-solid fa-plus"></span></a>
+                                        href="{% url 'new_cred_debt_context_debt_engagement' debt_engagement.id %}"><span class="fa-solid fa-plus"></span></a>
                                 {% endif %}
                             </h4>
                         </div>
@@ -938,9 +938,9 @@
                                         <td colspan="3">
                                             <small class="text-muted"><em>
                                                 {% if cred_eng %}
-                                                    Credentials Configured for this <strong>Debt_Engagement</strong>
+                                                    Credentials Configured for this <strong>Identification Campaign</strong>
                                                 {% else %}
-                                                    No Credentials Configured for this <strong>Debt_Engagement</strong>
+                                                    No Credentials Configured for this <strong>Identification Campaign</strong>
                                                 {% endif %}
                                             </em></small>
                                         </td>
@@ -962,7 +962,7 @@
                                                                 View</a>
                                                             </li>
                                                             {% endif %}
-                                                            {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
+                                                            {% if debt_engagement|has_object_permission:"Debt_Engagement_Edit" %}
                                                             <li>
                                                                 <a class="" href="{% url 'delete_cred_debt_engagement' cred.debt_engagement.id cred.id %}">
                                                                 Delete</a>
@@ -1018,7 +1018,7 @@
         </div>
     </div>
     <div class="protip">
-        <i class="fa-solid fa-lightbulb"></i> <strong>ProTip!</strong> Type <kbd>e</kbd> to edit this debt_engagement. Type <kbd>i</kbd> to import scan results or <kbd>a</kbd> to add tests.
+        <i class="fa-solid fa-lightbulb"></i> <strong>ProTip!</strong> Type <kbd>e</kbd> to edit this Identification Campaign. Type <kbd>i</kbd> to import scan results or <kbd>a</kbd> to add debt_tests.
     </div>
 {% endblock %}
 {% block postscript %}
@@ -1028,15 +1028,15 @@
     <script type="text/javascript">
         $(function () {
             $(document).on('keypress', null, 'e', function () {
-                window.location.assign('{% url 'edit_debt_engagement' eng.id %}');
+                window.location.assign('{% url 'edit_debt_engagement' debt_engagement.id %}');
             });
         
             $(document).on('keypress', null, 'a', function () {
-                window.location.assign('{% url 'add_tests' eng.id %}');
+                window.location.assign('{% url 'add_debt_tests' debt_engagement.id %}');
             });
         
             $(document).on('keypress', null, 'i', function () {
-                window.location.assign('{% url 'import_scan_results' eng.id %}');
+                window.location.assign('{% url 'import_scan_results' debt_engagement.id %}');
             });
         
             $("a[data-toggle='collapse']").on('click', function () {

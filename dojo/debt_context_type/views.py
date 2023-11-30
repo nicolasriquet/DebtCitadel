@@ -101,7 +101,7 @@ def add_debt_context_type(request):
 
 @user_is_authorized(Debt_Context_Type, Permissions.Debt_Context_Type_View, 'ptid')
 def view_debt_context_type(request, ptid):
-    page_name = _("View debt_context Type")
+    page_name = _("View Debt Context Type")
     pt = get_object_or_404(Debt_Context_Type, pk=ptid)
     members = get_authorized_members_for_debt_context_type(pt, Permissions.Debt_Context_Type_View)
     groups = get_authorized_groups_for_debt_context_type(pt, Permissions.Debt_Context_Type_View)
@@ -161,7 +161,7 @@ def delete_debt_context_type(request, ptid):
 
 @user_is_authorized(Debt_Context_Type, Permissions.Debt_Context_Type_Edit, 'ptid')
 def edit_debt_context_type(request, ptid):
-    page_name = "Edit debt_context Type"
+    page_name = "Edit Debt Context Type"
     pt = get_object_or_404(Debt_Context_Type, pk=ptid)
     members = get_authorized_members_for_debt_context_type(pt, Permissions.Debt_Context_Type_Manage_Members)
     pt_form = Debt_Context_TypeForm(instance=pt)
@@ -221,7 +221,7 @@ def add_debt_context_type_member(request, ptid):
 
 @user_is_authorized(Debt_Context_Type_Member, Permissions.Debt_Context_Type_Manage_Members, 'memberid')
 def edit_debt_context_type_member(request, memberid):
-    page_name = _("Edit debt_context Type Member")
+    page_name = _("Edit Debt Context Type Member")
     member = get_object_or_404(Debt_Context_Type_Member, pk=memberid)
     memberform = Edit_Debt_Context_Type_MemberForm(instance=member)
     if request.method == 'POST':
@@ -262,7 +262,7 @@ def edit_debt_context_type_member(request, memberid):
 
 @user_is_authorized(Debt_Context_Type_Member, Permissions.Debt_Context_Type_Member_Delete, 'memberid')
 def delete_debt_context_type_member(request, memberid):
-    page_name = "Delete debt_context Type Member"
+    page_name = "Delete Debt Context Type Member"
     member = get_object_or_404(Debt_Context_Type_Member, pk=memberid)
     memberform = Delete_Debt_Context_Type_MemberForm(instance=member)
     if request.method == 'POST':
@@ -300,7 +300,7 @@ def delete_debt_context_type_member(request, memberid):
 
 @user_is_authorized(Debt_Context_Type, Permissions.Debt_Context_Type_Group_Add, 'ptid')
 def add_debt_context_type_group(request, ptid):
-    page_name = "Add debt_context Type Group"
+    page_name = "Add Debt Context Type Group"
     pt = get_object_or_404(Debt_Context_Type, pk=ptid)
     group_form = Add_Debt_Context_Type_GroupForm(initial={'debt_context_type': pt.id})
 
@@ -338,7 +338,7 @@ def add_debt_context_type_group(request, ptid):
 
 @user_is_authorized(Debt_Context_Type_Group, Permissions.Debt_Context_Type_Group_Edit, 'groupid')
 def edit_debt_context_type_group(request, groupid):
-    page_name = "Edit debt_context Type Group"
+    page_name = "Edit Debt Context Type Group"
     group = get_object_or_404(Debt_Context_Type_Group, pk=groupid)
     groupform = Edit_Debt_Context_Type_Group_Form(instance=group)
 
@@ -371,7 +371,7 @@ def edit_debt_context_type_group(request, groupid):
 
 @user_is_authorized(Debt_Context_Type_Group, Permissions.Debt_Context_Type_Group_Delete, 'groupid')
 def delete_debt_context_type_group(request, groupid):
-    page_name = "Delete debt_context Type Group"
+    page_name = "Delete Debt Context Type Group"
     group = get_object_or_404(Debt_Context_Type_Group, pk=groupid)
     groupform = Delete_Debt_Context_Type_GroupForm(instance=group)
 

@@ -21,7 +21,7 @@ urlpatterns = [
     re_path(r'^debt_engagement/(?P<eid>\d+)/copy$', views.copy_debt_engagement,
         name='copy_debt_engagement'),
     re_path(r'^debt_engagement/(?P<eid>\d+)/add_debt_tests$', views.add_debt_tests,
-        name='add_tests'),
+        name='add_debt_tests'),
     re_path(r'^debt_engagement/(?P<eid>\d+)/import_scan_results$',
         views.import_scan_results, name='import_scan_results'),
     re_path(r'^debt_engagement/(?P<eid>\d+)/close$', views.close_eng,

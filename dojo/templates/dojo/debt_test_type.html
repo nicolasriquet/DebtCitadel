@@ -8,7 +8,7 @@
             <div class="panel panel-default">
                 <div class="panel-heading tight">
                     <h3 class="has-filters">
-                        Debt Identification Methods List
+                        Identification Sessions List
                         <div class="dropdown pull-right">
                             <button id="show-filters" data-toggle="collapse" data-target="#the-filters" class="btn btn-primary toggle-filters"> <i class="fa-solid fa-filter"></i> <i class="caret"></i> </button>
                             {% if "dojo.add_debt_test_type"|has_configuration_permission:request %}
@@ -21,7 +21,7 @@
                                 aria-labelledby="dropdownMenu1">
                                     <li role="presentation">
                                         <a href="{%  url 'add_debt_test_type' %}">
-                                            <i class="fa-solid fa-plus"></i> New Debt Identification Method </a>
+                                            <i class="fa-solid fa-plus"></i> New Identification Session </a>
                                     </li>
                             </ul>
                             {% endif %}
@@ -42,7 +42,7 @@
                         <thead>
                         <tr>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
-                            <th>{% dojo_sort request 'Debt Test Type' 'name' 'asc' %}</th>
+                            <th>{% dojo_sort request 'Identification Method' 'name' 'asc' %}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -62,7 +62,7 @@
                     {% include "dojo/paging_snippet.html" with page=tts page_size=True %}
                 </div>
             {% else %}
-                <p class="text-center">No debt test types found.</p>
+                <p class="text-center">No Identification Methods found.</p>
             {% endif %}
         </div>
     </div>

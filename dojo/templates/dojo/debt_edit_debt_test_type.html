@@ -1,7 +1,7 @@
 {% extends "debt_base.html" %}
 {% block content %}
     {{ block.super }}
-    <h3> Edit Debt Identification Method {{ pt.name }}</h3>
+    <h3> Edit Identification Session {{ pt.name }}</h3>
     <form class="form-horizontal" action="{% url 'edit_debt_test_type' pt.id %}" method="post">{% csrf_token %}
         {% include "dojo/form_fields.html" with form=form %}
         <div class="form-group">

@@ -279,7 +279,7 @@
                                   {% if e.active_debt_item_count > 0 %}
                                   <a href="{% url 'open_debt_items' %}?debt_endpoints={{ e.id }}">{{ e.active_debt_item_count }}</a>
                                   {% else %}
-                                  {% trans "No Open, Active Debt_Items" %}
+                                  {% trans "No Open, Active Debt Items" %}
                                   {% endif %}
                                 </td>
                             </tr>

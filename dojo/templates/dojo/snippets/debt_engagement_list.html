@@ -45,9 +45,9 @@
                     <th class="text-left">Date</th>
                     <th class="text-left">Length</th>
                     {% if system_settings.enable_jira %}
-                    <th class="text-center">JIRA</td>
+                    <th class="text-center">JIRA</th>
                     {% endif %}
-                    <th class="text-center">Identification Methods</th>
+                    <th class="text-center">Identification Sessions</th>
                     <th class="text-center">Active (Verified)</th>
                     <th class="text-center">Mitigated</th>
                     <th class="text-center">Accepted</th>
@@ -67,27 +67,27 @@
                           <a href="#" class="dropdown-toggle pull-left" data-toggle="dropdown">&nbsp;<i class="fa-solid fa-ellipsis-vertical"></i>&nbsp;</a>
                           <ul class="dropdown-menu">
                              <li>
-                               <a class="" href="{% url 'view_engagement' eng.id %}">
+                               <a class="" href="{% url 'view_debt_engagement' eng.id %}">
                                  <i class="fa-solid fa-rectangle-list"></i> View
                              </li>
                              {% if eng|has_object_permission:"Debt_Engagement_Edit" %}
                              <li>
-                               <a class="" href="{% url 'edit_engagement' eng.id %}">
+                               <a class="" href="{% url 'edit_debt_engagement' eng.id %}">
                                  <i class="fa-solid fa-pen-to-square"></i> Edit
                                </a>
                             </li>
                             <li>
-                              <a class="" href="{% url 'copy_engagement' eng.id %}">
+                              <a class="" href="{% url 'copy_debt_engagement' eng.id %}">
                                 <i class="fa-solid fa-copy"></i> Copy
                               </a>
                            </li>
                             <li>
                               </a>
                               {% if status == "open" or status == "paused" %}
-                              <a class="" href="{% url 'close_engagement' eng.id %}">
+                              <a class="" href="{% url 'close_debt_engagement' eng.id %}">
                                 <i class="fa-solid fa-xmark"></i> Close
                               {% else %}
-                              <a class="" href="{% url 'reopen_engagement' eng.id %}">
+                              <a class="" href="{% url 'reopen_debt_engagement' eng.id %}">
                                 <i class="fa-solid fa-rotate-left"></i> Reopen
                               </a>
                               {% endif %}
@@ -111,50 +111,50 @@
                             {% endif %}
                             <li class="divider"></li>
                             <li role="presentation">
-                              <a href="{% url 'engagement_open_findings' eng.id %}">
-                                <i class="fa-solid fa-file-lines"></i> View Active Findings
+                              <a href="{% url 'debt_engagement_open_debt_items' eng.id %}">
+                                <i class="fa-solid fa-file-lines"></i> View Active Debt Items
                               </a>
                             </li>
                             <li role="presentation">
-                              <a href="{% url 'engagement_verified_findings' eng.id %}">
-                                <i class="fa-solid fa-file-lines"></i> View Active and Verified Findings
+                              <a href="{% url 'debt_engagement_verified_debt_items' eng.id %}">
+                                <i class="fa-solid fa-file-lines"></i> View Active and Verified Debt Items
                               </a>
                             </li>
                             <li role="presentation">
-                              <a href="{% url 'engagement_closed_findings' eng.id %}">
-                                <i class="fa-solid fa-file-lines"></i> View Mitigated Findings
+                              <a href="{% url 'debt_engagement_closed_debt_items' eng.id %}">
+                                <i class="fa-solid fa-file-lines"></i> View Mitigated Debt Items
                               </a>
                             </li>
                             <li role="presentation">
-                                <a href="{% url 'engagement_accepted_findings' eng.id %}">
-                                    <i class="fa-solid fa-file-lines"></i> View Accepted Findings
+                                <a href="{% url 'debt_engagement_accepted_debt_items' eng.id %}">
+                                    <i class="fa-solid fa-file-lines"></i> View Accepted Debt Items
                                 </a>
                               </li>
                             <li role="presentation">
-                              <a href="{% url 'engagement_all_findings' eng.id %}">
-                                  <i class="fa-solid fa-file-lines"></i> View All Findings
+                              <a href="{% url 'debt_engagement_all_debt_items' eng.id %}">
+                                  <i class="fa-solid fa-file-lines"></i> View All Debt Items
                               </a>
                             </li>
                               <li class="divider"></li>
                             <li role="presentation">
-                              <a href="{% url 'engagement_report' eng.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
+                              <a href="{% url 'debt_engagement_report' eng.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
                                   <i class="fa-solid fa-file-lines"></i> Identification Campaign Report
                               </a>
                             </li>
                             {% if eng|has_object_permission:"Debt_Engagement_Delete" %}
                             <li class="divider"></li>
                             <li>
-                              <a class="text-danger" href="{% url 'delete_engagement' eng.id %}">
+                              <a class="text-danger" href="{% url 'delete_debt_engagement' eng.id %}">
                                   <i class="fa-solid fa-trash"></i> Delete Identification Campaign
                               </a>
                             </li>
                             {% endif %}
-                           </ul>
-                         </li>
-                     </ul>
+                            </li>
+                        </ul>
+                    </div>
                     </td>
                     <td style="width: 250px;">
-                    <a href="{% url 'view_engagement' eng.id %}" data-toggle="tooltip" data-placement="bottom" title="{{ eng.name|default:"N/A" }}">
+                    <a href="{% url 'view_debt_engagement' eng.id %}" data-toggle="tooltip" data-placement="bottom" title="{{ eng.name|default:"N/A" }}">
                     {{ eng.name|truncatechars_html:35|default:"N/A" }}</a>
                     {% if eng.version %}
                         <sup>
@@ -164,7 +164,7 @@
                     {% endif %}
                     {% include "dojo/snippets/tags.html" with tags=eng.tags.all %}
                     </td>
-                    <td>{{ eng.engagement_type }}</td>
+                    <td>{{ eng.debt_engagement_type }}</td>
                     <td style="width: 150px;">
                       {% if eng.lead.get_full_name and eng.lead.get_full_name.strip %}
                           {{ eng.lead.get_full_name }}
@@ -193,10 +193,10 @@
                           </div>
                         </sup>
                         {% endif %}
-                        {% if eng.count_findings_all == 0 %}
+                        {% if eng.count_debt_items_all == 0 %}
                         &nbsp;<sup>
                           <div class="tag-label amber-color">
-                            no findings
+                            no debt items
                           </div>
                         </sup>
                         {% endif %}
@@ -211,7 +211,7 @@
                       <div class="align-top">
                       {% if eng.count_tests %}
                       <div class="dropdown">
-                        <a href="{% url 'view_engagement' eng.id %}#tests">{{ eng.count_tests }}</a>
+                        <a href="{% url 'view_debt_engagement' eng.id %}#tests">{{ eng.count_tests }}</a>
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">&nbsp;<i class="fa-solid fa-ellipsis-vertical"></i>&nbsp;</a>
                         <ul class="dropdown-menu">
                           <li>
@@ -233,22 +233,22 @@
                             </li>
                           {% endfor %}
                           <li>
-                            <a href="{% url 'view_engagement' eng.id %}#tests">
+                            <a href="{% url 'view_debt_engagement' eng.id %}#tests">
                               <i class="fa-solid fa-earth-americas"></i> View all {{ eng.count_tests }} tests...
                             </a>
                           </li>
                         </ul>
                       </div>
                       {% else %}
-                      <a href="{% url 'view_engagement' eng.id %}">{{ eng.count_tests }}</a>
+                      <a href="{% url 'view_debt_engagement' eng.id %}">{{ eng.count_tests }}</a>
                       {% endif %}
                       </div>
                     </td>
-                    <td class="text-center">{{ eng.count_findings_open }}&nbsp;({{ eng.count_findings_open_verified}})</td>
-                    <td class="text-center">{{ eng.count_findings_close }}</td>
-                    <td class="text-center">{{ eng.count_findings_accepted }}</td>
-                    <td class="text-center">{{ eng.count_findings_all }}</td>
-                    <td class="text-center">{{ eng.count_findings_duplicate }}</td>
+                    <td class="text-center">{{ eng.count_debt_items_open }}&nbsp;({{ eng.count_debt_items_open_verified}})</td>
+                    <td class="text-center">{{ eng.count_debt_items_close }}</td>
+                    <td class="text-center">{{ eng.count_debt_items_accepted }}</td>
+                    <td class="text-center">{{ eng.count_debt_items_all }}</td>
+                    <td class="text-center">{{ eng.count_debt_items_duplicate }}</td>
                     {% if status == "paused" or status == "closed" %}
                     <td class="text-left">
                       {% if eng.status == "Blocked" %}
@@ -266,8 +266,8 @@
                 </tbody>
             </table>
         {% else %}
-            <div id='no_{% if status == "open" %}active{% elif status == "paused" %}paused{% else %}closed{% endif %}_engagements' class="panel-body">
-                <p class="text-muted">No {% if status == "open" %}active{% elif status == "paused" %}paused{% else %}closed{% endif %} engagements found.</p>
+            <div id='no_{% if status == "open" %}active{% elif status == "paused" %}paused{% else %}closed{% endif %}_debt_engagements' class="panel-body">
+                <p class="text-muted">No {% if status == "open" %}active{% elif status == "paused" %}paused{% else %}closed{% endif %} debt_engagements found.</p>
             </div>
         {% endif %}
 
@@ -300,7 +300,7 @@
                 "columns": [
                     { "data": "action" },
                     { "data": "eng_name" },
-                    { "data": "engagement_type" },
+                    { "data": "debt_engagement_type" },
                     { "data": "lead" },
                     { "data": "date" },
                     { "data": "length" },

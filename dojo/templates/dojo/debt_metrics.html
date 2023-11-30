@@ -210,7 +210,7 @@
                 {% if opened_per_month %}
                     <div class="col-lg-6">
                         <div class="panel panel-default">
-                            <div class="panel-heading">{% trans "Open Bug Count by Month" %}</div>
+                            <div class="panel-heading">{% trans "Open Debt Items by Month" %}</div>
                             <!-- /.panel-heading -->
                             <div class="panel-body">
                                 <div id="opened_per_month_2"></div>
@@ -223,7 +223,7 @@
                 {% if active_per_month %}
                     <div class="col-lg-6">
                         <div class="panel panel-default">
-                            <div class="panel-heading">{% trans "Active Bug Count by Month" %}</div>
+                            <div class="panel-heading">{% trans "Active Debt Items by Month" %}</div>
                             <!-- /.panel-heading -->
                             <div class="panel-body">
                                 <div id="active_per_month"></div>
@@ -237,7 +237,7 @@
                     <div class="col-lg-6">
                         <div class="panel panel-default">
                             <div class="panel-heading">
-                                {% trans "Risk Accepted Bug Count by Month" %}
+                                {% trans "Risk Accepted Debt Items by Month" %}
                             </div>
                             <!-- /.panel-heading -->
                             <div class="panel-body">
@@ -252,7 +252,7 @@
                     <div class="col-lg-12">
                         <div class="panel panel-default">
                             <div class="panel-heading">
-                                {% trans "Open Bug Count by Week" %}
+                                {% trans "Open Debt Items by Week" %}
                             </div>
                             <!-- /.panel-heading -->
                             <div class="panel-body">
@@ -265,7 +265,7 @@
                     <div class="col-lg-12">
                         <div class="panel panel-default">
                             <div class="panel-heading">
-                                {% trans "Risk Accepted Bug Count by Week" %}
+                                {% trans "Risk Accepted Debt Items by Week" %}
                             </div>
                             <!-- /.panel-heading -->
                             <div class="panel-body">
@@ -295,10 +295,10 @@
                                     <li><a data-toggle="tab" href="#tabs-2">{% trans "Detail Breakdown" %}</a></li>
                                     <li><a data-toggle="tab" href="#tabs-3">{% trans "Opened Debt Items" %}</a></li>
                                     <li><a data-toggle="tab" href="#tabs-4">{% trans "Accepted Debt Items" %}</a></li>
-                                    <li><a data-toggle="tab" href="#tabs-5">{% trans "Closed Debt Items" %}</a></li>
-                                    <li><a data-toggle="tab" href="#tabs-6">{% trans "Trending Open<br/>Bug Count" %}
+                                    <li><a data-toggle="tab" href="#tabs-5">{% trans "Paid Debt Items" %}</a></li>
+                                    <li><a data-toggle="tab" href="#tabs-6">{% trans "Trending Open<br/>Debt Items" %}
                                     </a></li>
-                                    <li><a data-toggle="tab" href="#tabs-7">{% trans "Trending Accepted <br/> Bug Count" %}
+                                    <li><a data-toggle="tab" href="#tabs-7">{% trans "Trending Accepted <br/> Debt Items" %}
                                     </a></li>
                                     <li><a data-toggle="tab" href="#tabs-8">{% trans "Age of Issues" %}</a></li>
                                 </ul>
@@ -606,7 +606,7 @@
                                                 class="table table-bordered table-condensed table-striped table-400">
                                             <tr>
                                                 <th>{% trans "Days" %}</th>
-                                                <th>{% trans "Bug Count" %}</th>
+                                                <th>{% trans "Debt Items" %}</th>
                                             </tr>
                                             <tr>
                                                 <td>{% trans "0 - 30 Days" %}</td>

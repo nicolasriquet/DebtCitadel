@@ -873,11 +873,11 @@ def debt_get_severity_count(id, table):
     display_counts.append("Info: " + str(info))
 
     if table == "debt_test":
-        display_counts.append("Total: " + str(total) + " Debt_Items")
+        display_counts.append("Total: " + str(total) + " Debt Items")
     elif table == "debt_engagement":
-        display_counts.append("Total: " + str(total) + " Active Debt_Items")
+        display_counts.append("Total: " + str(total) + " Active Debt Items")
     elif table == "debt_context":
-        display_counts.append("Total: " + str(total) + " Active Debt_Items")
+        display_counts.append("Total: " + str(total) + " Active Debt Items")
 
     display_counts = ", ".join([str(item) for item in display_counts])
 

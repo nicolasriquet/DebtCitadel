@@ -1521,7 +1521,7 @@ class AddDebtItemForm(forms.ModelForm):
             self.fields['response'].widget = self.fields['vulnerability_ids'].widget = \
             self.fields['debt_endpoints'].widget = forms.HiddenInput()
 
-        # Use the debt story template as the descritpion
+        # Use the debt story template as the description
         self.fields['description'].initial = f"As a(n) [Actor Role] of [{debt_context.name}], I find that it is increasingly [Impact Type] to [Task] because [Debt Item]"
 
     def clean(self):
@@ -1822,20 +1822,34 @@ class PromoteDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+    intentionality = forms.ChoiceField(
+        choices=INTENTIONALITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    attitude = forms.ChoiceField(
+        choices=ATTITUDE_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
     impact = forms.CharField(widget=forms.Textarea, required=False)
-    endpoints = forms.ModelMultipleChoiceField(Endpoint.objects.none(), required=False, label='Systems / Endpoints')
-    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
-                                       help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
-                                                 "Each must be valid.",
-                                       widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
+    debt_endpoints = forms.ModelMultipleChoiceField(Debt_Endpoint.objects.none(), required=False, label='Systems / Debt_Endpoints')
+    debt_endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Debt_Endpoints to add",
+                                            help_text="The IP address, host name or full URL. You may enter one debt_endpoint per line. "
+                                                      "Each must be valid.",
+                                            widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
     references = forms.CharField(widget=forms.Textarea, required=False)
 
     # the onyl reliable way without hacking internal fields to get predicatble ordering is to make it explicit
-    field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
-                   'request', 'response', 'steps_to_reproduce', 'severity_justification', 'endpoints', 'endpoints_to_add', 'references',
-                   'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
-                   'out_of_scope', 'risk_accept', 'under_defect_review')
+    #field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
+    #               'request', 'response', 'steps_to_reproduce', 'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references',
+    #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
+    #               'out_of_scope', 'risk_accept', 'under_defect_review')
+
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+                   'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
         debt_context = None
@@ -1845,24 +1859,42 @@ class PromoteDebtItemForm(forms.ModelForm):
         super(PromoteDebtItemForm, self).__init__(*args, **kwargs)
 
         if debt_context:
-            self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=debt_context)
+            self.fields['debt_endpoints'].queryset = Debt_Endpoint.objects.filter(debt_context=debt_context)
 
-        self.endpoints_to_add_list = []
+        # Hide inputs for fields we don't want to appear
+        self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
+            self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
+            self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
+            self.fields['file_path'].widget = self.fields['component_name'].widget = \
+            self.fields['component_version'].widget = self.fields['static_debt_item'].widget = \
+            self.fields['dynamic_debt_item'].widget = self.fields['sonarqube_issue'].widget = \
+            self.fields['unique_id_from_tool'].widget = self.fields['vuln_id_from_tool'].widget = \
+            self.fields['sast_source_object'].widget = self.fields['sast_sink_object'].widget = \
+            self.fields['sast_source_line'].widget = self.fields['sast_source_file_path'].widget = \
+            self.fields['nb_occurences'].widget = self.fields['publish_date'].widget = \
+            self.fields['service'].widget = \
+            self.fields['severity_justification'].widget = self.fields['references'].widget = \
+            self.fields['under_defect_review'].widget = self.fields['debt_endpoints_to_add'].widget = \
+            self.fields['debt_endpoints'].widget = \
+            self.fields['vulnerability_ids'].widget = \
+            self.fields['debt_endpoints'].widget = forms.HiddenInput()
+
+        self.debt_endpoints_to_add_list = []
 
     def clean(self):
         cleaned_data = super(PromoteDebtItemForm, self).clean()
 
-        endpoints_to_add_list, errors = validate_endpoints_to_add(cleaned_data['endpoints_to_add'])
+        debt_endpoints_to_add_list, errors = validate_debt_endpoints_to_add(cleaned_data['debt_endpoints_to_add'])
         if errors:
             raise forms.ValidationError(errors)
         else:
-            self.endpoints_to_add_list = endpoints_to_add_list
+            self.debt_endpoints_to_add_list = debt_endpoints_to_add_list
 
         return cleaned_data
 
     class Meta:
         model = Debt_Item
-        exclude = ('reporter', 'url', 'numerical_severity', 'active', 'false_p', 'verified', 'endpoint_status', 'cve', 'inherited_tags',
+        exclude = ('reporter', 'url', 'numerical_severity', 'active', 'false_p', 'verified', 'debt_endpoint_status', 'cve', 'inherited_tags',
                    'duplicate', 'out_of_scope', 'under_review', 'reviewers', 'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'planned_remediation_date', 'planned_remediation_version', 'effort_for_fixing')
 
 class FindingForm(forms.ModelForm):

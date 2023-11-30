@@ -383,7 +383,7 @@ class ListDebtItems(View, BaseListDebtItems):
             debt_context = get_object_or_404(Debt_Context, id=debt_context_id)
             user_has_permission_or_403(request.user, debt_context, Permissions.Debt_Context_View)
             context["show_debt_context_column"] = False
-            context["debt_context_tab"] = Debt_Context_Tab(debt_context, title="debt_items", tab="debt_items")
+            context["debt_context_tab"] = Debt_Context_Tab(debt_context, title="Debt Items", tab="debt_items")
             context["debt_jira_project"] = jira_helper.get_debt_jira_project(debt_context)
             if github_config := Debt_GITHUB_PKey.objects.filter(debt_context=debt_context).first():
                 context["github_config"] = github_config.git_conf_id
@@ -417,7 +417,7 @@ class ListDebtItems(View, BaseListDebtItems):
                 )
         # Show the "All debt_items" breadcrumb if nothing is coming from the debt_context or debt_engagement
         elif not self.get_debt_engagement_id() and not self.get_debt_context_id():
-            add_breadcrumb(title="debt_items", top_level=not len(request.GET), request=request)
+            add_breadcrumb(title="Debt Items", top_level=not len(request.GET), request=request)
 
         return request, context
 
@@ -731,7 +731,7 @@ class ViewDebtItem(View):
             "note_type_activation": note_type_activation,
             "available_note_types": available_note_types,
             "debt_context_tab": Debt_Context_Tab(
-                debt_item.debt_test.debt_engagement.debt_context, title="View debt_item", tab="debt_items"
+                debt_item.debt_test.debt_engagement.debt_context, title="View Debt Item", tab="debt_items"
             )
         }
         # Set the form using the context, and then update the context
@@ -859,7 +859,7 @@ class EditDebtItem(View):
             "gform": self.get_github_form(request, debt_item),
             "return_url": get_return_url(request),
             "debt_context_tab": Debt_Context_Tab(
-                debt_item.debt_test.debt_engagement.debt_context, title="Edit debt_item", tab="debt_items"
+                debt_item.debt_test.debt_engagement.debt_context, title="Edit Debt Item", tab="debt_items"
             )
         }
 
@@ -1523,7 +1523,7 @@ def copy_debt_item(request, fid):
                 extra_tags="alert-danger",
             )
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title="Copy debt_item", tab="debt_items")
+    debt_context_tab = Debt_Context_Tab(debt_context, title="Copy Debt Item", tab="debt_items")
     return render(
         request,
         "dojo/copy_object.html",
@@ -1685,7 +1685,7 @@ def request_debt_item_review(request, fid):
 
             create_notification(
                 event="review_requested",
-                title="debt_item review requested",
+                title="Debt Item review requested",
                 debt_item=debt_item,
                 recipients=reviewers_short,
                 description='User %s has requested that user(s) %s review the debt_item "%s" for accuracy:\n\n%s'
@@ -1703,7 +1703,7 @@ def request_debt_item_review(request, fid):
             return HttpResponseRedirect(reverse("view_debt_item", args=(debt_item.id,)))
 
     debt_context_tab = Debt_Context_Tab(
-        debt_item.debt_test.debt_engagement.debt_context, title="Review debt_item", tab="debt_items"
+        debt_item.debt_test.debt_engagement.debt_context, title="Review Debt Item", tab="debt_items"
     )
 
     return render(
@@ -1779,7 +1779,7 @@ def clear_debt_item_review(request, fid):
         form = ClearDebtItemReviewForm(instance=debt_item)
 
     debt_context_tab = Debt_Context_Tab(
-        debt_item.debt_test.debt_engagement.debt_context, title="Clear debt_item Review", tab="debt_items"
+        debt_item.debt_test.debt_engagement.debt_context, title="Clear Debt Item Review", tab="debt_items"
     )
 
     return render(
@@ -1872,7 +1872,7 @@ def find_template_to_apply(request, fid):
     # just query all templates as this weird ordering above otherwise breaks Django ORM
     title_words = get_words_for_field(Debt_Item_Template, "title")
     debt_context_tab = Debt_Context_Tab(
-        test.debt_engagement.debt_context, title="Apply Template to debt_item", tab="debt_items"
+        test.debt_engagement.debt_context, title="Apply Template to Debt Item", tab="debt_items"
     )
     return render(
         request,
@@ -1902,7 +1902,7 @@ def choose_debt_item_template_options(request, tid, fid):
     form = ApplyDebtItemTemplateForm(data=data, template=template)
     debt_context_tab = Debt_Context_Tab(
         debt_item.debt_test.debt_engagement.debt_context,
-        title="debt_item Template Options",
+        title="Debt Item Template Options",
         tab="debt_items",
     )
     return render(
@@ -1955,7 +1955,7 @@ def apply_template_to_debt_item(request, fid, tid):
             )
             debt_context_tab = Debt_Context_Tab(
                 debt_item.debt_test.debt_engagement.debt_context,
-                title="Apply debt_item Template",
+                title="Apply Debt Item Template",
                 tab="debt_items",
             )
             return render(
@@ -2011,7 +2011,7 @@ def add_stub_debt_item(request, tid):
                 "Stub debt_item form has error, please revise and try again.",
                 extra_tags="alert-danger",
             )
-    add_breadcrumb(title="Add Stub debt_item", top_level=False, request=request)
+    add_breadcrumb(title="Add Stub Debt Item", top_level=False, request=request)
     return HttpResponseRedirect(reverse("view_test", args=(tid,)))
 
 
@@ -2027,15 +2027,15 @@ def delete_stub_debt_item(request, fid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                "Potential debt_item deleted successfully.",
+                "Potential Debt Item deleted successfully.",
                 extra_tags="alert-success",
             )
-            return HttpResponseRedirect(reverse("view_test", args=(tid,)))
+            return HttpResponseRedirect(reverse("view_debt_test", args=(tid,)))
         else:
             messages.add_message(
                 request,
                 messages.ERROR,
-                "Unable to delete potential debt_item, please try again.",
+                "Unable to delete potential Debt Item, please try again.",
                 extra_tags="alert-danger",
             )
     else:
@@ -2051,7 +2051,7 @@ def promote_to_debt_item(request, fid):
     jform = None
     use_jira = jira_helper.get_debt_jira_project(debt_item) is not None
     debt_context_tab = Debt_Context_Tab(
-        debt_item.debt_test.debt_engagement.debt_context, title="Promote debt_item", tab="debt_items"
+        debt_item.debt_test.debt_engagement.debt_context, title="Promote Debt Item", tab="debt_items"
     )
 
     if request.method == "POST":
@@ -2077,7 +2077,7 @@ def promote_to_debt_item(request, fid):
             new_debt_item = form.save(commit=False)
             new_debt_item.debt_test = test
             new_debt_item.reporter = request.user
-            new_debt_item.numerical_severity = debt_item.get_numerical_severity(
+            new_debt_item.numerical_severity = Debt_Item.get_numerical_severity(
                 new_debt_item.severity
             )
 
@@ -2155,7 +2155,7 @@ def promote_to_debt_item(request, fid):
                 extra_tags="alert-success",
             )
 
-            return HttpResponseRedirect(reverse("view_test", args=(test.id,)))
+            return HttpResponseRedirect(reverse("view_debt_test", args=(test.id,)))
         else:
             form_error = True
             add_error_message_to_response(
