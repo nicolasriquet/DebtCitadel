@@ -340,6 +340,12 @@
                                         </th>
                                     {% endif %}
                                     <th>
+                                        {% trans "Intentionality" %}
+                                    </th>
+                                    <th>
+                                        {% trans "Attitude" %}
+                                    </th>
+                                    <th>
                                         {% trans "Reporter" %}
                                     </th>
                                     <th>
@@ -609,6 +615,12 @@
                                             </td>
                                         {% endif %}
                                         <td>
+                                            {{ debt_item.intentionality }}
+                                        </td>
+                                        <td>
+                                            {{ debt_item.attitude }}
+                                        </td>
+                                        <td>
                                             {% if debt_item.reporter.get_full_name and debt_item.reporter.get_full_name.strip %}
                                                 {{ debt_item.reporter.get_full_name }}
                                             {% else %}
@@ -719,6 +731,8 @@
                 {% if system_settings.enable_debt_item_sla %}
                     { "data": "debt_item_sla" },
                 {% endif %}
+                { "data": "intentionality" },
+                { "data": "attitude" },
                 { "data": "reported_by" },
                 { "data": "found_by_test" },
                 { "data": "status" },

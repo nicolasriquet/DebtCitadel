@@ -31,10 +31,10 @@ from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_It
     Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
     Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, Debt_Engagement_Presets, DojoMeta, \
     Engagement_Survey, Answered_Survey, TextAnswer, ChoiceAnswer, Choice, Question, TextQuestion, \
-    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, EFFORT_FOR_FIXING_CHOICES, Product_Member, \
-    Debt_Context_Member, Product_Type_Member, Debt_Context_Type_Member, Global_Role, Dojo_Group, Product_Group, \
-    Debt_Context_Group, Product_Type_Group, Debt_Context_Type_Group, Dojo_Group_Member, Product_API_Scan_Configuration, \
-    Debt_Context_API_Scan_Configuration
+    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, INTENTIONALITY_CHOICES, ATTITUDE_CHOICES, \
+    EFFORT_FOR_FIXING_CHOICES, Product_Member, Debt_Context_Member, Product_Type_Member, Debt_Context_Type_Member, \
+    Global_Role, Dojo_Group, Product_Group, Debt_Context_Group, Product_Type_Group, Debt_Context_Type_Group, \
+    Dojo_Group_Member, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration
 
 from dojo.tools.factory import requires_file, get_choices_sorted, requires_tool_type
 from django.urls import reverse
@@ -1447,6 +1447,16 @@ class AddDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    intentionality = forms.ChoiceField(
+        choices=INTENTIONALITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    attitude = forms.ChoiceField(
+        choices=ATTITUDE_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
     impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
@@ -1471,9 +1481,9 @@ class AddDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'mitigation', 'effort_for_fixing',
-                   'planned_remediation_date', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
-                   'risk_accepted')
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+                   'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
         req_resp = kwargs.pop('req_resp')
@@ -1550,6 +1560,16 @@ class AdHocFindingForm(forms.ModelForm):
     description = forms.CharField(widget=forms.Textarea)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    intentionality = forms.ChoiceField(
+        choices=INTENTIONALITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    attitude = forms.ChoiceField(
+        choices=ATTITUDE_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
@@ -1631,6 +1651,16 @@ class AdHocDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    intentionality = forms.ChoiceField(
+        choices=INTENTIONALITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    attitude = forms.ChoiceField(
+        choices=ATTITUDE_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
     impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
@@ -1655,9 +1685,9 @@ class AdHocDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review', 'sla_start_date')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'mitigation', 'effort_for_fixing',
-                   'planned_remediation_date', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
-                   'risk_accepted')
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+                   'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
         req_resp = kwargs.pop('req_resp')

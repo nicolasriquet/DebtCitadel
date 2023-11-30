@@ -266,17 +266,17 @@
                                             <ul class="nav nav-second-level">
                                                 <li>
                                                     <a href="{% url 'active_debt_engagements' %}">
-                                                        {% trans "Active Debt Engagements" %}
+                                                        {% trans "Active Identification Campaigns" %}
                                                     </a>
                                                 </li>
                                                 <li>
                                                     <a href="{% url 'all_debt_engagements' %}">
-                                                        {% trans "All Debt Engagements" %}
+                                                        {% trans "All Identification Campaigns" %}
                                                     </a>
                                                 </li>
                                                 <li>
                                                     <a href="{% url 'debt_engagements_all' %}">
-                                                        {% trans "Debt Engagements by Debt Context" %}
+                                                        {% trans "Identification Campaigns by Debt Context" %}
                                                     </a>
                                                 </li>
                                                 <li>
@@ -724,7 +724,7 @@
                                         <li role="presentation" class="dropdown{% if debt_context_tab.tab == 'debt_engagements' %} active active-color{% endif %}">
                                             <a class="dropdown-toggle" data-toggle="dropdown" href="">
                                                 <span class="fa-solid fa-calendar-days" aria-hidden="true"></span>
-                                                <span class="hidden-xs">{% trans "Debt Engagements" %}
+                                                <span class="hidden-xs">{% trans "Identification Campaigns" %}
                                                     {% if debt_context_tab.debt_engagements > 0 %} 
                                                         <span class="badge">{{ debt_context_tab.debt_engagements }}</span>
                                                     {% endif %}
@@ -737,8 +737,8 @@
                                                     <li>
                                                         <a href="{% url 'new_eng_for_debt_context' debt_context_tab.debt_context.id %}">
                                                             <i class="fa-solid fa-plus"></i>
-                                                            <!--{% trans "Add New Interactive Debt Engagement" %}-->
-                                                            {% trans "Add New Debt Engagement" %}
+                                                            <!--{% trans "Add New Interactive Identification Campaign" %}-->
+                                                            {% trans "Add New Identification Campaign" %}
                                                         </a>
                                                     </li>
                                                     <!--<li>
@@ -751,7 +751,7 @@
                                                 <li>
                                                     <a href="{% url 'view_debt_engagements' debt_context_tab.debt_context.id %}">
                                                         <i class="fa-solid fa-calendar-days"></i>
-                                                        {% trans "View Debt Engagements" %}
+                                                        {% trans "View Identification Campaigns" %}
                                                     </a>
                                                 </li>
                                             </ul>

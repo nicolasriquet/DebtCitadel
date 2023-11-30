@@ -30,6 +30,8 @@
         {% endwith %}
     </td>
     <td class="nowrap">{{ similar_debt_item.date|date }}</td>
+    <td class="nowrap">{{ similar_debt_item.intentionality }}</td>
+    <td class="nowrap">{{ similar_debt_item.attitude }}</td>
     <td>{{ similar_debt_item|debt_item_display_status|safe }}&nbsp;{{ similar_debt_item|debt_import_history }}</td>
     <td><a href="{% url 'view_debt_test' similar_debt_item.debt_test_id %}">{{ similar_debt_item.debt_test }}</a></td>
     <td><a href="{% url 'view_debt_context' similar_debt_item.debt_test.debt_engagement.debt_context.id %}">{{ similar_debt_item.debt_test.debt_engagement.debt_context.name }}</a>

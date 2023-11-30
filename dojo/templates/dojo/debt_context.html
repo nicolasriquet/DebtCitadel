@@ -53,9 +53,10 @@
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
                             <th>{% dojo_sort request 'Debt Context' 'name' 'asc' %}</th>
                             <th>Tags</th>
+                            <th>{% dojo_sort request 'Debt Context Type' 'debt_context_type__name' %}</th>
                             <th> Criticality</th>
                             <th> Metadata</th>
-                            <th class="text-center">Eng.</th>
+                            <th class="text-center">Identification Campaigns</th>
                             {% if system_settings.enable_jira %}
                             <th class="text-center">Jira</th>
                             {% endif %}
@@ -66,7 +67,6 @@
                             <!--<th class="text-center"> Vulnerable Hosts / Endpoints</th>-->
                             <th> Contact</th>
                             {% comment %} The display field is translated in the function. No need to translate here as well{% endcomment %}
-                            <th>{% dojo_sort request 'Debt Context Type' 'debt_context_type__name' %}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -200,6 +200,7 @@
                                   {% include "dojo/snippets/tags.html" with tags=debt_context.tags.all %}
                                 </td>
                                 <!-- End of Tags Column -->
+                                <td> {{ debt_context.debt_context_type.name }}</td>
                                 <td class="text-center">{{ debt_context.business_criticality|business_criticality_icon }}</td>
                                 <td>
                                   {{ debt_context.platform|platform_icon }}
@@ -215,8 +216,8 @@
                                     {{ debt_context.closed_engagement_count }} Closed<br>
                                     <b>Last Assessed:</b> {{ debt_context.last_engagement_date }}"></i>
                                   {% else %}
-                                    <i class="fa-solid fa-calendar-days text-danger has-popover" title="<i class='fa-solid fa-bullseye'></i> <b>Engagements</b>" data-trigger="hover" data-container="body" data-placement="bottom" data-html="true"
-                                    data-content="No Engagements Exist"></i>
+                                    <i class="fa-solid fa-calendar-days text-danger has-popover" title="<i class='fa-solid fa-bullseye'></i> <b>Identification Campaigns</b>" data-trigger="hover" data-container="body" data-placement="bottom" data-html="true"
+                                    data-content="No Identification Campaigns Exist"></i>
                                   {% endif %}
                                 </td>
                                 {% if system_settings.enable_jira %}
@@ -274,7 +275,6 @@
                                     {% endif %}
                                   {% endif %}
                                 </td>
-                                <td> {{ debt_context.debt_context_type.name }}</td>
                             </tr>
                         {% endfor %}
                         </tbody>

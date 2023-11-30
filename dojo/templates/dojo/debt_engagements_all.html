@@ -9,7 +9,7 @@
             <div class="panel panel-default">
                 <div class="panel-heading tight">
                     <h3 class="has-filters">
-                        Debt Engagements
+                        Identification Campaigns
                         <div class="dropdown pull-right">
                             <button id="show-filters" data-toggle="collapse" data-target="#the-filters" class="btn btn-primary toggle-filters"> <i class="fa-solid fa-filter"></i> <i class="caret"></i> </button>
                         </div>
@@ -32,7 +32,7 @@
                             <th></th>
                             <th>Debt Context</th>
                             <th>Debt Context Type</th>
-                            <th>Debt Engagement Name</th>
+                            <th>Identification Campaign Name</th>
                             {% if system_settings.enable_jira %}
                                 <th>JIRA</th>
                             {% endif %}
@@ -40,7 +40,7 @@
                             <th>Period</th>
                             <th>Lead</th>
                             <th>Tests</th>
-                            <th>Debt Engagement</th>
+                            <th>Identification Campaign</th>
                         </tr>
                         </thead>
 
@@ -108,14 +108,14 @@
                                                     <li class="divider"></li>
                                                     <li role="presentation">
                                                         <a href="{% url 'debt_engagement_report' e.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
-                                                            <i class="fa-solid fa-file-lines"></i> Debt Engagement Report
+                                                            <i class="fa-solid fa-file-lines"></i> Identification Campaign Report
                                                         </a>
                                                     </li>
                                                     {% if e|has_object_permission:"Debt_Engagement_Delete" %}
                                                     <li class="divider"></li>
                                                     <li>
                                                         <a class="text-danger" href="{% url 'delete_debt_engagement' e.id %}">
-                                                            <i class="fa-solid fa-trash"></i> Delete Debt Engagement
+                                                            <i class="fa-solid fa-trash"></i> Delete Identification Campaign
                                                         </a>
                                                     </li>
                                                     {% endif %}
@@ -170,7 +170,7 @@
                     {% include "dojo/paging_snippet.html" with page=debt_contexts page_size=True %}
                 </div>
             {% else %}
-            <div id="no_debt_engagements"><h5 class="text-center"> No debt engagements found </h5></div>
+            <div id="no_debt_engagements"><h5 class="text-center"> No Identification Campaigns found </h5></div>
             {% endif %}
         </div>
     </div>

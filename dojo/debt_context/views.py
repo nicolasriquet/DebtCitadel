@@ -1078,7 +1078,7 @@ def new_eng_for_app(request, pid, cicd=False):
     if cicd:
         title = _('New CI/CD Debt_Engagement')
     else:
-        title = _('New Interactive Debt_Engagement')
+        title = _('New Identification Campaign')
 
     debt_context_tab = Debt_Context_Tab(debt_context, title=title, tab="debt_engagements")
     return render(request, 'dojo/new_eng.html', {
@@ -1227,10 +1227,10 @@ class AdHocDebtItemView(View):
 
     def get_debt_engagement(self, debt_context: debt_context):
         try:
-            return Debt_Engagement.objects.get(debt_context=debt_context, name=_("Ad Hoc Debt Engagement"))
+            return Debt_Engagement.objects.get(debt_context=debt_context, name=_("Ad Hoc Identification Campaign"))
         except Debt_Engagement.DoesNotExist:
             return Debt_Engagement.objects.create(
-                name=_("Ad Hoc Debt Engagement"),
+                name=_("Ad Hoc Identification Campaign"),
                 target_start=timezone.now(),
                 target_end=timezone.now(),
                 active=False, debt_context=debt_context)
@@ -1502,7 +1502,7 @@ def debt_engagement_presets(request, pid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     presets = Engagement_Presets.objects.filter(debt_context=debt_context).all()
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Debt Engagement Presets"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Identification Campaign Presets"), tab="settings")
 
     return render(request, 'dojo/view_presets.html',
                   {'debt_context_tab': debt_context_tab,
@@ -1515,7 +1515,7 @@ def edit_debt_engagement_presets(request, pid, eid):
     debt_context = get_object_or_404(Debt_Context, id=pid)
     preset = get_object_or_404(Engagement_Presets, id=eid)
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit Debt Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Edit Identification Campaign Preset"), tab="settings")
 
     if request.method == 'POST':
         tform = EngagementPresetsForm(request.POST, instance=preset)
@@ -1524,7 +1524,7 @@ def edit_debt_engagement_presets(request, pid, eid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                _('Debt Engagement Preset Successfully Updated.'),
+                _('Identification Campaign Preset Successfully Updated.'),
                 extra_tags='alert-success')
             return HttpResponseRedirect(reverse('debt_engagement_presets', args=(pid,)))
     else:
@@ -1549,13 +1549,13 @@ def add_debt_engagement_presets(request, pid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                _('Debt Engagement Preset Successfully Created.'),
+                _('Identification Campaign Preset Successfully Created.'),
                 extra_tags='alert-success')
             return HttpResponseRedirect(reverse('debt_engagement_presets', args=(pid,)))
     else:
         tform = EngagementPresetsForm()
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("New Debt Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("New Identification Campaign Preset"), tab="settings")
     return render(request, 'dojo/new_params.html', {'tform': tform, 'pid': pid, 'debt_context_tab': debt_context_tab})
 
 
@@ -1572,7 +1572,7 @@ def delete_debt_engagement_presets(request, pid, eid):
                 preset.delete()
                 messages.add_message(request,
                                      messages.SUCCESS,
-                                     _('Debt Engagement presets and debt engagement relationships removed.'),
+                                     _('Identification Campaign presets and Identification Campaign relationships removed.'),
                                      extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('debt_engagement_presets', args=(pid,)))
 
@@ -1580,7 +1580,7 @@ def delete_debt_engagement_presets(request, pid, eid):
     collector.collect([preset])
     rels = collector.nested()
 
-    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Delete Debt Engagement Preset"), tab="settings")
+    debt_context_tab = Debt_Context_Tab(debt_context, title=_("Delete Identification Campaign Preset"), tab="settings")
     return render(request, 'dojo/delete_presets.html',
                   {'debt_context': debt_context,
                    'form': form,

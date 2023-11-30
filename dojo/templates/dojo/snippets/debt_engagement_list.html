@@ -4,10 +4,10 @@
 <div class="col-md-12">
     <div class="panel panel-default table-responsive">
         <div class="panel-heading">
-            <h4> {% if status == "open" %}Active{% elif status == "paused" %}Paused {% else %}Closed{% endif %} Debt Debt Engagements ({{ count }})
+            <h4> {% if status == "open" %}Active{% elif status == "paused" %}Paused {% else %}Closed{% endif %} Identification Campaigns ({{ count }})
                 <div class="dropdown pull-right">
                     <button id="show-filters-{{status}}" data-toggle="collapse" data-target="#the-filters-{{status}}" class="btn btn-primary toggle-filters" aria-label="Filter"> <i class="fa-solid fa-filter"></i> <i class="caret"></i> </button>
-                    <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" aria-label="Add Debt Debt Engagement"
+                    <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenu1" aria-label="Add Identification Campaign"
                     data-toggle="dropdown" aria-expanded="true">
                 <span class="fa-solid fa-bars"></span>
                 <span class="caret"></span>
@@ -15,12 +15,12 @@
           <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
                             <li role="presentation">
                                 <a class="" href="{% url 'new_eng_for_debt_context' debt_context.id %}">
-                                    <i class="fa-solid fa-plus"></i> Add New Interactive Debt Debt Engagement
+                                    <i class="fa-solid fa-plus"></i> Add New Identification Campaign
                                 </a>
                             </li>
                             <li role="presentation">
                                 <a class="" href="{% url 'new_eng_for_debt_context_cicd' debt_context.id %}">
-                                    <i class="fa-solid fa-plus"></i> Add New CI/CD Debt Debt Engagement
+                                    <i class="fa-solid fa-plus"></i> Add New CI/CD Identification Campaign
                                 </a>
                             </li>
                     </ul>
@@ -47,7 +47,7 @@
                     {% if system_settings.enable_jira %}
                     <th class="text-center">JIRA</td>
                     {% endif %}
-                    <th class="text-center">Tests</th>
+                    <th class="text-center">Identification Methods</th>
                     <th class="text-center">Active (Verified)</th>
                     <th class="text-center">Mitigated</th>
                     <th class="text-center">Accepted</th>
@@ -138,14 +138,14 @@
                               <li class="divider"></li>
                             <li role="presentation">
                               <a href="{% url 'engagement_report' eng.id %}?title=&active=1&verified=1&false_p=2&duplicate=2">
-                                  <i class="fa-solid fa-file-lines"></i> Debt Debt Engagement Report
+                                  <i class="fa-solid fa-file-lines"></i> Identification Campaign Report
                               </a>
                             </li>
                             {% if eng|has_object_permission:"Debt_Engagement_Delete" %}
                             <li class="divider"></li>
                             <li>
                               <a class="text-danger" href="{% url 'delete_engagement' eng.id %}">
-                                  <i class="fa-solid fa-trash"></i> Delete Debt Debt Engagement
+                                  <i class="fa-solid fa-trash"></i> Delete Identification Campaign
                               </a>
                             </li>
                             {% endif %}
@@ -291,7 +291,7 @@
                     orthogonal: 'export'
                 },
                 filename: fileDated,
-                title: 'Debt Engagements List'
+                title: 'Identification Campaigns List'
             };
 
             // Mapping of table columns to objects for proper cleanup and data formatting

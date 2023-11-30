@@ -239,7 +239,7 @@ def edit_debt_engagement(request, eid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Debt Engagement updated successfully.',
+                'Identification Campaign updated successfully.',
                 extra_tags='alert-success')
 
             success, jira_project_form = jira_helper.debt_process_jira_project_form(request, instance=jira_project, target='debt_engagement', debt_engagement=debt_engagement, debt_context=debt_engagement.debt_context)
@@ -271,7 +271,7 @@ def edit_debt_engagement(request, eid):
     if is_ci_cd:
         title = 'Edit CI/CD Debt_Engagement'
     else:
-        title = 'Edit Interactive Debt_Engagement'
+        title = 'Edit Identification Campaign'
 
     debt_context_tab = Debt_Context_Tab(debt_engagement.debt_context, title=title, tab="debt_engagements")
     debt_context_tab.setDebtEngagement(debt_engagement)
@@ -300,9 +300,9 @@ def delete_debt_engagement(request, eid):
                 if get_setting("ASYNC_OBJECT_DELETE"):
                     async_del = async_delete()
                     async_del.delete(debt_engagement)
-                    message = 'Debt Engagement and relationships will be removed in the background.'
+                    message = 'Identification Campaign and relationships will be removed in the background.'
                 else:
-                    message = 'Debt Engagement and relationships removed.'
+                    message = 'Identification Campaign and relationships removed.'
                     debt_engagement.delete()
                 messages.add_message(
                     request,
@@ -312,7 +312,7 @@ def delete_debt_engagement(request, eid):
                 create_notification(event='other',
                                     title='Deletion of %s' % debt_engagement.name,
                                     debt_context=debt_context,
-                                    description='The debt engagement "%s" was deleted by %s' % (debt_engagement.name, request.user),
+                                    description='The Identification Campaign "%s" was deleted by %s' % (debt_engagement.name, request.user),
                                     url=request.build_absolute_uri(reverse('view_debt_engagements', args=(debt_context.id, ))),
                                     recipients=[debt_engagement.lead],
                                     icon="exclamation-triangle")
@@ -350,7 +350,7 @@ def copy_debt_engagement(request, eid):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Debt Engagement copied successfully.',
+                'Identification Campaign copied successfully.',
                 extra_tags='alert-success')
             create_notification(event='other',
                                 title='Copying of %s' % debt_engagement.name,
@@ -364,7 +364,7 @@ def copy_debt_engagement(request, eid):
             messages.add_message(
                 request,
                 messages.ERROR,
-                'Unable to copy debt engagement, please try again.',
+                'Unable to copy Identification Campaign, please try again.',
                 extra_tags='alert-danger')
 
     debt_context_tab = Debt_Context_Tab(debt_context, title="Copy Debt_Engagement", tab="debt_engagements")
@@ -759,7 +759,7 @@ def close_eng(request, eid):
     messages.add_message(
         request,
         messages.SUCCESS,
-        'Debt Engagement closed successfully.',
+        'Identification Campaign closed successfully.',
         extra_tags='alert-success')
     create_notification(event='close_debt_engagement',
                         title='Closure of %s' % eng.name,
@@ -775,7 +775,7 @@ def reopen_eng(request, eid):
     messages.add_message(
         request,
         messages.SUCCESS,
-        'Debt Engagement reopened successfully.',
+        'Identification Campaign reopened successfully.',
         extra_tags='alert-success')
     create_notification(event='other',
                         title='Reopening of %s' % eng.name,

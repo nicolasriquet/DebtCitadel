@@ -2,6 +2,7 @@ import base64
 import hashlib
 import logging
 import os
+import os
 import re
 import copy
 from typing import Dict, Set, Optional
@@ -46,6 +47,10 @@ deduplicationLogger = logging.getLogger("dojo.specific-loggers.deduplication")
 
 SEVERITY_CHOICES = (('Info', 'Info'), ('Low', 'Low'), ('Medium', 'Medium'),
                     ('High', 'High'), ('Critical', 'Critical'))
+
+INTENTIONALITY_CHOICES = (('Deliberate','Deliberate'), ('Inadvertent','Inadvertent'))
+
+ATTITUDE_CHOICES = (('Prudent','Prudent'), ('Reckless','Reckless'))
 
 SEVERITIES = [s[0] for s in SEVERITY_CHOICES]
 
@@ -4365,6 +4370,12 @@ class Debt_Item(models.Model):
     severity = models.CharField(max_length=200,
                                 verbose_name=_('Severity'),
                                 help_text=_('The severity level of this flaw (Critical, High, Medium, Low, Informational).'))
+    intentionality = models.CharField(max_length=200,
+                                verbose_name=_('Intentionality'),
+                                help_text=_('The level of intentionality of this Debt Item (Deliberate, Inadvertent).'))
+    attitude = models.CharField(max_length=200,
+                                      verbose_name=_('Attitude'),
+                                      help_text=_('The attitude that led to the creation of this Debt Item (Prudent, Reckless).'))
     description = models.TextField(verbose_name=_('Description'),
                                    help_text=_("Longer more descriptive information about the flaw."))
     mitigation = models.TextField(verbose_name=_('Mitigation'),
@@ -4638,6 +4649,9 @@ class Debt_Item(models.Model):
 
     SEVERITIES = {'Info': 4, 'Low': 3, 'Medium': 2,
                   'High': 1, 'Critical': 0}
+
+    INTENTIONALITY = {'Deliberate': 1, 'Inadvertent': 2}
+    ATTITUDE = {'Prudent': 1, 'Reckless': 2}
 
     class Meta:
         ordering = ('numerical_severity', '-date', 'title')
@@ -5616,6 +5630,8 @@ class Debt_Item_Template(models.Model):
     cvssv3 = models.TextField(validators=[cvssv3_regex], max_length=117, null=True)
     severity = models.CharField(max_length=200, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
+    intentionality = models.TextField(null=True, blank=True)
+    attitude = models.TextField(null=True, blank=True)
     mitigation = models.TextField(null=True, blank=True)
     impact = models.TextField(null=True, blank=True)
     references = models.TextField(null=True, blank=True, db_column="refs")

@@ -96,13 +96,13 @@
                                 </div>
                                 <div class="col-xs-9 text-right">
                                     <div class="huge">{{ debt_engagement_count }}</div>
-                                    <div>{% trans "Active Debt Engagements" %}</div>
+                                    <div>{% trans "Active Identification Campaigns" %}</div>
                                 </div>
                             </div>
                         </div>
                         <a href="{% url 'debt_engagement' %}">
                             <div class="panel-footer">
-                                <span class="pull-left">{% trans "View Debt Engagement Details" %}</span>
+                                <span class="pull-left">{% trans "View Identification Campaign Details" %}</span>
                                 <span class="pull-right"><i class="fa-solid fa-circle-right"></i></span>
                                 <div class="clearfix"></div>
                             </div>
@@ -153,7 +153,7 @@
                 <div class="col-lg-12">
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            {% trans "Unassigned Answered Debt Engagement Questionnaires" %}
+                            {% trans "Unassigned Answered Identification Campaign Questionnaires" %}
                         </div>
                         <div class="panel-body">
                             {% if surveys %}
@@ -162,7 +162,7 @@
                                         <tr>
                                             <th>{% trans "Name" %}</th>
                                             <th>{% trans "Debt Context" %}</th>
-                                            <th>{% trans "Debt Engagement" %}</th>
+                                            <th>{% trans "Identification Campaign" %}</th>
                                             <th>{% trans "Responder" %}</th>
                                             <th>{% trans "Status" %}</th>
                                             <th>{% trans "Completion" %} Date</th>
@@ -207,7 +207,7 @@
                                                     {% else %}
                                                         <a class="btn btn-sm btn-secondary"
                                                         href="/empty_questionnaire/{{ survey.id }}">{% trans "View Responses" %}</a>
-                                                        <a class="btn btn-sm btn-success" href="empty_questionnaire/{{ survey.id }}/new_debt_engagement">{% trans "Create Debt Engagement" %}</a>
+                                                        <a class="btn btn-sm btn-success" href="empty_questionnaire/{{ survey.id }}/new_debt_engagement">{% trans "Create Identification Campaign" %}</a>
                                                         <button class="btn btn-sm btn-info" disabled
                                                         href="/debt_engagement/{{ survey.debt_engagement.id }}/questionnaire/{{ survey.id }}/assign">{% trans "Assign User" %}</button>
                                                     {% endif %}
@@ -233,14 +233,14 @@
                 <div class="col-lg-12">
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            {% trans "Weekly activity, displayed by day, of debt_items you reported." %}*
+                            {% trans "Weekly activity, displayed by day, of Debt Items you reported." %}*
                         </div>
                         <div class="panel-body">
                             <div class="chart" id="punchcard"></div>
                             <p class="text-center text-muted small">{% trans "Week begins on date displayed." %}</p>
                             <p>
                                 <br/>
-                                <span class="text-muted small">* {% trans "Weeks are only displayed if debt_items are available." %}</span>
+                                <span class="text-muted small">* {% trans "Weeks are only displayed if Debt Items are available." %}</span>
                             </p>
                         </div>
                     </div>
