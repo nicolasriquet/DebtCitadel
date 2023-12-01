@@ -125,7 +125,7 @@ from dojo.authorization.authorization_decorators import (
 )
 from dojo.authorization.roles_permissions import Permissions
 from dojo.debt_item.queries import get_authorized_debt_items
-from dojo.test.queries import get_authorized_tests
+from dojo.debt_test.queries import get_authorized_debt_tests
 
 JFORM_PUSH_TO_JIRA_MESSAGE = "jform.push_to_jira: %s"
 
@@ -793,8 +793,8 @@ class EditDebtItem(View):
 
     def get_request_response(self, debt_item: Debt_Item):
         req_resp = None
-        if burp_rr := BurpRawRequestResponse.objects.filter(debt_item=debt_item).first():
-            req_resp = (burp_rr.get_request(), burp_rr.get_response())
+        #if burp_rr := BurpRawRequestResponse.objects.filter(debt_item=debt_item).first():
+        #    req_resp = (burp_rr.get_request(), burp_rr.get_response())
 
         return req_resp
 
@@ -1482,29 +1482,29 @@ def apply_template_cwe(request, fid):
 def copy_debt_item(request, fid):
     debt_item = get_object_or_404(Debt_Item, id=fid)
     debt_context = debt_item.debt_test.debt_engagement.debt_context
-    tests = get_authorized_tests(Permissions.Test_Edit).filter(
+    debt_tests = get_authorized_debt_tests(Permissions.Debt_Test_Edit).filter(
         debt_engagement=debt_item.debt_test.debt_engagement
     )
-    form = CopyDebtItemForm(tests=tests)
+    form = CopyDebtItemForm(debt_tests=debt_tests)
 
     if request.method == "POST":
-        form = CopyDebtItemForm(request.POST, tests=tests)
+        form = CopyDebtItemForm(request.POST, debt_tests=debt_tests)
         if form.is_valid():
-            test = form.cleaned_data.get("test")
+            debt_test = form.cleaned_data.get("debt_test")
             debt_context = debt_item.debt_test.debt_engagement.debt_context
-            debt_item_copy = debt_item.copy(test=test)
+            debt_item_copy = debt_item.copy(debt_test=debt_test)
             debt_calculate_grade(debt_context)
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                "debt_item Copied successfully.",
+                "Debt Item Copied successfully.",
                 extra_tags="alert-success",
             )
             create_notification(
                 event="other",
                 title="Copying of %s" % debt_item.title,
-                description='The debt_item "%s" was copied by %s to %s'
-                % (debt_item.title, request.user, test.title),
+                description='The Debt Item "%s" was copied by %s to %s'
+                % (debt_item.title, request.user, debt_test.title),
                 debt_context=debt_context,
                 url=request.build_absolute_uri(
                     reverse("copy_debt_item", args=(debt_item_copy.id,))
@@ -1513,13 +1513,13 @@ def copy_debt_item(request, fid):
                 icon="exclamation-triangle",
             )
             return redirect_to_return_url_or_else(
-                request, reverse("view_test", args=(test.id,))
+                request, reverse("view_debt_test", args=(debt_test.id,))
             )
         else:
             messages.add_message(
                 request,
                 messages.ERROR,
-                "Unable to copy debt_item, please try again.",
+                "Unable to copy Debt Item, please try again.",
                 extra_tags="alert-danger",
             )
 
@@ -1529,8 +1529,8 @@ def copy_debt_item(request, fid):
         "dojo/copy_object.html",
         {
             "source": debt_item,
-            "source_label": "debt_item",
-            "destination_label": "Test",
+            "source_label": "Debt Item",
+            "destination_label": "Identification Session",
             "debt_context_tab": debt_context_tab,
             "form": form,
         },
@@ -1797,7 +1797,7 @@ def mktemplate(request, fid):
         messages.add_message(
             request,
             messages.ERROR,
-            "A debt_item template with that title already exists.",
+            "A Debt Item template with that title already exists.",
             extra_tags="alert-danger",
         )
     else:
@@ -1825,7 +1825,7 @@ def mktemplate(request, fid):
             request,
             messages.SUCCESS,
             mark_safe(
-                'debt_item template added successfully. You may edit it <a href="%s">here</a>.'
+                'Debt Item template added successfully. You may edit it <a href="%s">here</a>.'
                 % reverse("edit_template", args=(template.id,))
             ),
             extra_tags="alert-success",

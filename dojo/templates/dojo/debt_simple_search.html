@@ -71,7 +71,7 @@
             {% endif %}
             {% if debt_item_templates %}
                 <li role="presentation">
-                    <a href="#tabs-7" role="tab" data-toggle="tab">{% trans "Debt_Item Templates" %} ({{ debt_item_templates|length }})</a>
+                    <a href="#tabs-7" role="tab" data-toggle="tab">{% trans "Debt Item Templates" %} ({{ debt_item_templates|length }})</a>
                 </li>
             {% endif %}
             {% if languages %}
@@ -376,7 +376,7 @@
                         {% if tagged_debt_tests %}
                             {% for debt_test in tagged_debt_tests %}
                                 <tr>
-                                    <td>{% trans "Debt_Test" %}</td>
+                                    <td>{% trans "Debt Test" %}</td>
                                     <td>
                                         <a class="search-debt_item" href="{% url 'view_debt_test' debt_test.id %}">{{ debt_test }}</a>
                                         {% include "dojo/snippets/tags.html" with tags=debt_test.tags.all %}
@@ -394,7 +394,7 @@
                         {% endfor %}
                         {% for debt_item_template in tagged_debt_item_templates %}
                             <tr>
-                                <td>{% trans "Debt_Item Template" %}</td>
+                                <td>{% trans "Debt Item Template" %}</td>
                                 <td>
                                     <a class="search-debt_item" href="{% url 'edit_template' debt_item_template.id %}">{{ debt_item_template.title }}</a>
                                     {% include "dojo/snippets/tags.html" with tags=debt_item_template.tags.all %}
@@ -403,7 +403,7 @@
                         {% endfor %}
                         {% for debt_context in tagged_debt_contexts %}
                             <tr>
-                                <td>{% trans "Debt_Context" %}</td>
+                                <td>{% trans "Debt Context" %}</td>
                                 <td>
                                     <a class="search-debt_item" href="{% url 'view_debt_context' debt_context.id %}">{{ debt_context.name }}</a>
                                     {% include "dojo/snippets/tags.html" with tags=debt_context.tags.all %}
@@ -412,7 +412,7 @@
                         {% endfor %}
                         {% for debt_endpoint in tagged_debt_endpoints %}
                             <tr>
-                                <td>{% trans "Debt_Endpoint" %}</td>
+                                <td>{% trans "Debt Endpoint" %}</td>
                                 <td>
                                     <a class="search-debt_item" href="{% url 'view_debt_endpoint' debt_endpoint.id %}">{{ debt_endpoint }}{% if debt_endpoint.is_broken %} <span data-toggle="tooltip" title="Debt_Endpoint is broken. Check documentation to look for fix process" >&#128681;</span>{% endif %}</a>
                                     {% include "dojo/snippets/tags.html" with tags=debt_endpoint.tags.all %}
@@ -421,7 +421,7 @@
                         {% endfor %}
                         {% for eng in tagged_debt_engagements %}
                             <tr>
-                                <td>{% trans "Debt_Engagement" %}</td>
+                                <td>{% trans "Debt Engagement" %}</td>
                                 <td>
                                     <a class="search-debt_item" href="{% url 'view_debt_engagement' eng.id %}">{{ eng }}</a>
                                     {% include "dojo/snippets/tags.html" with tags=eng.tags.all %}

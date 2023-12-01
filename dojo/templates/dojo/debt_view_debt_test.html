@@ -1172,6 +1172,9 @@
                                         {% include "dojo/snippets/tags.html" with tags=debt_item.tags.all %}
                                     </td>
                                     <td>
+                                        {{ debt_item.payment_cost }}
+                                    </td>
+                                    <td>
                                         {{ debt_item.intentionality }}
                                     </td>
                                     <td>
@@ -1590,6 +1593,7 @@
                 }},
                 //{ "data": "cwe" },
                 //{ "data": "cve" },
+                { "data": "payment_cost" },
                 { "data": "intentionality" },
                 { "data": "attitude" },
                 { "data": "date" },

@@ -340,6 +340,9 @@
                                         </th>
                                     {% endif %}
                                     <th>
+                                        {% trans "Payment Cost" %}
+                                    </th>
+                                    <th>
                                         {% trans "Intentionality" %}
                                     </th>
                                     <th>
@@ -440,14 +443,14 @@
                                                         {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                                             <li role="presentation">
                                                                 <a href="{% url 'touch_debt_item' debt_item.id %}?return_url={{ request.get_full_path|urlencode }}">
-                                                                    <i class="fa-solid fa-clock"></i> {% trans "Touch Debt_Item" %}
+                                                                    <i class="fa-solid fa-clock"></i> {% trans "Touch Debt Item" %}
                                                                 </a>
                                                             </li>
                                                         {% endif %}
                                                         {% if debt_item|has_object_permission:"Debt_Item_Add" %}
                                                             <li role="presentation">
                                                                 <a href="{% url 'mktemplate' debt_item.id %}">
-                                                                    <i class="fa-solid fa-copy"></i> {% trans "Make Debt_Item a Template" %}
+                                                                    <i class="fa-solid fa-copy"></i> {% trans "Make Debt Item a Template" %}
                                                                 </a>
                                                             </li>
                                                         {% endif %}
@@ -615,6 +618,9 @@
                                             </td>
                                         {% endif %}
                                         <td>
+                                            {{ debt_item.payment_cost }}
+                                        </td>
+                                        <td>
                                             {{ debt_item.intentionality }}
                                         </td>
                                         <td>
@@ -731,6 +737,7 @@
                 {% if system_settings.enable_debt_item_sla %}
                     { "data": "debt_item_sla" },
                 {% endif %}
+                { "data": "payment_cost" },
                 { "data": "intentionality" },
                 { "data": "attitude" },
                 { "data": "reported_by" },

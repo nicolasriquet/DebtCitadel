@@ -98,9 +98,9 @@
                                           <li><a href="{% url 'debt_context_open_debt_items' debt_context.id %}?date=2"><i class="fa-solid fa-calendar-days"></i> View Last 7 Days Debt Items</a></li>
                                           <li role="separator" class="divider"></li>
                                           {% if debt_context|has_object_permission:"Engagement_Add" %}
-                                              <li><a href="{% url 'new_eng_for_debt_context' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Engagement</a></li>
+                                              <li><a href="{% url 'new_eng_for_debt_context' debt_context.id %}"><i class="fa-solid fa-plus"></i> Add New Identification Campaign</a></li>
                                           {% endif %}
-                                          <li><a href="{% url 'view_engagements' debt_context.id %}"><i class="fa-solid fa-calendar-days"></i> View Engagements</a></li>
+                                          <li><a href="{% url 'view_engagements' debt_context.id %}"><i class="fa-solid fa-calendar-days"></i> View Identification Campaigns</a></li>
                                           <!--<li role="separator" class="divider"></li>
                                           <li><a href="{% url 'endpoint' %}?debt_context={{ debt_context.id }}"><i class="fa-solid fa-rectangle-list"></i> View Endpoints</a></li>
                                           <li><a href="{% url 'endpoint_host' %}?debt_context={{ debt_context.id }}"><i class="fa-solid fa-rectangle-list"></i> View Hosts</a></li>

@@ -98,16 +98,16 @@
                             {% if eng|has_object_permission:"Test_Add" %}
                             <li role="presentation">
                                 <a class="" href="{% url 'add_tests' eng.id %}">
-                                    <i class="fa-solid fa-plus"></i> Add Tests
+                                    <i class="fa-solid fa-plus"></i> Add Identification Sessions
                                 </a>
                             </li>
                             {% endif %}
                             {% if eng|has_object_permission:"Import_Scan_Result" %}
-                            <li role="presentation">
+                            <!--<li role="presentation">
                                 <a class="" href="{% url 'import_scan_results' eng.id %}">
                                     <i class="fa-solid fa-upload"></i> Import Scan Results
                                 </a>
-                            </li>
+                            </li>-->
                             {% endif %}
                             <li class="divider"></li>
                             <li role="presentation">

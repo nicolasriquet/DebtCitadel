@@ -73,7 +73,7 @@ def debt_dashboard(request: HttpRequest) -> HttpResponse:
 
 def support(request: HttpRequest) -> HttpResponse:
     add_breadcrumb(title="Support", top_level=not len(request.GET), request=request)
-    return render(request, 'dojo/support.html', {})
+    return render(request, 'dojo/debt_support.html', {})
 
 
 def get_severities_all(debt_items) -> Dict[str, int]:

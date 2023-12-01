@@ -120,6 +120,19 @@ def add_findings_to_risk_acceptance(risk_acceptance, findings):
     post_jira_comments(risk_acceptance, findings, accepted_message_creator)
 
 
+def add_debt_items_to_risk_acceptance(risk_acceptance, debt_items):
+    for debt_item in debt_items:
+        if not debt_item.duplicate or debt_item.risk_accepted:
+            debt_item.active = False
+            debt_item.risk_accepted = True
+            debt_item.save(dedupe_option=False)
+            risk_acceptance.accepted_debt_items.add(debt_item)
+    risk_acceptance.save()
+
+    # best effort jira integration, no status changes
+    post_jira_comments(risk_acceptance, debt_items, accepted_message_creator)
+
+
 @app.task
 def expiration_handler(*args, **kwargs):
     """

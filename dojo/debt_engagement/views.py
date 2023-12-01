@@ -24,7 +24,7 @@ from django.db import DEFAULT_DB_ALIAS
 from dojo.debt_engagement.services import close_debt_engagement, reopen_debt_engagement
 from dojo.filters import DebtEngagementFilter, DebtEngagementDirectFilter, DebtEngagementDebtTestFilter
 from dojo.forms import CheckForm, \
-    UploadThreatForm, RiskAcceptanceForm, NoteForm, DoneForm, \
+    UploadThreatForm, DebtRiskAcceptanceForm, NoteForm, DoneForm, \
     EngForm, DebtEngForm, TestForm, DebtTestForm, ReplaceRiskAcceptanceProofForm, AddDebtItemsRiskAcceptanceForm, DeleteDebtEngagementForm, ImportScanForm, \
     CredMappingForm, JIRADebtEngagementForm, JIRAImportScanForm, TypedNoteForm, JIRAProjectForm, \
     EditRiskAcceptanceForm
@@ -855,7 +855,7 @@ def add_risk_acceptance(request, eid, fid=None):
         raise PermissionDenied()
 
     if request.method == 'POST':
-        form = RiskAcceptanceForm(request.POST, request.FILES)
+        form = DebtRiskAcceptanceForm(request.POST, request.FILES)
         if form.is_valid():
             # first capture notes param as it cannot be saved directly as m2m
             notes = None
@@ -897,7 +897,7 @@ def add_risk_acceptance(request, eid, fid=None):
             return redirect_to_return_url_or_else(request, reverse('view_debt_engagement', args=(eid, )))
     else:
         risk_acceptance_title_suggestion = 'Accept: %s' % debt_item
-        form = RiskAcceptanceForm(initial={'owner': request.user, 'name': risk_acceptance_title_suggestion})
+        form = DebtRiskAcceptanceForm(initial={'owner': request.user, 'name': risk_acceptance_title_suggestion})
 
     debt_item_choices = Debt_Item.objects.filter(duplicate=False, debt_test__debt_engagement=eng).filter(NOT_ACCEPTED_DEBT_ITEMS_QUERY).order_by('title')
 
@@ -907,7 +907,7 @@ def add_risk_acceptance(request, eid, fid=None):
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Risk Acceptance", tab="debt_engagements")
     debt_context_tab.setDebtEngagement(eng)
 
-    return render(request, 'dojo/add_risk_acceptance.html', {
+    return render(request, 'dojo/debt_add_risk_acceptance.html', {
                   'eng': eng,
                   'debt_context_tab': debt_context_tab,
                   'form': form

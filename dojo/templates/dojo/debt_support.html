@@ -1,0 +1,77 @@
+{% extends "debt_base.html" %}
+{% load authorization_tags %}
+{% load static %}
+
+{% block content %}
+    {{ block.super }}
+    <!--<p class="support-page-wrapper">
+        <img src="{% static "dojo/img/chop.png" %}" alt="Debt Citadel Chop" width="600px" height="auto"/>
+    </p>-->
+        <!--<h2 style="color: #546474;">Options are available for teams of all sizes.</h2>
+        <br />
+        <div class="support-container">
+            <div class="support-box">
+                <div class="support-box shape community hover">
+                    <h2 style="text-align: center;">Community Support</h2>
+                    <div class="divider dark"></div>
+                    <p>What's included:</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Support from the community via OWASP Slack</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Community based discussion</p>
+                </div>
+                <a href="https://owasp.org/slack/invite" target="_blank" class="btn btn-primary community support dark">Join #defectdojo</a>
+            </div>
+            
+            <div class="support-box">
+                <div class="support-box shape hover commercial">
+                    <h2 style="text-align: center;">Get DefectDojo Pro</h2>
+                    <div class="divider light"></div>
+                    <p>What's included:</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Support directly from the creators</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Additional features</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Response time SLA</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Bug fixes</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Feature enhancements</p>
+                    <p><i class="fa-solid fa-lg fa-circle-check"></i> Best practice advice</p>
+                </div>
+                <a href="https://www.defectdojo.com/contact" target="_blank" class="btn btn-primary support commercial light">Meet The Creators</a>
+            </div>
+        </div>
+    </div>-->
+    <div style="text-align: center;">
+        <p class="support-page-wrapper">
+            <img src="{% static "dojo/img/chop.png" %}" alt="Debt Citadel Chop" width="700px" height="auto"/>
+        </p>
+        <br>
+        <h2>Debt Citadel</h2>
+        <p>
+            &copy; 2023 Nicolas Riquet.
+        </p>
+        <p>
+            Debt Citadel is licensed under the <a
+                href="https://github.com/nicolasriquet/DebtDojo/blob/master/LICENSE.md">3-Clause BSD
+            License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
+        </p>
+        <p>
+            Debt Citadel is based on DefectDojo, &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
+        </p>
+        <br>
+        <h3>Full license</h3>
+        <div style="width: 50%; margin: 0 auto; text-align: justify; text-justify: inter-word;">
+            Copyright (c) 2023 Nicolas Riquet. All rights reserved. <br><br>
+
+            Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+            <ol>
+                <li> Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li>
+
+                <li> Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li>
+
+                <li> Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.</li>
+
+            </ol>
+            THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+        </div>
+    </div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

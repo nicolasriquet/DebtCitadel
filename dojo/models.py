@@ -48,6 +48,9 @@ deduplicationLogger = logging.getLogger("dojo.specific-loggers.deduplication")
 SEVERITY_CHOICES = (('Info', 'Info'), ('Low', 'Low'), ('Medium', 'Medium'),
                     ('High', 'High'), ('Critical', 'Critical'))
 
+PAYMENT_COST_CHOICES = (('Extra Large (XL)','Extra Large (XL)'), ('Large (L)','Large (L)'), ('Medium (M)','Medium (M)'),
+                ('Small (S)','Small (S)'), ('Extra Small (XS)','Extra Small (XS)'))
+
 INTENTIONALITY_CHOICES = (('Deliberate','Deliberate'), ('Inadvertent','Inadvertent'))
 
 ATTITUDE_CHOICES = (('Prudent','Prudent'), ('Reckless','Reckless'))
@@ -3222,7 +3225,7 @@ class Debt_Test(models.Model):
 
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('view_test', args=[str(self.id)])
+        return reverse('view_debt_test', args=[str(self.id)])
 
     def delete(self, *args, **kwargs):
         logger.debug('%d test delete', self.id)
@@ -4370,6 +4373,9 @@ class Debt_Item(models.Model):
     severity = models.CharField(max_length=200,
                                 verbose_name=_('Severity'),
                                 help_text=_('The severity level of this flaw (Critical, High, Medium, Low, Informational).'))
+    payment_cost = models.CharField(max_length=200,
+                                      verbose_name=_('Payment Cost'),
+                                      help_text=_('The level of cost for paying this Debt Item in t-shirt sizing (XL, L, M, S, XS).'))
     intentionality = models.CharField(max_length=200,
                                 verbose_name=_('Intentionality'),
                                 help_text=_('The level of intentionality of this Debt Item (Deliberate, Inadvertent).'))
@@ -5783,11 +5789,13 @@ class Risk_Acceptance(models.Model):
 
     accepted_findings = models.ManyToManyField(Finding)
 
-    recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_FIX, help_text=_("Recommendation from the security team."), verbose_name=_('Security Recommendation'))
+    accepted_debt_items = models.ManyToManyField(Debt_Item)
+
+    recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_FIX, help_text=_("Recommendation from the security team."), verbose_name=_('Recommendation'))
 
     recommendation_details = models.TextField(null=True,
                                       blank=True,
-                                      help_text=_("Explanation of security recommendation"), verbose_name=_('Security Recommendation Details'))
+                                      help_text=_("Explanation of security recommendation"), verbose_name=_('Recommendation Details'))
 
     decision = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_ACCEPT, help_text=_("Risk treatment decision by risk owner"))
     decision_details = models.TextField(default=None, blank=True, null=True, help_text=_('If a compensating control exists to mitigate the finding or reduce risk, then list the compensating control(s).'))

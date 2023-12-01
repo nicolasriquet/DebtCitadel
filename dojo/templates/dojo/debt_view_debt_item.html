@@ -56,12 +56,12 @@
                             {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                 <li role="presentation">
                                     <a href="{% url 'edit_debt_item' debt_item.id %}">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit Debt_Item
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit Debt Item
                                     </a>
                                 </li>
                                 <li>
                                     <a class="" href="{% url 'copy_debt_item' debt_item.id %}?return_url={{ request.get_full_path|urlencode }}"/>
-                                    <i class="fa-solid fa-copy"></i> Copy Debt_Item
+                                    <i class="fa-solid fa-copy"></i> Copy Debt Item
                                     </a>
                                 </li>
                             {% endif %}
@@ -91,7 +91,7 @@
                             {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                 <li role="presentation">
                                     <a href="{% url 'touch_debt_item' debt_item.id %}">
-                                        <i class="fa-solid fa-clock"></i> Touch Debt_Item
+                                        <i class="fa-solid fa-clock"></i> Touch Debt Item
                                     </a>
                                 </li>
                             {% endif %}
@@ -99,7 +99,7 @@
                             {% if "Debt_Item_Add"|has_global_permission %}
                                 <li role="presentation">
                                     <a href="{% url 'mktemplate' debt_item.id %}">
-                                        <i class="fa-solid fa-copy"></i> Make Debt_Item a Template
+                                        <i class="fa-solid fa-copy"></i> Make Debt Item a Template
                                     </a>
                                 </li>
                             {% endif %}
@@ -115,16 +115,16 @@
                                     </form>
                             {% endif %}
                             {% if not cwe_template.cwe and "Debt_Item_Add"|has_global_permission %}
-                                    <li role="presentation">
+                                    <!--<li role="presentation">
                                         <a href="{% url 'add_template' %}">
                                             <i class="fa-solid fa-copy"></i> Create a CWE Remediation Template
                                         </a>
-                                    </li>
+                                    </li>-->
                             {% endif %}
                             {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                 <li role="presentation">
                                     <a href="{% url 'find_template_to_apply' debt_item.id %}">
-                                        <i class="fa-solid fa-copy"></i> Apply Template to Debt_Item
+                                        <i class="fa-solid fa-copy"></i> Apply Template to Debt Item
                                     </a>
                                 </li>
                             {% endif %}
@@ -141,13 +141,13 @@
                                 {% if debt_item.mitigated %}
                                     <li role="presentation">
                                         <a href="{% url 'reopen_debt_item' debt_item.id %}">
-                                            <i class="fa-solid fa-bug"></i> Open Debt_Item
+                                            <i class="fa-solid fa-bug"></i> Open Debt Item
                                         </a>
                                     </li>
                                 {% else %}
                                 <li role="presentation">
                                     <a href="{% url 'close_debt_item' debt_item.id %}">
-                                        <i class="fa-solid fa-fire-extinguisher"></i> Close Debt_Item
+                                        <i class="fa-solid fa-fire-extinguisher"></i> Close Debt Item
                                     </a>
                                 </li>
                                 {% endif %}
@@ -187,7 +187,7 @@
                                 <li role="separator" class="divider"></li>
                                 <li role="presentation">
                                     <a class="text-danger delete-debt_item" href="#">
-                                        <i class="fa-solid fa-trash"></i> Delete Debt_Item
+                                        <i class="fa-solid fa-trash"></i> Delete Debt Item
                                     </a>
                                 </li>
                                 <form id="delete-debt_item-form" method="post" action="{% url 'delete_debt_item' debt_item.id %}">
@@ -263,6 +263,15 @@
                         {% if debt_item.planned_remediation_version %}
                             <th>{% trans "Planned Remediation version" %}</th>
                         {% endif %}
+                        <th>
+                            {% trans "Payment Cost" %}
+                        </th>
+                        <th>
+                            {% trans "Intentionality" %}
+                        </th>
+                        <th>
+                            {% trans "Attitude" %}
+                        </th>
                         <th>Reporter</th>
                         {% if debt_item.mitigated %}
                             <th>Date Mitigated</th>
@@ -385,6 +394,15 @@
                         </td>-->
                         <td>{{ debt_item.date }}</td>
                         <td>{{ debt_item.age }} days</td>
+                        <td>
+                            {{ debt_item.payment_cost }}
+                        </td>
+                        <td>
+                            {{ debt_item.intentionality }}
+                        </td>
+                        <td>
+                            {{ debt_item.attitude }}
+                        </td>
                         {% if debt_item.publish_date %}
                             <td>{{ debt_item.publish_date }}</td>
                         {% endif %}
@@ -1456,6 +1474,7 @@
                         return type === 'export' ? getDojoExportValueFromTag(data, 'a') :  data;
                 }},
                 { "data": "found_date" },
+                { "data": "payment_cost" },
                 { "data": "intentionality" },
                 { "data": "attitude" },
                 { "data": "status" },

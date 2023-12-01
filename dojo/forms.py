@@ -31,7 +31,7 @@ from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_It
     Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
     Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, Debt_Engagement_Presets, DojoMeta, \
     Engagement_Survey, Answered_Survey, TextAnswer, ChoiceAnswer, Choice, Question, TextQuestion, \
-    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, INTENTIONALITY_CHOICES, ATTITUDE_CHOICES, \
+    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, PAYMENT_COST_CHOICES, INTENTIONALITY_CHOICES, ATTITUDE_CHOICES, \
     EFFORT_FOR_FIXING_CHOICES, Product_Member, Debt_Context_Member, Product_Type_Member, Debt_Context_Type_Member, \
     Global_Role, Dojo_Group, Product_Group, Debt_Context_Group, Product_Type_Group, Debt_Context_Type_Group, \
     Dojo_Group_Member, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration
@@ -974,6 +974,35 @@ class RiskAcceptanceForm(EditRiskAcceptanceForm):
         self.fields['accepted_findings'].queryset = get_authorized_findings(Permissions.Risk_Acceptance)
 
 
+class DebtRiskAcceptanceForm(EditRiskAcceptanceForm):
+    # path = forms.FileField(label="Proof", required=False, widget=forms.widgets.FileInput(attrs={"accept": ".jpg,.png,.pdf"}))
+    # expiration_date = forms.DateTimeField(required=False, widget=forms.TextInput(attrs={'class': 'datepicker'}))
+    accepted_findings = forms.ModelMultipleChoiceField(
+        queryset=Debt_Item.objects.none(), required=True,
+        widget=forms.widgets.SelectMultiple(attrs={'size': 10}),
+        help_text=('Active, verified Debt Items listed, please select to add Debt Items.'))
+    notes = forms.CharField(required=False, max_length=2400,
+                            widget=forms.Textarea,
+                            label='Notes')
+
+    class Meta:
+        model = Risk_Acceptance
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        expiration_delta_days = get_system_setting('risk_acceptance_form_default_days')
+        logger.debug('expiration_delta_days: %i', expiration_delta_days)
+        if expiration_delta_days > 0:
+            expiration_date = timezone.now().date() + relativedelta(days=expiration_delta_days)
+            # logger.debug('setting default expiration_date: %s', expiration_date)
+            self.fields['expiration_date'].initial = expiration_date
+        # self.fields['path'].help_text = 'Existing proof uploaded: %s' % self.instance.filename() if self.instance.filename() else 'None'
+        self.fields['accepted_debt_items'].queryset = get_authorized_debt_items(Permissions.Risk_Acceptance)
+
+        self.fields['accepted_findings'].widget = forms.HiddenInput()
+
+
 class BaseManageFileFormSet(forms.BaseModelFormSet):
     def clean(self):
         """Validate the IP/Mask combo is in CIDR format"""
@@ -1447,6 +1476,11 @@ class AddDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     intentionality = forms.ChoiceField(
         choices=INTENTIONALITY_CHOICES,
         error_messages={
@@ -1458,7 +1492,7 @@ class AddDebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
-    impact = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=True)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
     debt_endpoints = forms.ModelMultipleChoiceField(Debt_Endpoint.objects.none(), required=False, label='Systems / Endpoints')
@@ -1481,7 +1515,7 @@ class AddDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
                    'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
@@ -1507,7 +1541,7 @@ class AddDebtItemForm(forms.ModelForm):
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
-            self.fields['file_path'].widget = self.fields['component_name'].widget = \
+            self.fields['component_name'].widget = self.fields['effort_for_fixing'].widget = \
             self.fields['component_version'].widget = self.fields['static_debt_item'].widget = \
             self.fields['dynamic_debt_item'].widget = self.fields['sonarqube_issue'].widget = \
             self.fields['unique_id_from_tool'].widget = self.fields['vuln_id_from_tool'].widget = \
@@ -1563,16 +1597,7 @@ class AdHocFindingForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    intentionality = forms.ChoiceField(
-        choices=INTENTIONALITY_CHOICES,
-        error_messages={
-            'required': 'Select valid choice: In Progress, On Hold, Completed',
-            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    attitude = forms.ChoiceField(
-        choices=ATTITUDE_CHOICES,
-        error_messages={
-            'required': 'Select valid choice: In Progress, On Hold, Completed',
-            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
     impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
@@ -1651,6 +1676,11 @@ class AdHocDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     intentionality = forms.ChoiceField(
         choices=INTENTIONALITY_CHOICES,
         error_messages={
@@ -1662,7 +1692,7 @@ class AdHocDebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
-    impact = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=True)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
     debt_endpoints = forms.ModelMultipleChoiceField(queryset=Endpoint.objects.none(), required=False, label='Systems / Endpoints')
@@ -1685,7 +1715,7 @@ class AdHocDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review', 'sla_start_date')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
                    'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
@@ -1711,7 +1741,7 @@ class AdHocDebtItemForm(forms.ModelForm):
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
-            self.fields['file_path'].widget = self.fields['component_name'].widget = \
+            self.fields['component_name'].widget = self.fields['effort_for_fixing'].widget = \
             self.fields['component_version'].widget = self.fields['static_debt_item'].widget = \
             self.fields['dynamic_debt_item'].widget = self.fields['sonarqube_issue'].widget = \
             self.fields['unique_id_from_tool'].widget = self.fields['vuln_id_from_tool'].widget = \
@@ -1822,6 +1852,11 @@ class PromoteDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     intentionality = forms.ChoiceField(
         choices=INTENTIONALITY_CHOICES,
         error_messages={
@@ -1833,7 +1868,7 @@ class PromoteDebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
-    impact = forms.CharField(widget=forms.Textarea, required=False)
+    impact = forms.CharField(widget=forms.Textarea, required=True)
     debt_endpoints = forms.ModelMultipleChoiceField(Debt_Endpoint.objects.none(), required=False, label='Systems / Debt_Endpoints')
     debt_endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Debt_Endpoints to add",
                                             help_text="The IP address, host name or full URL. You may enter one debt_endpoint per line. "
@@ -1847,7 +1882,7 @@ class PromoteDebtItemForm(forms.ModelForm):
     #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
     #               'out_of_scope', 'risk_accept', 'under_defect_review')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
                    'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
@@ -1865,7 +1900,7 @@ class PromoteDebtItemForm(forms.ModelForm):
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
-            self.fields['file_path'].widget = self.fields['component_name'].widget = \
+            self.fields['component_name'].widget = self.fields['effort_for_fixing'].widget = \
             self.fields['component_version'].widget = self.fields['static_debt_item'].widget = \
             self.fields['dynamic_debt_item'].widget = self.fields['sonarqube_issue'].widget = \
             self.fields['unique_id_from_tool'].widget = self.fields['vuln_id_from_tool'].widget = \
@@ -2088,7 +2123,7 @@ class DebtItemForm(forms.ModelForm):
 
         super(DebtItemForm, self).__init__(*args, **kwargs)
 
-        self.fields['endpoints'].queryset = Endpoint.objects.filter(debt_context=self.instance.test.engagement.debt_context)
+        self.fields['debt_endpoints'].queryset = Debt_Endpoint.objects.filter(debt_context=self.instance.debt_test.debt_engagement.debt_context)
         self.fields['mitigated_by'].queryset = get_authorized_users(Permissions.Test_Edit)
 
         # do not show checkbox if debt_item is not accepted and simple risk acceptance is disabled
@@ -3443,15 +3478,15 @@ class CopyFindingForm(forms.Form):
 
 
 class CopyDebtItemForm(forms.Form):
-    test = forms.ModelChoiceField(
+    debt_test = forms.ModelChoiceField(
         required=True,
-        queryset=Test.objects.none(),
+        queryset=Debt_Test.objects.none(),
         error_messages={'required': '*'})
 
     def __init__(self, *args, **kwargs):
-        authorized_lists = kwargs.pop('tests', None)
+        authorized_lists = kwargs.pop('debt_tests', None)
         super(CopyDebtItemForm, self).__init__(*args, **kwargs)
-        self.fields['test'].queryset = authorized_lists
+        self.fields['debt_test'].queryset = authorized_lists
 
 class FindingFormID(forms.ModelForm):
     id = forms.IntegerField(required=True,

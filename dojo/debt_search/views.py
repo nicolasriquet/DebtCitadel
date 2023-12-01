@@ -188,7 +188,7 @@ def simple_search(request):
             tagged_results = tagged_debt_items or tagged_debt_item_templates or tagged_debt_tests or tagged_debt_engagements or tagged_debt_contexts or tagged_endpoints
 
             if search_debt_item_templates:
-                logger.debug('searching debt_item templates')
+                logger.debug('searching Debt Item templates')
 
                 debt_item_templates = authorized_debt_item_templates
                 debt_item_templates = apply_tag_filters(debt_item_templates, operators)
@@ -202,7 +202,7 @@ def simple_search(request):
                 debt_item_templates = None
 
             if search_debt_tests:
-                logger.debug('searching debt_tests')
+                logger.debug('searching Debt Tests')
 
                 debt_tests = authorized_debt_tests
                 debt_tests = apply_tag_filters(debt_tests, operators)
@@ -217,7 +217,7 @@ def simple_search(request):
                 debt_tests = None
 
             if search_debt_engagements:
-                logger.debug('searching debt_engagements')
+                logger.debug('searching Debt Engagements')
 
                 debt_engagements = authorized_debt_engagements
                 debt_engagements = apply_tag_filters(debt_engagements, operators)
