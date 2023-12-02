@@ -1,0 +1,20 @@
+{% extends "debt_base.html" %}
+{% load event_tags %}
+{% block content %}
+    {{ block.super }}
+    <h3> Add or Edit a Planned Remediation Date</h3>
+    <h4>{{ debt_item.title }}</h4>
+      <p>Please provide the date the Debt Item will be remediated in the Debt Context it was discovered.</p>
+
+    <form class="form-horizontal" action="{% url 'remediation_date' debt_item.id %}" method="post">
+        {% csrf_token %}
+        {% include "dojo/form_fields.html" with form=form %}
+        <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-10">
+
+                <input class="btn btn-primary" name='submit' type="submit" value="Save" aria-label="Save"/>
+
+            </div>
+        </div>
+    </form>
+{% endblock %}

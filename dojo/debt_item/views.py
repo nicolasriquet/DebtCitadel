@@ -1569,7 +1569,7 @@ def remediation_date(request, fid):
 
     return render(
         request,
-        "dojo/remediation_date.html",
+        "dojo/debt_remediation_date.html",
         {"debt_item": debt_item, "debt_context_tab": debt_context_tab, "user": user, "form": form},
     )
 
