@@ -2079,12 +2079,27 @@ class DebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    intentionality = forms.ChoiceField(
+        choices=INTENTIONALITY_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    attitude = forms.ChoiceField(
+        choices=ATTITUDE_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     mitigation = forms.CharField(widget=forms.Textarea, required=False)
     impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
-    endpoints = forms.ModelMultipleChoiceField(queryset=Endpoint.objects.none(), required=False, label='Systems / Endpoints')
-    endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
+    debt_endpoints = forms.ModelMultipleChoiceField(queryset=Endpoint.objects.none(), required=False, label='Systems / Endpoints')
+    debt_endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Endpoints to add",
                                        help_text="The IP address, host name or full URL. You may enter one endpoint per line. "
                                                  "Each must be valid.",
                                        widget=forms.widgets.Textarea(attrs={'rows': '3', 'cols': '400'}))
@@ -2108,10 +2123,9 @@ class DebtItemForm(forms.ModelForm):
     #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
     #               'out_of_scope', 'risk_accept', 'under_defect_review')
 
-    field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
-                   'request', 'response', 'steps_to_reproduce', 'severity_justification', 'endpoints', 'endpoints_to_add', 'references',
-                   'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
-                   'out_of_scope', 'risk_accept', 'under_defect_review')
+    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
+                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+                   'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
         req_resp = None
@@ -2163,7 +2177,25 @@ class DebtItemForm(forms.ModelForm):
             self.fields['group'].queryset = self.instance.test.debt_item_group_set.all()
             self.fields['group'].initial = self.instance.debt_item_group
 
-        self.endpoints_to_add_list = []
+        self.debt_endpoints_to_add_list = []
+
+        # Hide inputs for fields we don't want to appear
+        self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
+            self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
+            self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
+            self.fields['component_name'].widget = self.fields['effort_for_fixing'].widget = \
+            self.fields['component_version'].widget = self.fields['static_debt_item'].widget = \
+            self.fields['dynamic_debt_item'].widget = self.fields['debt_endpoints'].widget =  \
+            self.fields['unique_id_from_tool'].widget = self.fields['vuln_id_from_tool'].widget = \
+            self.fields['sast_source_object'].widget = self.fields['sast_sink_object'].widget = \
+            self.fields['sast_source_line'].widget = self.fields['sast_source_file_path'].widget = \
+            self.fields['nb_occurences'].widget = self.fields['publish_date'].widget = \
+            self.fields['service'].widget = self.fields['planned_remediation_version'].widget = \
+            self.fields['severity_justification'].widget = self.fields['references'].widget = \
+            self.fields['under_defect_review'].widget = self.fields['debt_endpoints_to_add'].widget = \
+            self.fields['debt_endpoints'].widget = self.fields['request'].widget = \
+            self.fields['response'].widget = self.fields['vulnerability_ids'].widget = \
+            self.fields['debt_endpoints'].widget = self.fields['sla_start_date'].widget = forms.HiddenInput()
 
     def clean(self):
         cleaned_data = super(DebtItemForm, self).clean()
