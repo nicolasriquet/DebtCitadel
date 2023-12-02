@@ -1102,12 +1102,12 @@ class Product(models.Model):
         (OUTSOURCED_ORIGIN, _('Outsourced')),
     )
 
-    VERY_HIGH_CRITICALITY = 'very high'
-    HIGH_CRITICALITY = 'high'
-    MEDIUM_CRITICALITY = 'medium'
-    LOW_CRITICALITY = 'low'
-    VERY_LOW_CRITICALITY = 'very low'
-    NONE_CRITICALITY = 'none'
+    VERY_HIGH_CRITICALITY = 'Very High'
+    HIGH_CRITICALITY = 'High'
+    MEDIUM_CRITICALITY = 'Medium'
+    LOW_CRITICALITY = 'Low'
+    VERY_LOW_CRITICALITY = 'Very Low'
+    NONE_CRITICALITY = 'None'
     BUSINESS_CRITICALITY_CHOICES = (
         (VERY_HIGH_CRITICALITY, _('Very High')),
         (HIGH_CRITICALITY, _('High')),
@@ -1430,7 +1430,7 @@ class Debt_Context(models.Model):
             # ideally it's always prefetched and we can remove this code in the future
             self.active_verified_debt_item_count = Debt_Item.objects.filter(active=True,
                                                                             verified=True,
-                                                                            test__debt_engagement__debt_context=self).count()
+                                                                            debt_test__debt_engagement__debt_context=self).count()
             return self.active_verified_debt_item_count
 
     @cached_property
@@ -5871,51 +5871,48 @@ class Risk_Acceptance(models.Model):
 
 class Debt_Risk_Acceptance(models.Model):
     TREATMENT_ACCEPT = 'A'
-    TREATMENT_AVOID = 'V'
     TREATMENT_MITIGATE = 'M'
-    TREATMENT_FIX = 'F'
+    TREATMENT_PAY = 'P'
     TREATMENT_TRANSFER = 'T'
 
     TREATMENT_CHOICES = [
-        (TREATMENT_ACCEPT, 'Accept (The risk is acknowledged, yet remains)'),
-        (TREATMENT_AVOID, 'Avoid (Do not engage with whatever creates the risk)'),
-        (TREATMENT_MITIGATE, 'Mitigate (The risk still exists, yet compensating controls make it less of a threat)'),
-        (TREATMENT_FIX, 'Fix (The risk is eradicated)'),
-        (TREATMENT_TRANSFER, 'Transfer (The risk is transferred to a 3rd party)'),
+        (TREATMENT_ACCEPT, 'Accept (The debt is acknowledged, yet remains)'),
+        (TREATMENT_MITIGATE, 'Mitigate (The debt still exists, yet compensating actions make it less of a problem)'),
+        (TREATMENT_PAY, 'Pay (The debt is eliminated)'),
+        (TREATMENT_TRANSFER, 'Transfer (The debt is transferred to a 3rd party)'),
     ]
 
     TREATMENT_TRANSLATIONS = {
-        'A': 'Accept (The risk is acknowledged, yet remains)',
-        'V': 'Avoid (Do not engage with whatever creates the risk)',
-        'M': 'Mitigate (The risk still exists, yet compensating controls make it less of a threat)',
-        'F': 'Fix (The risk is eradicated)',
-        'T': 'Transfer (The risk is transferred to a 3rd party)',
+        'A': 'Accept (The debt is acknowledged, yet remains)',
+        'M': 'Mitigate (The debt still exists, yet compensating actions make it less of a problem)',
+        'P': 'Pay (The debt is eliminated)',
+        'T': 'Transfer (The debt is transferred to a 3rd party)',
     }
 
     name = models.CharField(max_length=300, null=False, blank=False, help_text=_("Descriptive name which in the future may also be used to group risk acceptances together across debt_engagements and debt_contexts"))
 
     accepted_debt_items = models.ManyToManyField(Debt_Item)
 
-    recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_FIX, help_text=_("Recommendation from the security team."), verbose_name=_('Security Recommendation'))
+    recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_PAY, help_text=_("Recommendation from the team."), verbose_name=_('Recommendation'))
 
     recommendation_details = models.TextField(null=True,
                                               blank=True,
-                                              help_text=_("Explanation of security recommendation"), verbose_name=_('Security Recommendation Details'))
+                                              help_text=_("Explanation of recommendation"), verbose_name=_('Recommendation Details'))
 
     decision = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_ACCEPT, help_text=_("Risk treatment decision by risk owner"))
     decision_details = models.TextField(default=None, blank=True, null=True, help_text=_('If a compensating control exists to mitigate the debt_item or reduce risk, then list the compensating control(s).'))
 
-    accepted_by = models.CharField(max_length=200, default=None, null=True, blank=True, verbose_name=_('Accepted By'), help_text=_("The person that accepts the risk, can be outside of DefectDojo."))
+    accepted_by = models.CharField(max_length=200, default=None, null=True, blank=True, verbose_name=_('Accepted By'), help_text=_("The person that accepts the risk, can be outside of Debt Citadel."))
     path = models.FileField(upload_to='risk/%Y/%m/%d',
                             editable=True, null=True,
                             blank=True, verbose_name=_('Proof'))
-    owner = models.ForeignKey(Dojo_User, editable=True, on_delete=models.RESTRICT, help_text=_("User in DefectDojo owning this acceptance. Only the owner and staff users can edit the risk acceptance."))
+    owner = models.ForeignKey(Dojo_User, editable=True, on_delete=models.RESTRICT, help_text=_("User in Debt Citadel owning this acceptance. Only the owner and staff users can edit the risk acceptance."))
 
-    expiration_date = models.DateTimeField(default=None, null=True, blank=True, help_text=_('When the risk acceptance expires, the debt_items will be reactivated (unless disabled below).'))
+    expiration_date = models.DateTimeField(default=None, null=True, blank=True, help_text=_('When the risk acceptance expires, the Debt Items will be reactivated (unless disabled below).'))
     expiration_date_warned = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) Date at which notice about the risk acceptance expiration was sent.'))
     expiration_date_handled = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) When the risk acceptance expiration was handled (manually or by the daily job).'))
-    reactivate_expired = models.BooleanField(null=False, blank=False, default=True, verbose_name=_('Reactivate debt_items on expiration'), help_text=_('Reactivate debt_items when risk acceptance expires?'))
-    restart_sla_expired = models.BooleanField(default=False, null=False, verbose_name=_('Restart SLA on expiration'), help_text=_("When enabled, the SLA for debt_items is restarted when the risk acceptance expires."))
+    reactivate_expired = models.BooleanField(null=False, blank=False, default=True, verbose_name=_('Reactivate debt_items on expiration'), help_text=_('Reactivate Debt Items when risk acceptance expires?'))
+    restart_sla_expired = models.BooleanField(default=False, null=False, verbose_name=_('Restart SLA on expiration'), help_text=_("When enabled, the SLA for Debt Items is restarted when the risk acceptance expires."))
 
     notes = models.ManyToManyField(Notes, editable=False)
     created = models.DateTimeField(auto_now_add=True, null=False)

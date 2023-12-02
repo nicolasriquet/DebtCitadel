@@ -27,11 +27,11 @@ from dojo.forms import CheckForm, \
     UploadThreatForm, DebtRiskAcceptanceForm, NoteForm, DoneForm, \
     EngForm, DebtEngForm, TestForm, DebtTestForm, ReplaceRiskAcceptanceProofForm, AddDebtItemsRiskAcceptanceForm, DeleteDebtEngagementForm, ImportScanForm, \
     CredMappingForm, JIRADebtEngagementForm, JIRAImportScanForm, TypedNoteForm, JIRAProjectForm, \
-    EditRiskAcceptanceForm
+    DebtEditRiskAcceptanceForm
 
 from dojo.models import Debt_Item, Debt_Context, Debt_Engagement, Debt_Test, \
     Check_List, Test_Import, Debt_Test_Import, Notes, \
-    Risk_Acceptance, Development_Environment, Endpoint, \
+    Debt_Risk_Acceptance, Development_Environment, Endpoint, \
     Cred_Mapping, Debt_Cred_Mapping, System_Settings, Note_Type, Debt_Context_API_Scan_Configuration
 from dojo.tools.factory import get_scan_types_sorted
 from dojo.utils import add_error_message_to_response, add_success_message_to_response, get_page_items, add_breadcrumb, handle_uploaded_threat, \
@@ -42,7 +42,7 @@ from dojo.debt_item.views import find_available_notetypes
 from functools import reduce
 from django.db.models.query import Prefetch, QuerySet
 import dojo.jira_link.helper as jira_helper
-import dojo.risk_acceptance.helper as ra_helper
+import dojo.debt_risk_acceptance.helper as ra_helper
 from dojo.risk_acceptance.helper import prefetch_for_expiration
 from dojo.finding.helper import NOT_ACCEPTED_FINDINGS_QUERY
 from dojo.debt_item.helper import NOT_ACCEPTED_DEBT_ITEMS_QUERY
@@ -844,7 +844,7 @@ def complete_checklist(request, eid):
     })
 
 
-@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Risk_Acceptance, 'eid')
 def add_risk_acceptance(request, eid, fid=None):
     eng = get_object_or_404(Debt_Engagement, id=eid)
     debt_item = None
@@ -919,14 +919,14 @@ def view_risk_acceptance(request, eid, raid):
     return view_edit_risk_acceptance(request, eid=eid, raid=raid, edit_mode=False)
 
 
-@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Risk_Acceptance, 'eid')
 def edit_risk_acceptance(request, eid, raid):
     return view_edit_risk_acceptance(request, eid=eid, raid=raid, edit_mode=True)
 
 
 # will only be called by view_risk_acceptance and edit_risk_acceptance
 def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
-    risk_acceptance = get_object_or_404(Risk_Acceptance, pk=raid)
+    risk_acceptance = get_object_or_404(Debt_Risk_Acceptance, pk=raid)
     eng = get_object_or_404(Debt_Engagement, pk=eid)
 
     if edit_mode and not eng.debt_context.enable_full_risk_acceptance:
@@ -943,7 +943,7 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
 
         if 'decision' in request.POST:
             old_expiration_date = risk_acceptance.expiration_date
-            risk_acceptance_form = EditRiskAcceptanceForm(request.POST, request.FILES, instance=risk_acceptance)
+            risk_acceptance_form = DebtEditRiskAcceptanceForm(request.POST, request.FILES, instance=risk_acceptance)
             errors = errors or not risk_acceptance_form.is_valid()
             if not errors:
                 logger.debug('path: %s', risk_acceptance_form.cleaned_data['path'])
@@ -1045,7 +1045,7 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
 
     else:
         if edit_mode:
-            risk_acceptance_form = EditRiskAcceptanceForm(instance=risk_acceptance)
+            risk_acceptance_form = DebtEditRiskAcceptanceForm(instance=risk_acceptance)
 
     note_form = NoteForm()
     replace_form = ReplaceRiskAcceptanceProofForm(instance=risk_acceptance)
@@ -1064,7 +1064,7 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
     debt_context_tab = Debt_Context_Tab(eng.debt_context, title="Risk Acceptance", tab="debt_engagements")
     debt_context_tab.setDebtEngagement(eng)
     return render(
-        request, 'dojo/view_risk_acceptance.html', {
+        request, 'dojo/debt_view_risk_acceptance.html', {
             'risk_acceptance': risk_acceptance,
             'debt_engagement': eng,
             'debt_context_tab': debt_context_tab,
@@ -1083,9 +1083,9 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
         })
 
 
-@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Risk_Acceptance, 'eid')
 def expire_risk_acceptance(request, eid, raid):
-    risk_acceptance = get_object_or_404(prefetch_for_expiration(Risk_Acceptance.objects.all()), pk=raid)
+    risk_acceptance = get_object_or_404(prefetch_for_expiration(Debt_Risk_Acceptance.objects.all()), pk=raid)
     eng = get_object_or_404(Debt_Engagement, pk=eid)
 
     ra_helper.expire_now(risk_acceptance)
@@ -1093,9 +1093,9 @@ def expire_risk_acceptance(request, eid, raid):
     return redirect_to_return_url_or_else(request, reverse("view_risk_acceptance", args=(eid, raid)))
 
 
-@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Risk_Acceptance, 'eid')
 def reinstate_risk_acceptance(request, eid, raid):
-    risk_acceptance = get_object_or_404(prefetch_for_expiration(Risk_Acceptance.objects.all()), pk=raid)
+    risk_acceptance = get_object_or_404(prefetch_for_expiration(Debt_Risk_Acceptance.objects.all()), pk=raid)
     eng = get_object_or_404(Debt_Engagement, pk=eid)
 
     if not eng.debt_context.enable_full_risk_acceptance:
@@ -1106,9 +1106,9 @@ def reinstate_risk_acceptance(request, eid, raid):
     return redirect_to_return_url_or_else(request, reverse("view_risk_acceptance", args=(eid, raid)))
 
 
-@user_is_authorized(Debt_Engagement, Permissions.Risk_Acceptance, 'eid')
+@user_is_authorized(Debt_Engagement, Permissions.Debt_Risk_Acceptance, 'eid')
 def delete_risk_acceptance(request, eid, raid):
-    risk_acceptance = get_object_or_404(Risk_Acceptance, pk=raid)
+    risk_acceptance = get_object_or_404(Debt_Risk_Acceptance, pk=raid)
     eng = get_object_or_404(Debt_Engagement, pk=eid)
 
     ra_helper.delete(eng, risk_acceptance)
@@ -1127,7 +1127,7 @@ def download_risk_acceptance(request, eid, raid):
 
     mimetypes.init()
 
-    risk_acceptance = get_object_or_404(Risk_Acceptance, pk=raid)
+    risk_acceptance = get_object_or_404(Debt_Risk_Acceptance, pk=raid)
 
     response = StreamingHttpResponse(
         FileIterWrapper(

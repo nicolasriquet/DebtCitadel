@@ -369,10 +369,10 @@
                 <div id="risk" class="col-md-12">
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            <h4> Risk Acceptance
+                            <h4>Decisions
                                 {% if debt_engagement.debt_context.enable_full_risk_acceptance %}
                                     {% if debt_engagement|has_object_permission:"Risk_Acceptance" %}
-                                        <a title="Add Risk Acceptance..." class="pull-right btn btn-sm btn-primary"
+                                        <a title="Make a Decision" class="pull-right btn btn-sm btn-primary"
                                             href="{% url 'add_risk_acceptance' debt_engagement.id %}?return_url={{ request.get_full_path|urlencode }}"><span class="fa-solid fa-plus"></span></a>
                                         </a>
                                     {% endif %}
@@ -405,7 +405,7 @@
                                                             <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="true">&nbsp;<b class="fa-solid fa-ellipsis-vertical"></b>&nbsp;</a>
                                                             <ul class="dropdown-menu">
                                                                 {% with debt_engagement=debt_engagement %}
-                                                                    {% include 'dojo/snippets/risk_acceptance_actions_snippet.html' with include_view=True %}
+                                                                    {% include 'dojo/snippets/debt_risk_acceptance_actions_snippet.html' with include_view=True %}
                                                                 {% endwith %}
                                                             </ul>
                                                         </li>
@@ -759,7 +759,7 @@
                                     {% endif %}
                                 </td>
                             </tr>
-                            <tr>
+                            <!--<tr>
                                 <td>
                                     <strong>
                                         {% if debt_engagement.debt_engagement_type == "Interactive" %}
@@ -778,8 +778,8 @@
                                         None Assigned
                                     {% endif %}
                                 </td>
-                            </tr>
-                            <tr>
+                            </tr>-->
+                            <!--<tr>
                                 <td><strong>Tracker</strong></td>
                                 <td>
                                     {% if debt_engagement.tracker %}
@@ -789,8 +789,8 @@
                                         {{ debt_engagement.tracker|notspecified}}
                                     {% endif %}
                                 </td>
-                            </tr>
-                            <tr>
+                            </tr>-->
+                            <!--<tr>
                                 <td><strong>Repo</strong></td>
                                 <td>
                                     {% if debt_engagement.source_code_management_uri %}
@@ -801,7 +801,7 @@
                                         {{ debt_engagement.source_code_management_uri|notspecified}}
                                     {% endif %}
                                 </td>
-                            </tr>
+                            </tr>-->
                             <tr>
                                 <td><strong>Identification Session Strategy</strong></td>
                                 <td>
@@ -853,7 +853,7 @@
                 </div>
             </div>
             {% if debt_engagement.debt_engagement_type == "CI/CD" %}
-                <div>
+                <!--<div>
                     <div class="panel panel-default-secondary">
                         <div class="panel-heading">
                             <h3 class="panel-title"><span class="fa-solid fa-server" aria-hidden="true"></span>
@@ -909,10 +909,10 @@
                             </table>
                         </div>
                     </div>
-                </div>
+                </div>-->
             {% endif %}
             {% if system_settings.enable_credentials %}
-                <div>
+                <!--<div>
                     <div class="panel panel-default-secondary">
                         <div class="panel-heading">
                             <h4><span class="fa-solid fa-key" aria-hidden="true"></span>
@@ -1013,7 +1013,7 @@
                             </table>
                         </div>
                     </div>
-                </div>
+                </div>-->
             {% endif %}
         </div>
     </div>
@@ -1079,7 +1079,7 @@
             })
         });
         
-        {% include 'dojo/snippets/risk_acceptance_actions_snippet_js.html' %}
+        {% include 'dojo/snippets/debt_risk_acceptance_actions_snippet_js.html' %}
         
     </script>
 {% endblock %}

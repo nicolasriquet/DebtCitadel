@@ -103,7 +103,7 @@
             {% if debt_items %}
                 <div role="tabpanel" class="table-responsive tab-pane {% if activetab == 'debt_items' %}active{% endif %}" id="tabs-1">
                     {% comment %} include inherits the current context so debt_items, filtered and other variables {% endcomment %}
-                    {% include "dojo/debt_items_list_snippet.html" with form_id="custom_search_filter" %}
+                    {% include "dojo/snippets/debt_items_list_snippet.html" with form_id="custom_search_filter" %}
                 </div>
             {% endif %}
             {% if vulnerability_ids %}

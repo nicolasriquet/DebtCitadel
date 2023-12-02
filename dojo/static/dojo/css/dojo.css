@@ -161,7 +161,7 @@ a:hover {
     background-color: #ffffff;
 }
 
-.navbar-brand {
+.navbarnavbar-brand {
     padding: 5px 5px;
     margin-left: 0px;
 }
@@ -1352,7 +1352,9 @@ div.custom-search-form {
     font-size: 16px;
     //background-color: rgba(32, 166, 216, 0.75);
     //background-color: rgba(163, 73, 164, 1);
-    background-color: rgba(0, 153, 153, 1);
+    //background-color: rgba(0, 153, 153, 1);
+    //background-color: rgba(201, 67, 88, 1);
+    background-color: rgba(84, 100, 116, .9);//#546474;
     border-color: #A1C0D7;
 }
 

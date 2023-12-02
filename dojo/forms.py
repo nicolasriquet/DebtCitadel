@@ -25,10 +25,10 @@ from dojo.endpoint.utils import endpoint_get_or_create, endpoint_filter, \
 from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_Item_Group, \
     Product_Type, Debt_Context_Type, Product, Debt_Context, Note_Type, \
     Check_List, SLA_Configuration, User, Engagement, Debt_Engagement, Test, Debt_Test, Test_Type, Debt_Test_Type, Notes, Risk_Acceptance, \
-    Development_Environment, Dojo_User, Endpoint, Debt_Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
+    Debt_Risk_Acceptance, Development_Environment, Dojo_User, Endpoint, Debt_Endpoint, Stub_Finding, Stub_Debt_Item, Finding_Template, Debt_Item_Template, \
     JIRA_Issue, JIRA_Project, Debt_JIRA_Project, JIRA_Instance, GITHUB_Issue, GITHUB_PKey, GITHUB_Conf, UserContactInfo, Tool_Type, \
     Tool_Configuration, Tool_Product_Settings, Tool_Debt_Context_Settings, Cred_User, Cred_Mapping, System_Settings, \
-    Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
+    Notifications, Debt_Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
     Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, Debt_Engagement_Presets, DojoMeta, \
     Engagement_Survey, Answered_Survey, TextAnswer, ChoiceAnswer, Choice, Question, TextQuestion, \
     ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, PAYMENT_COST_CHOICES, INTENTIONALITY_CHOICES, ATTITUDE_CHOICES, \
@@ -176,7 +176,9 @@ class Debt_Context_TypeForm(forms.ModelForm):
 
     class Meta:
         model = Debt_Context_Type
-        fields = ['name', 'description', 'critical_debt_context', 'key_debt_context']
+        #fields = ['name', 'description', 'critical_debt_context', 'key_debt_context']
+        fields = ['name', 'description']
+
 
 
 class Delete_Product_TypeForm(forms.ModelForm):
@@ -940,6 +942,20 @@ class EditRiskAcceptanceForm(forms.ModelForm):
         model = Risk_Acceptance
         exclude = ['accepted_findings', 'notes']
 
+
+class DebtEditRiskAcceptanceForm(forms.ModelForm):
+    # unfortunately django forces us to repeat many things here. choices, default, required etc.
+    recommendation = forms.ChoiceField(choices=Debt_Risk_Acceptance.TREATMENT_CHOICES, initial=Debt_Risk_Acceptance.TREATMENT_ACCEPT, widget=forms.RadioSelect)
+    decision = forms.ChoiceField(choices=Debt_Risk_Acceptance.TREATMENT_CHOICES, initial=Debt_Risk_Acceptance.TREATMENT_ACCEPT, widget=forms.RadioSelect)
+
+    path = forms.FileField(label="Proof", required=False, widget=forms.widgets.FileInput(attrs={"accept": ".jpg,.png,.pdf"}))
+    expiration_date = forms.DateTimeField(required=False, widget=forms.TextInput(attrs={'class': 'datepicker'}))
+
+    class Meta:
+        model = Debt_Risk_Acceptance
+        exclude = ['accepted_debt_items', 'notes']
+
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['path'].help_text = 'Existing proof uploaded: %s' % self.instance.filename() if self.instance.filename() else 'None'
@@ -974,10 +990,10 @@ class RiskAcceptanceForm(EditRiskAcceptanceForm):
         self.fields['accepted_findings'].queryset = get_authorized_findings(Permissions.Risk_Acceptance)
 
 
-class DebtRiskAcceptanceForm(EditRiskAcceptanceForm):
+class DebtRiskAcceptanceForm(DebtEditRiskAcceptanceForm):
     # path = forms.FileField(label="Proof", required=False, widget=forms.widgets.FileInput(attrs={"accept": ".jpg,.png,.pdf"}))
     # expiration_date = forms.DateTimeField(required=False, widget=forms.TextInput(attrs={'class': 'datepicker'}))
-    accepted_findings = forms.ModelMultipleChoiceField(
+    accepted_debt_items = forms.ModelMultipleChoiceField(
         queryset=Debt_Item.objects.none(), required=True,
         widget=forms.widgets.SelectMultiple(attrs={'size': 10}),
         help_text=('Active, verified Debt Items listed, please select to add Debt Items.'))
@@ -986,7 +1002,7 @@ class DebtRiskAcceptanceForm(EditRiskAcceptanceForm):
                             label='Notes')
 
     class Meta:
-        model = Risk_Acceptance
+        model = Debt_Risk_Acceptance
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
@@ -998,9 +1014,9 @@ class DebtRiskAcceptanceForm(EditRiskAcceptanceForm):
             # logger.debug('setting default expiration_date: %s', expiration_date)
             self.fields['expiration_date'].initial = expiration_date
         # self.fields['path'].help_text = 'Existing proof uploaded: %s' % self.instance.filename() if self.instance.filename() else 'None'
-        self.fields['accepted_debt_items'].queryset = get_authorized_debt_items(Permissions.Risk_Acceptance)
+        self.fields['accepted_debt_items'].queryset = get_authorized_debt_items(Permissions.Debt_Risk_Acceptance)
 
-        self.fields['accepted_findings'].widget = forms.HiddenInput()
+        #self.fields['accepted_findings'].widget = forms.HiddenInput()
 
 
 class BaseManageFileFormSet(forms.BaseModelFormSet):
@@ -1053,13 +1069,13 @@ class AddDebtItemsRiskAcceptanceForm(forms.ModelForm):
         help_text=('Select to add debt_items.'), label="Add debt_items as accepted:")
 
     class Meta:
-        model = Risk_Acceptance
+        model = Debt_Risk_Acceptance
         fields = ['accepted_debt_items']
         # exclude = ('name', 'owner', 'path', 'notes', 'accepted_by', 'expiration_date', 'compensating_control')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['accepted_debt_items'].queryset = get_authorized_debt_items(Permissions.Risk_Acceptance)
+        self.fields['accepted_debt_items'].queryset = get_authorized_debt_items(Permissions.Debt_Risk_Acceptance)
 
 
 class CheckForm(forms.ModelForm):
@@ -1538,6 +1554,7 @@ class AddDebtItemForm(forms.ModelForm):
         self.debt_endpoints_to_add_list = []
 
         # Hide inputs for fields we don't want to appear
+        # !!! Should use fields = ['a', 'b', ...] in "class Meta" instead !!!
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
@@ -1738,6 +1755,7 @@ class AdHocDebtItemForm(forms.ModelForm):
         self.debt_endpoints_to_add_list = []
 
         # Hide inputs for fields we don't want to appear
+        # !!! Should use fields = ['a', 'b', ...] in "class Meta" instead !!!
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
@@ -1897,6 +1915,7 @@ class PromoteDebtItemForm(forms.ModelForm):
             self.fields['debt_endpoints'].queryset = Debt_Endpoint.objects.filter(debt_context=debt_context)
 
         # Hide inputs for fields we don't want to appear
+        # !!! Should use fields = ['a', 'b', ...] in "class Meta" instead !!!
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
@@ -2180,6 +2199,7 @@ class DebtItemForm(forms.ModelForm):
         self.debt_endpoints_to_add_list = []
 
         # Hide inputs for fields we don't want to appear
+        # !!! Should use fields = ['a', 'b', ...] in "class Meta" instead !!!
         self.fields['cwe'].widget = self.fields['cvssv3'].widget = self.fields['cvssv3_score'].widget = \
             self.fields['steps_to_reproduce'].widget = self.fields['debt_endpoints'].widget = \
             self.fields['defect_review_requested_by'].widget = self.fields['line'].widget = \
@@ -4037,16 +4057,21 @@ class DebtContextNotificationsForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(DebtContextNotificationsForm, self).__init__(*args, **kwargs)
         if not self.instance.id:
-            self.initial['engagement_added'] = ''
-            self.initial['close_engagement'] = ''
-            self.initial['test_added'] = ''
+            self.initial['debt_engagement_added'] = ''
+            self.initial['close_debt_engagement'] = ''
+            self.initial['debt_test_added'] = ''
             self.initial['scan_added'] = ''
             self.initial['sla_breach'] = ''
             self.initial['risk_acceptance_expiration'] = ''
 
+        self.fields["debt_engagement_added"].label = "Identification Campaign added"
+        self.fields["close_debt_engagement"].label = "Close Identification Campaign"
+        self.fields["debt_test_added"].label = "Identification Session added"
+        self.fields["scan_added"].widget = forms.HiddenInput()
+
     class Meta:
-        model = Notifications
-        fields = ['engagement_added', 'close_engagement', 'test_added', 'scan_added', 'sla_breach', 'risk_acceptance_expiration']
+        model = Debt_Notifications
+        fields = ['debt_engagement_added', 'close_debt_engagement', 'debt_test_added', 'scan_added', 'sla_breach', 'risk_acceptance_expiration']
 
 class AjaxChoiceField(forms.ChoiceField):
     def valid_value(self, value):

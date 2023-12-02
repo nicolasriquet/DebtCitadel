@@ -85,7 +85,7 @@ def add_debt_context_type(request):
             member.save()
             messages.add_message(request,
                                  messages.SUCCESS,
-                                 _('debt_context type added successfully.'),
+                                 _('Debt Context Type added successfully.'),
                                  extra_tags='alert-success')
             create_notification(event='debt_context_type_added', title=debt_context_type.name,
                                 debt_context_type=debt_context_type,

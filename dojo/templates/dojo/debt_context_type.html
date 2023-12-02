@@ -52,8 +52,8 @@
                             <th>{% dojo_sort request 'Debt Context Type' 'name' 'asc' %}</th>
                             <th>{% trans "Debt Context count" %}</th>
                             <th>{% trans "Active (Verified) debt items" %}</th>
-                            <th class="text-center">{% trans "Critical debt context" %}</th>
-                            <th class="text-center">{% trans "Key debt context" %}</th>
+                            <!--<th class="text-center">{% trans "Critical debt context" %}</th>
+                            <th class="text-center">{% trans "Key debt context" %}</th>-->
                         </tr>
                         </thead>
                         <tbody>
@@ -106,7 +106,7 @@
                                     <a href="{% url 'open_debt_items' %}?test__engagement__debt_context__debt_context_type={{ pt.id }}"><b>{{ pt.active_debt_items_count }}</b></a>
                                     &nbsp;(<a href="{% url 'verified_debt_items' %}?test__engagement__debt_context__debt_context_type={{ pt.id }}">{{ pt.active_verified_debt_items_count }}</a>)
                                 </td>
-                                <td class="text-center">
+                                <!--<td class="text-center">
                                     {% if pt.critical_debt_context %}
                                         <i class="text-success fa-solid fa-check"></i>
                                     {% else %}
@@ -119,7 +119,7 @@
                                     {% else %}
                                         <i class="text-danger fa-solid fa-xmark"></i>
                                     {% endif %}
-                                </td>
+                                </td>-->
                             </tr>
                         {% endfor %}
                         </tbody>

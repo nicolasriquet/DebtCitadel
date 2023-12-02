@@ -156,7 +156,7 @@
                                 {% if debt_item.risk_accepted %}
                                     <li role="presentation">
                                     <a href="{% url 'risk_unaccept_debt_item' debt_item.id %}?return_url={{ request.get_full_path|urlencode }}">
-                                        <i class="fa-solid fa-circle-exclamation"></i> Unaccept Risk
+                                        <i class="fa-solid fa-circle-exclamation"></i> Revert Decision
                                     </a>
                                     </li>
                                 {% else %}
@@ -171,7 +171,7 @@
                                         {% if debt_item.debt_test.debt_engagement.debt_context.enable_full_risk_acceptance %}
                                         <li role="presentation">
                                             <a href ="{% url 'add_risk_acceptance' debt_item.debt_test.debt_engagement.id debt_item.id %}?return_url={{ request.get_full_path|urlencode }}">
-                                                <i class="fa-solid fa-circle-exclamation"></i> Add Risk Acceptance...
+                                                <i class="fa-solid fa-circle-exclamation"></i> Make a Decision
                                             </a>
                                         </li>
                                         {% endif %}

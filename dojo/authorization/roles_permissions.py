@@ -72,6 +72,7 @@ class Permissions(IntEnum):
     Debt_Engagement_Delete = 1207
 
     Risk_Acceptance = 1208
+    Debt_Risk_Acceptance = 1208
 
     Test_View = 1302
     Test_Add = 1303
@@ -206,6 +207,7 @@ class Permissions(IntEnum):
             Permissions.Engagement_Edit,
             Permissions.Engagement_Delete,
             Permissions.Risk_Acceptance,
+            Permissions.Debt_Risk_Acceptance,
             Permissions.Test_Add,
             Permissions.Import_Scan_Result,
             Permissions.Note_Add,
@@ -238,6 +240,7 @@ class Permissions(IntEnum):
             Permissions.Finding_Delete,
             Permissions.Note_Add,
             Permissions.Risk_Acceptance,
+            Permissions.Debt_Risk_Acceptance,
             Permissions.Note_Delete,
             Permissions.Note_Edit,
             Permissions.Note_View_History,
@@ -390,6 +393,7 @@ def get_roles_with_permissions():
             Permissions.Engagement_Add,
             Permissions.Engagement_Edit,
             Permissions.Risk_Acceptance,
+            Permissions.Debt_Risk_Acceptance,
             Permissions.Test_View,
             Permissions.Test_Add,
             Permissions.Test_Edit,
@@ -441,6 +445,7 @@ def get_roles_with_permissions():
             Permissions.Engagement_Edit,
             Permissions.Engagement_Delete,
             Permissions.Risk_Acceptance,
+            Permissions.Debt_Risk_Acceptance,
             Permissions.Test_View,
             Permissions.Test_Add,
             Permissions.Test_Edit,
@@ -518,6 +523,7 @@ def get_roles_with_permissions():
             Permissions.Engagement_Edit,
             Permissions.Engagement_Delete,
             Permissions.Risk_Acceptance,
+            Permissions.Debt_Risk_Acceptance,
             Permissions.Test_View,
             Permissions.Test_Add,
             Permissions.Test_Edit,

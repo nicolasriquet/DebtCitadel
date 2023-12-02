@@ -1194,7 +1194,7 @@ class DeleteDebtItem(View):
         request, success = self.process_form(request, debt_item, context)
         # Handle the case of a successful form
         if success:
-            return redirect_to_return_url_or_else(request, reverse("view_test", args=(debt_item.debt_test.id,)))
+            return redirect_to_return_url_or_else(request, reverse("view_debt_test", args=(debt_item.debt_test.id,)))
         raise PermissionDenied()
 
 
@@ -1286,7 +1286,7 @@ def close_debt_item(request, fid):
                     url=reverse("view_debt_item", args=(debt_item.id,)),
                 )
                 return HttpResponseRedirect(
-                    reverse("view_test", args=(debt_item.debt_test.id,))
+                    reverse("view_debt_test", args=(debt_item.debt_test.id,))
                 )
             else:
                 return HttpResponseRedirect(
@@ -1375,7 +1375,7 @@ def defect_debt_item_review(request, fid):
             messages.add_message(
                 request, messages.SUCCESS, "Defect Reviewed", extra_tags="alert-success"
             )
-            return HttpResponseRedirect(reverse("view_test", args=(debt_item.debt_test.id,)))
+            return HttpResponseRedirect(reverse("view_debt_test", args=(debt_item.debt_test.id,)))
 
     else:
         form = DefectDebtItemForm()
@@ -2012,7 +2012,7 @@ def add_stub_debt_item(request, tid):
                 extra_tags="alert-danger",
             )
     add_breadcrumb(title="Add Stub Debt Item", top_level=False, request=request)
-    return HttpResponseRedirect(reverse("view_test", args=(tid,)))
+    return HttpResponseRedirect(reverse("view_debt_test", args=(tid,)))
 
 
 @user_is_authorized(Stub_Debt_Item, Permissions.Debt_Item_Delete, "fid")

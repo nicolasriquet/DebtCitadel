@@ -206,7 +206,7 @@
 
 <!-- Benchmark Tab -->
 {% if system_settings.enable_benchmark %}
-<div class="row">
+<!--<div class="row">
   <div class="col-md-12">
     <div class="panel panel-default">
       <div class="panel-heading">
@@ -249,7 +249,7 @@
         </ul>
     </div>
   </div>
-</div>
+</div>-->
 {% endif %}
 
     <div class="panel panel-default">
@@ -445,7 +445,7 @@
             <td><strong>{% trans "Debt Context Type" %}</strong></td>
             <td>{{ debt_context.debt_context_type|notspecified }}</td>
           </tr>
-          <tr>
+          <!--<tr>
             <td><strong>{% trans "Platform" %}</strong></td>
             <td>{{ debt_context.get_platform_display|notspecified }}</td>
           </tr>
@@ -476,7 +476,7 @@
                 {{ debt_context.revenue|notspecified }}
               {% endif %}
             </td>
-          </tr>
+          </tr>-->
           {% with jira_project=debt_context|jira_project %}
             {% if jira_project %}
             <tr>

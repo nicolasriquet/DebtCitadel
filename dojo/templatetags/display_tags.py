@@ -943,7 +943,7 @@ def debt_item_display_status(debt_item):
     if 'Risk Accepted' in display_status:
         ra = debt_item.risk_acceptance
         if ra:
-            url = reverse('view_risk_acceptance', args=(debt_item.test.debt_engagement.id, ra.id, ))
+            url = reverse('view_risk_acceptance', args=(debt_item.debt_test.debt_engagement.id, ra.id, ))
             info = ra.name_and_expiration_info
             link = '<a href="' + url + '" class="has-popover" data-trigger="hover" data-placement="right" data-content="' + escape(info) + '" data-container="body" data-original-title="Risk Acceptance">Risk Accepted</a>'
             display_status = display_status.replace('Risk Accepted', link)
