@@ -48,10 +48,10 @@ deduplicationLogger = logging.getLogger("dojo.specific-loggers.deduplication")
 SEVERITY_CHOICES = (('Info', 'Info'), ('Low', 'Low'), ('Medium', 'Medium'),
                     ('High', 'High'), ('Critical', 'Critical'))
 
-PAYMENT_COST_CHOICES = (('Extra Large (XL)','Extra Large (XL)'), ('Large (L)','Large (L)'), ('Medium (M)','Medium (M)'),
-                ('Small (S)','Small (S)'), ('Extra Small (XS)','Extra Small (XS)'))
+PAYMENT_COST_CHOICES = (('Extra Large (XL)', 'Extra Large (XL)'), ('Large (L)', 'Large (L)'), ('Medium (M)', 'Medium (M)'),
+                ('Small (S)', 'Small (S)'), ('Extra Small (XS)', 'Extra Small (XS)'))
 
-INTENTIONALITY_CHOICES = (('Deliberate','Deliberate'), ('Inadvertent','Inadvertent'))
+INTENTIONALITY_CHOICES = (('Deliberate', 'Deliberate'), ('Inadvertent', 'Inadvertent'))
 
 ATTITUDE_CHOICES = (('Prudent','Prudent'), ('Reckless','Reckless'))
 
@@ -5871,22 +5871,22 @@ class Risk_Acceptance(models.Model):
 
 class Debt_Risk_Acceptance(models.Model):
     TREATMENT_ACCEPT = 'A'
-    TREATMENT_MITIGATE = 'M'
     TREATMENT_PAY = 'P'
+    TREATMENT_MITIGATE = 'M'
     TREATMENT_TRANSFER = 'T'
 
     TREATMENT_CHOICES = [
-        (TREATMENT_ACCEPT, 'Accept (The debt is acknowledged, yet remains)'),
-        (TREATMENT_MITIGATE, 'Mitigate (The debt still exists, yet compensating actions make it less of a problem)'),
+        (TREATMENT_ACCEPT, 'Accept (The debt is acknowledged but remains, i.e., the risk is accepted)'),
         (TREATMENT_PAY, 'Pay (The debt is eliminated)'),
-        (TREATMENT_TRANSFER, 'Transfer (The debt is transferred to a 3rd party)'),
+        (TREATMENT_MITIGATE, 'Mitigate (The debt still exists but compensating actions make it less of a problem, i.e., less severe)'),
+        (TREATMENT_TRANSFER, 'Transfer (the debt payment or mitigation is transferred to a dedicated project or to a 3rd party)'),
     ]
 
     TREATMENT_TRANSLATIONS = {
-        'A': 'Accept (The debt is acknowledged, yet remains)',
-        'M': 'Mitigate (The debt still exists, yet compensating actions make it less of a problem)',
+        'A': 'Accept (The debt is acknowledged but remains, i.e., the risk is accepted)',
         'P': 'Pay (The debt is eliminated)',
-        'T': 'Transfer (The debt is transferred to a 3rd party)',
+        'M': 'Mitigate (The debt still exists but compensating actions make it less of a problem, i.e., less severe)',
+        'T': 'Transfer (the debt payment or mitigation is transferred to a dedicated project or to a 3rd party)',
     }
 
     name = models.CharField(max_length=300, null=False, blank=False, help_text=_("Descriptive name which in the future may also be used to group risk acceptances together across debt_engagements and debt_contexts"))

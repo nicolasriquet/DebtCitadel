@@ -1163,6 +1163,16 @@
     }
   },
   {
+    "model": "dojo.debt_test_type",
+    "pk": 4,
+    "fields": {
+      "name": "HR Information",
+      "static_tool": false,
+      "dynamic_tool": false,
+      "active": true
+    }
+  },
+  {
     "model": "dojo.debt_test",
     "pk": 1,
     "fields": {
