@@ -1141,8 +1141,8 @@ class DebtEngagementDirectFilter(DojoFilter):
         field_labels={
             'target_start': 'Start date',
             'name': 'Debt_Engagement',
-            'debt_context__name': 'Debt_Context Name',
-            'debt_context__prod_type__name': 'Debt_Context Type',
+            'debt_context__name': 'Debt Context Name',
+            'debt_context__prod_type__name': 'Debt Context Type',
             'lead__first_name': 'Lead',
         }
 
@@ -1262,8 +1262,8 @@ class DebtEngagementFilter(DojoFilter):
             ('debt_context_type__name', 'debt_context_type__name'),
         ),
         field_labels={
-            'name': 'Debt_Context Name',
-            'debt_context_type__name': 'Debt_Context Type',
+            'name': 'Debt Context Name',
+            'debt_context_type__name': 'Debt Context Type',
         }
 
     )
@@ -1627,11 +1627,11 @@ class ProductFilter(DojoFilter):
 
 
 class DebtContextFilter(DojoFilter):
-    name = CharFilter(lookup_expr='icontains', label="Debt_Context Name")
-    name_exact = CharFilter(field_name='name', lookup_expr='iexact', label="Exact Debt_Context Name")
+    name = CharFilter(lookup_expr='icontains', label="Debt Context Name")
+    name_exact = CharFilter(field_name='name', lookup_expr='iexact', label="Exact Debt Context Name")
     debt_context_type = ModelMultipleChoiceFilter(
         queryset=Debt_Context_Type.objects.none(),
-        label="Debt_Context Type")
+        label="Debt Context Type")
     business_criticality = MultipleChoiceFilter(choices=Debt_Context.BUSINESS_CRITICALITY_CHOICES)
     platform = MultipleChoiceFilter(choices=Debt_Context.PLATFORM_CHOICES)
     lifecycle = MultipleChoiceFilter(choices=Debt_Context.LIFECYCLE_CHOICES)
@@ -1741,9 +1741,9 @@ class DebtContextFilter(DojoFilter):
             ('internet_accessible', 'internet_accessible'),
         ),
         field_labels={
-            'name': 'Debt_Context Name',
-            'name_exact': 'Exact Debt_Context Name',
-            'debt_context_type__name': 'Debt_Context Type',
+            'name': 'Debt Context Name',
+            'name_exact': 'Exact Debt Context Name',
+            'debt_context_type__name': 'Debt Context Type',
             'business_criticality': 'Business Criticality',
             'platform': 'Platform ',
             'lifecycle': 'Lifecycle ',
@@ -2549,7 +2549,7 @@ class DebtItemFilter(DebtItemFilterWithTags):
             'risk_acceptance__created__date': 'Acceptance Date',
             'mitigated': 'Mitigated Date',
             'title': 'Debt_Item Name',
-            'debt_test__debt_engagement__debt_context__name': 'Debt_Context Name',
+            'debt_test__debt_engagement__debt_context__name': 'Debt Context Name',
         }
     )
 

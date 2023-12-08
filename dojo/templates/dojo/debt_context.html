@@ -54,8 +54,8 @@
                             <th>{% dojo_sort request 'Debt Context' 'name' 'asc' %}</th>
                             <th>Tags</th>
                             <th>{% dojo_sort request 'Debt Context Type' 'debt_context_type__name' %}</th>
-                            <th> Criticality</th>
-                            <th> Metadata</th>
+                            <th>Criticality</th>
+                            <th>Metadata</th>
                             <th class="text-center">Identification Campaigns</th>
                             {% if system_settings.enable_jira %}
                             <th class="text-center">Jira</th>
@@ -210,11 +210,11 @@
                                   {{ debt_context.internet_accessible|internet_accessible_icon }}
                                 </td>
                                 <td class="text-center">
-                                  {% if debt_context.last_engagement_date %}
-                                    <i class="fa-solid fa-calendar-days happy-green-color has-popover" title="<i class='fa-solid fa-bullseye'></i> <b>Engagements</b>" data-trigger="hover" data-placement="bottom" data-container="body" data-html="true"
-                                    data-content="{{ debt_context.active_engagement_count }} Active,
-                                    {{ debt_context.closed_engagement_count }} Closed<br>
-                                    <b>Last Assessed:</b> {{ debt_context.last_engagement_date }}"></i>
+                                  {% if debt_context.last_debt_engagement_date %}
+                                    <i class="fa-solid fa-calendar-days happy-green-color has-popover" title="<i class='fa-solid fa-bullseye'></i> <b>Identification Campaigns</b>" data-trigger="hover" data-placement="bottom" data-container="body" data-html="true"
+                                    data-content="{{ debt_context.active_debt_engagement_count }} Active,
+                                    {{ debt_context.closed_debt_engagement_count }} Closed<br>
+                                    <b>Last Assessed:</b> {{ debt_context.last_debt_engagement_date }}"></i>
                                   {% else %}
                                     <i class="fa-solid fa-calendar-days text-danger has-popover" title="<i class='fa-solid fa-bullseye'></i> <b>Identification Campaigns</b>" data-trigger="hover" data-container="body" data-placement="bottom" data-html="true"
                                     data-content="No Identification Campaigns Exist"></i>

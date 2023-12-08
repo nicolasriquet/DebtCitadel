@@ -1155,7 +1155,7 @@ class DeleteDebtItem(View):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                "debt_item deleted successfully.",
+                "Debt Item deleted successfully.",
                 extra_tags="alert-success",
             )
             # Send a notification that the debt_item had been deleted
@@ -1439,7 +1439,7 @@ def reopen_debt_item(request, fid):
     reopen_external_issue(debt_item, "re-opened by defectdojo", "github")
 
     messages.add_message(
-        request, messages.SUCCESS, "debt_item Reopened.", extra_tags="alert-success"
+        request, messages.SUCCESS, "Debt Item Reopened.", extra_tags="alert-success"
     )
     create_notification(
         event="other",
@@ -3255,7 +3255,7 @@ def reset_debt_item_duplicate_status(request, duplicate_id):
 
 def set_debt_item_as_original_internal(user, debt_item_id, new_original_id):
     debt_item = get_object_or_404(Debt_Item, id=debt_item_id)
-    new_original = get_object_or_404(debt_item, id=new_original_id)
+    new_original = get_object_or_404(Debt_Item, id=new_original_id)
 
     if debt_item.debt_test.debt_engagement != new_original.debt_test.debt_engagement:
         if (debt_item.debt_test.debt_engagement.deduplication_on_debt_engagement

@@ -533,7 +533,7 @@
                                 aria-labelledby="dropdownMenu_debt_test_add">
                                 <li role="presentation">
                                     <a title="Add Debt Item" href="{% url 'add_debt_items' debt_test.id %}">
-                                        <span class="fa-solid fa-bug"></span> {% trans "New Debt Item" %}
+                                        <span class="fa-solid fa-bomb"></span> {% trans "New Debt Item" %}
                                     </a>
                                 </li>
                                 <li role="presentation">
@@ -1053,7 +1053,7 @@
                                                         {% else %}
                                                             <li role="presentation">
                                                                 <a href="{% url 'reopen_debt_item' debt_item.id %}">
-                                                                    <i class="fa-solid fa-bug"></i> {% trans "Open Debt Item" %}
+                                                                    <i class="fa-solid fa-bomb"></i> {% trans "Open Debt Item" %}
                                                                 </a>
                                                             </li>
                                                         {% endif %}

@@ -340,6 +340,12 @@
                                         </th>
                                     {% endif %}
                                     <th>
+                                        {% trans "Artifact" %}
+                                    </th>
+                                    <th>
+                                        {% trans "Impact Type" %}
+                                    </th>
+                                    <th>
                                         {% trans "Payment Cost" %}
                                     </th>
                                     <th>
@@ -471,7 +477,7 @@
                                                             {% else %}
                                                                 <li role="presentation">
                                                                     <a href="{% url 'reopen_debt_item' debt_item.id %}">
-                                                                        <i class="fa-solid fa-bug"></i> {% trans "Open Debt Item" %}
+                                                                        <i class="fa-solid fa-bomb"></i> {% trans "Open Debt Item" %}
                                                                     </a>
                                                                 </li>
                                                             {% endif %}
@@ -618,6 +624,12 @@
                                             </td>
                                         {% endif %}
                                         <td>
+                                            {{ debt_item.artifact }}
+                                        </td>
+                                        <td>
+                                            {{ debt_item.impact_type }}
+                                        </td>
+                                        <td>
                                             {{ debt_item.payment_cost }}
                                         </td>
                                         <td>
@@ -737,6 +749,8 @@
                 {% if system_settings.enable_debt_item_sla %}
                     { "data": "debt_item_sla" },
                 {% endif %}
+                { "data": "artifact" },
+                { "data": "impact_type" },
                 { "data": "payment_cost" },
                 { "data": "intentionality" },
                 { "data": "attitude" },

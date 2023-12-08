@@ -141,7 +141,7 @@
                                 {% if debt_item.mitigated %}
                                     <li role="presentation">
                                         <a href="{% url 'reopen_debt_item' debt_item.id %}">
-                                            <i class="fa-solid fa-bug"></i> Open Debt Item
+                                            <i class="fa-solid fa-bomb"></i> Open Debt Item
                                         </a>
                                     </li>
                                 {% else %}
@@ -264,6 +264,12 @@
                             <th>{% trans "Planned Remediation version" %}</th>
                         {% endif %}
                         <th>
+                            {% trans "Artifact" %}
+                        </th>
+                        <th>
+                            {% trans "Impact Type" %}
+                        </th>
+                        <th>
                             {% trans "Payment Cost" %}
                         </th>
                         <th>
@@ -338,13 +344,13 @@
                             <td>
                                 <div class="align-top">
                                     <div class="dropdown">
-                                        <a class="fa-solid fa-bug" href="{% url 'view_debt_item' debt_item.duplicate_debt_item.id %}" title="{{ debt_item.duplicate_debt_item|debt_item_extended_title }}"/>
+                                        <a class="fa-solid fa-bomb" href="{% url 'view_debt_item' debt_item.duplicate_debt_item.id %}" title="{{ debt_item.duplicate_debt_item|debt_item_extended_title }}"/>
 
                                         <a href="#" data-toggle="dropdown">&nbsp;<i class="fa-solid fa-ellipsis-vertical"></i>&nbsp;</a>
                                         <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
                                         <li>
                                             <a class="" href="{% url 'view_debt_item' debt_item.duplicate_debt_item.id %}">
-                                            <i class="fa-solid fa-bug" title="valentino"></i> {{ debt_item.duplicate_debt_item|debt_item_extended_title }}
+                                            <i class="fa-solid fa-bomb" title="valentino"></i> {{ debt_item.duplicate_debt_item|debt_item_extended_title }}
                                             </a>
                                         </li>
                                         </ul>
@@ -357,7 +363,7 @@
                             <div class="align-top">
                                 <div class="dropdown">
                                     {% for duplicate in duplicate_cluster|slice:"5" %}
-                                        <a class="fa-solid fa-bug" href="{% url 'view_debt_item' duplicate.id %}" title="{{ duplicate|debt_item_extended_title }}"/>
+                                        <a class="fa-solid fa-bomb" href="{% url 'view_debt_item' duplicate.id %}" title="{{ duplicate|debt_item_extended_title }}"/>
                                     {%  endfor %}
                                     {% if duplicate_cluster|length > 5 %}
                                         <a href="#duplicate_cluster" onclick="$('#duplicate_tree_toggle').click()">...</a>
@@ -367,14 +373,14 @@
                                     {% for duplicate in duplicate_cluster|slice:"5" %}
                                         <li>
                                             <a class="" href="{% url 'view_debt_item' duplicate.id %}">
-                                            <i class="fa-solid fa-bug"></i> {{ duplicate|debt_item_extended_title }}
+                                            <i class="fa-solid fa-bomb"></i> {{ duplicate|debt_item_extended_title }}
                                             </a>
                                         </li>
                                     {%  endfor %}
                                     {% if duplicate_cluster|length > 5 %}
                                         <li>
                                             <a href="#duplicate_cluster" onclick="$('#duplicate_tree_toggle').click()">
-                                            <i class="fa-solid fa-bug"></i>... more below ...</i>
+                                            <i class="fa-solid fa-bomb"></i>... more below ...</i>
                                             </a>
                                         </li>
                                     {% endif %}
@@ -394,6 +400,12 @@
                         </td>-->
                         <td>{{ debt_item.date }}</td>
                         <td>{{ debt_item.age }} days</td>
+                        <td>
+                            {{ debt_item.artifact }}
+                        </td>
+                        <td>
+                            {{ debt_item.impact_type }}
+                        </td>
                         <td>
                             {{ debt_item.payment_cost }}
                         </td>
@@ -1474,6 +1486,8 @@
                         return type === 'export' ? getDojoExportValueFromTag(data, 'a') :  data;
                 }},
                 { "data": "found_date" },
+                { "data": "artifact" },
+                { "data": "impact_type" },
                 { "data": "payment_cost" },
                 { "data": "intentionality" },
                 { "data": "attitude" },

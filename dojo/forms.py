@@ -31,7 +31,7 @@ from dojo.models import Announcement, Finding, Debt_Item, Finding_Group, Debt_It
     Notifications, Debt_Notifications, App_Analysis, Objects_Product, Objects_Debt_Context, Benchmark_Product, Benchmark_Debt_Context, \
     Benchmark_Requirement, Benchmark_Product_Summary, Benchmark_Debt_Context_Summary, Engagement_Presets, Debt_Engagement_Presets, DojoMeta, \
     Engagement_Survey, Answered_Survey, TextAnswer, ChoiceAnswer, Choice, Question, TextQuestion, \
-    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, PAYMENT_COST_CHOICES, INTENTIONALITY_CHOICES, ATTITUDE_CHOICES, \
+    ChoiceQuestion, General_Survey, Regulation, FileUpload, SEVERITY_CHOICES, IMPACT_TYPE_CHOICES, PAYMENT_COST_CHOICES, INTENTIONALITY_CHOICES, ATTITUDE_CHOICES, \
     EFFORT_FOR_FIXING_CHOICES, Product_Member, Debt_Context_Member, Product_Type_Member, Debt_Context_Type_Member, \
     Global_Role, Dojo_Group, Product_Group, Debt_Context_Group, Product_Type_Group, Debt_Context_Type_Group, \
     Dojo_Group_Member, Product_API_Scan_Configuration, Debt_Context_API_Scan_Configuration
@@ -1486,14 +1486,15 @@ class AddDebtItemForm(forms.ModelForm):
     cwe = forms.IntegerField(required=False)
     vulnerability_ids = vulnerability_ids_field
     cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
-    description = forms.CharField(widget=forms.Textarea)
-    severity = forms.ChoiceField(
-        choices=SEVERITY_CHOICES,
+    artifact = forms.CharField(max_length=200)
+    impact_type = forms.ChoiceField(
+        choices=IMPACT_TYPE_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    payment_cost = forms.ChoiceField(
-        choices=PAYMENT_COST_CHOICES,
+    description = forms.CharField(widget=forms.Textarea)
+    severity = forms.ChoiceField(
+        choices=SEVERITY_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
@@ -1507,8 +1508,13 @@ class AddDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    mitigation = forms.CharField(widget=forms.Textarea, required=False)
-    impact = forms.CharField(widget=forms.Textarea, required=True)
+    mitigation = forms.CharField(widget=forms.Textarea, required=False, label="Payment / Mitigation action")
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
     debt_endpoints = forms.ModelMultipleChoiceField(Debt_Endpoint.objects.none(), required=False, label='Systems / Endpoints')
@@ -1531,8 +1537,8 @@ class AddDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
-                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
@@ -1687,14 +1693,15 @@ class AdHocDebtItemForm(forms.ModelForm):
     cwe = forms.IntegerField(required=False)
     vulnerability_ids = vulnerability_ids_field
     cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
-    description = forms.CharField(widget=forms.Textarea)
-    severity = forms.ChoiceField(
-        choices=SEVERITY_CHOICES,
+    artifact = forms.CharField(max_length=200)
+    impact_type = forms.ChoiceField(
+        choices=IMPACT_TYPE_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    payment_cost = forms.ChoiceField(
-        choices=PAYMENT_COST_CHOICES,
+    description = forms.CharField(widget=forms.Textarea)
+    severity = forms.ChoiceField(
+        choices=SEVERITY_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
@@ -1708,8 +1715,13 @@ class AdHocDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    mitigation = forms.CharField(widget=forms.Textarea, required=False)
-    impact = forms.CharField(widget=forms.Textarea, required=True)
+    mitigation = forms.CharField(widget=forms.Textarea, required=False, label="Payment / Mitigation action")
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
     debt_endpoints = forms.ModelMultipleChoiceField(queryset=Endpoint.objects.none(), required=False, label='Systems / Endpoints')
@@ -1732,8 +1744,8 @@ class AdHocDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review', 'sla_start_date')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
-                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
@@ -1864,17 +1876,18 @@ class PromoteDebtItemForm(forms.ModelForm):
     cwe = forms.IntegerField(required=False)
     vulnerability_ids = vulnerability_ids_field
     cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    artifact = forms.CharField(max_length=200)
+    impact_type = forms.ChoiceField(
+        choices=IMPACT_TYPE_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     description = forms.CharField(widget=forms.Textarea)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
-    payment_cost = forms.ChoiceField(
-        choices=PAYMENT_COST_CHOICES,
-        error_messages={
-            'required': 'Select valid choice: In Progress, On Hold, Completed',
-            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     intentionality = forms.ChoiceField(
         choices=INTENTIONALITY_CHOICES,
         error_messages={
@@ -1885,8 +1898,13 @@ class PromoteDebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    mitigation = forms.CharField(widget=forms.Textarea, required=False)
-    impact = forms.CharField(widget=forms.Textarea, required=True)
+    mitigation = forms.CharField(widget=forms.Textarea, required=False, label="Payment / Mitigation action")
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
+    impact = forms.CharField(widget=forms.Textarea, required=False)
     debt_endpoints = forms.ModelMultipleChoiceField(Debt_Endpoint.objects.none(), required=False, label='Systems / Debt_Endpoints')
     debt_endpoints_to_add = forms.CharField(max_length=5000, required=False, label="Debt_Endpoints to add",
                                             help_text="The IP address, host name or full URL. You may enter one debt_endpoint per line. "
@@ -1900,8 +1918,8 @@ class PromoteDebtItemForm(forms.ModelForm):
     #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
     #               'out_of_scope', 'risk_accept', 'under_defect_review')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
-                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
@@ -2092,17 +2110,18 @@ class DebtItemForm(forms.ModelForm):
     cwe = forms.IntegerField(required=False)
     vulnerability_ids = vulnerability_ids_field
     cvssv3 = forms.CharField(max_length=117, required=False, widget=forms.TextInput(attrs={'class': 'cvsscalculator', 'data-toggle': 'dropdown', 'aria-haspopup': 'true', 'aria-expanded': 'false'}))
+    artifact = forms.CharField(max_length=200)
+    impact_type = forms.ChoiceField(
+        choices=IMPACT_TYPE_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     description = forms.CharField(widget=forms.Textarea)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': 'Select valid choice: Critical,High,Medium,Low'})
-    payment_cost = forms.ChoiceField(
-        choices=PAYMENT_COST_CHOICES,
-        error_messages={
-            'required': 'Select valid choice: In Progress, On Hold, Completed',
-            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     intentionality = forms.ChoiceField(
         choices=INTENTIONALITY_CHOICES,
         error_messages={
@@ -2113,7 +2132,12 @@ class DebtItemForm(forms.ModelForm):
         error_messages={
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
-    mitigation = forms.CharField(widget=forms.Textarea, required=False)
+    mitigation = forms.CharField(widget=forms.Textarea, required=False, label="Payment / Mitigation action")
+    payment_cost = forms.ChoiceField(
+        choices=PAYMENT_COST_CHOICES,
+        error_messages={
+            'required': 'Select valid choice: In Progress, On Hold, Completed',
+            'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     impact = forms.CharField(widget=forms.Textarea, required=False)
     request = forms.CharField(widget=forms.Textarea, required=False)
     response = forms.CharField(widget=forms.Textarea, required=False)
@@ -2142,8 +2166,8 @@ class DebtItemForm(forms.ModelForm):
     #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
     #               'out_of_scope', 'risk_accept', 'under_defect_review')
 
-    field_order = ('title', 'date', 'description', 'severity', 'impact', 'payment_cost', 'intentionality', 'attitude',
-                   'mitigation', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+                   'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
     def __init__(self, *args, **kwargs):
@@ -2176,9 +2200,9 @@ class DebtItemForm(forms.ModelForm):
             self.fields['response'].initial = req_resp[1]
 
         if self.instance.duplicate:
-            self.fields['duplicate'].help_text = "Original debt_item that is being duplicated here (readonly). Use view debt_item page to manage duplicate relationships. Unchecking duplicate here will reset this debt_items duplicate status, but will trigger deduplication logic."
+            self.fields['duplicate'].help_text = "Original Debt Item that is being duplicated here (readonly). Use view debt_item page to manage duplicate relationships. Unchecking duplicate here will reset this debt_items duplicate status, but will trigger deduplication logic."
         else:
-            self.fields['duplicate'].help_text = "You can mark debt_items as duplicate only from the view debt_item page."
+            self.fields['duplicate'].help_text = "You can mark Debt Item as duplicate only from the view debt_item page."
 
         self.fields['sla_start_date'].disabled = True
 

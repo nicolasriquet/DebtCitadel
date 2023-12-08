@@ -48,6 +48,9 @@ deduplicationLogger = logging.getLogger("dojo.specific-loggers.deduplication")
 SEVERITY_CHOICES = (('Info', 'Info'), ('Low', 'Low'), ('Medium', 'Medium'),
                     ('High', 'High'), ('Critical', 'Critical'))
 
+IMPACT_TYPE_CHOICES = (('Heightened Risk', 'Heightened Risk'), ('Loss of Time', 'Loss of Time'), ('Cost', 'Cost'),
+                    ('Increased Difficulty', 'Increased Difficulty'), ('Frustration', 'Frustration'))
+
 PAYMENT_COST_CHOICES = (('Extra Large (XL)', 'Extra Large (XL)'), ('Large (L)', 'Large (L)'), ('Medium (M)', 'Medium (M)'),
                 ('Small (S)', 'Small (S)'), ('Extra Small (XS)', 'Extra Small (XS)'))
 
@@ -4370,12 +4373,15 @@ class Debt_Item(models.Model):
                            editable=False,
                            verbose_name=_('URL'),
                            help_text=_("External reference that provides more information about this flaw."))  # not displayed and pretty much the same as references. To remove?
+    artifact = models.CharField(max_length=200,
+                                verbose_name=_('Artifact'),
+                                help_text=_('The artifact suffering from the debt.'))
+    impact_type = models.CharField(max_length=200,
+                                verbose_name=_('Impact Type'),
+                                help_text=_('The type of impact.'))
     severity = models.CharField(max_length=200,
                                 verbose_name=_('Severity'),
                                 help_text=_('The severity level of this flaw (Critical, High, Medium, Low, Informational).'))
-    payment_cost = models.CharField(max_length=200,
-                                      verbose_name=_('Payment Cost'),
-                                      help_text=_('The level of cost for paying this Debt Item in t-shirt sizing (XL, L, M, S, XS).'))
     intentionality = models.CharField(max_length=200,
                                 verbose_name=_('Intentionality'),
                                 help_text=_('The level of intentionality of this Debt Item (Deliberate, Inadvertent).'))
@@ -4384,10 +4390,13 @@ class Debt_Item(models.Model):
                                       help_text=_('The attitude that led to the creation of this Debt Item (Prudent, Reckless).'))
     description = models.TextField(verbose_name=_('Description'),
                                    help_text=_("Longer more descriptive information about the flaw."))
-    mitigation = models.TextField(verbose_name=_('Mitigation'),
+    mitigation = models.TextField(verbose_name=_('Payment / Mitigation action'),
                                   null=True,
                                   blank=True,
                                   help_text=_("Text describing how to best fix the flaw."))
+    payment_cost = models.CharField(max_length=200,
+                                    verbose_name=_('Payment Cost'),
+                                    help_text=_('The level of cost for paying this Debt Item in t-shirt sizing (XL, L, M, S, XS).'))
     impact = models.TextField(verbose_name=_('Impact'),
                               null=True,
                               blank=True,
@@ -5911,7 +5920,7 @@ class Debt_Risk_Acceptance(models.Model):
     expiration_date = models.DateTimeField(default=None, null=True, blank=True, help_text=_('When the risk acceptance expires, the Debt Items will be reactivated (unless disabled below).'))
     expiration_date_warned = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) Date at which notice about the risk acceptance expiration was sent.'))
     expiration_date_handled = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) When the risk acceptance expiration was handled (manually or by the daily job).'))
-    reactivate_expired = models.BooleanField(null=False, blank=False, default=True, verbose_name=_('Reactivate debt_items on expiration'), help_text=_('Reactivate Debt Items when risk acceptance expires?'))
+    reactivate_expired = models.BooleanField(null=False, blank=False, default=True, verbose_name=_('Reactivate Debt Items on expiration'), help_text=_('Reactivate Debt Items when risk acceptance expires?'))
     restart_sla_expired = models.BooleanField(default=False, null=False, verbose_name=_('Restart SLA on expiration'), help_text=_("When enabled, the SLA for Debt Items is restarted when the risk acceptance expires."))
 
     notes = models.ManyToManyField(Notes, editable=False)
