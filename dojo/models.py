@@ -49,8 +49,9 @@ SEVERITY_CHOICES = (('Info', 'Info'), ('Low', 'Low'), ('Medium', 'Medium'),
                     ('High', 'High'), ('Critical', 'Critical'))
 
 IMPACT_TYPE_CHOICES = (('Lead Time', 'Lead Time'), ('Operating Costs', 'Operating Costs'),
-                       ('Organizational Risk', 'Organizational Risk'), ('Organization Image', 'Organization Image'),
-                       ('Employee Motivation', 'Employee Motivation'), ('Employer Attractiveness', 'Employer Attractiveness'))
+                       ('Product Relevance', 'Product Relevance'), ('Organizational Risk', 'Organizational Risk'),
+                       ('Organization Image', 'Organization Image'), ('Employee Motivation', 'Employee Motivation'),
+                       ('Employer Attractiveness', 'Employer Attractiveness'))
 
 PAYMENT_COST_CHOICES = (('Extra Large (XL)', 'Extra Large (XL)'), ('Large (L)', 'Large (L)'), ('Medium (M)', 'Medium (M)'),
                 ('Small (S)', 'Small (S)'), ('Extra Small (XS)', 'Extra Small (XS)'))
