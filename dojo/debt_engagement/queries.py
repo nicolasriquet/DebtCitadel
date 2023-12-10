@@ -19,7 +19,7 @@ def get_authorized_debt_engagements(permission):
 
     roles = get_roles_for_permission(permission)
     authorized_debt_context_type_roles = Debt_Context_Type_Member.objects.filter(
-        debt_context_type=OuterRef('debt_context__prod_type_id'),
+        debt_context_type=OuterRef('debt_context__debt_context_type_id'),
         user=user,
         role__in=roles)
     authorized_debt_context_roles = Debt_Context_Member.objects.filter(
@@ -27,7 +27,7 @@ def get_authorized_debt_engagements(permission):
         user=user,
         role__in=roles)
     authorized_debt_context_type_groups = Debt_Context_Type_Group.objects.filter(
-        debt_context_type=OuterRef('debt_context__prod_type_id'),
+        debt_context_type=OuterRef('debt_context__debt_context_type_id'),
         group__users=user,
         role__in=roles)
     authorized_debt_context_groups = Debt_Context_Group.objects.filter(
@@ -35,12 +35,12 @@ def get_authorized_debt_engagements(permission):
         group__users=user,
         role__in=roles)
     debt_engagements = Debt_Engagement.objects.annotate(
-        debt_context__prod_type__member=Exists(authorized_debt_context_type_roles),
+        debt_context__debt_context_type__member=Exists(authorized_debt_context_type_roles),
         debt_context__member=Exists(authorized_debt_context_roles),
-        debt_context__prod_type__authorized_group=Exists(authorized_debt_context_type_groups),
+        debt_context__debt_context_type__authorized_group=Exists(authorized_debt_context_type_groups),
         debt_context__authorized_group=Exists(authorized_debt_context_groups))
     debt_engagements = debt_engagements.filter(
-        Q(debt_context__prod_type__member=True) | Q(debt_context__member=True) |
-        Q(debt_context__prod_type__authorized_group=True) | Q(debt_context__authorized_group=True))
+        Q(debt_context__debt_context_type__member=True) | Q(debt_context__member=True) |
+        Q(debt_context__debt_context_type__authorized_group=True) | Q(debt_context__authorized_group=True))
 
     return debt_engagements

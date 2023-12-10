@@ -958,9 +958,9 @@ def delete_debt_context(request, pid):
                 if get_setting("ASYNC_OBJECT_DELETE"):
                     async_del = async_delete()
                     async_del.delete(debt_context)
-                    message = _('debt_context and relationships will be removed in the background.')
+                    message = _('Debt Context and relationships will be removed in the background.')
                 else:
-                    message = _('debt_context and relationships removed.')
+                    message = _('Debt Context and relationships removed.')
                     debt_context.delete()
                 messages.add_message(request,
                                      messages.SUCCESS,
@@ -969,7 +969,7 @@ def delete_debt_context(request, pid):
                 create_notification(event='other',
                                     title=_('Deletion of %(name)s') % {'name': debt_context.name},
                                     debt_context_type=debt_context_type,
-                                    description=_('The debt_context "%(name)s" was deleted by %(user)s') % {
+                                    description=_('The Debt Context "%(name)s" was deleted by %(user)s') % {
                                         'name': debt_context.name, 'user': request.user},
                                     url=reverse('debt_context'),
                                     icon="exclamation-triangle")

@@ -1579,7 +1579,7 @@ class AddDebtItemForm(forms.ModelForm):
             self.fields['debt_endpoints'].widget = forms.HiddenInput()
 
         # Use the debt story template as the description
-        self.fields['description'].initial = f"As a(n) [Actor Role] of {debt_context.name}, I find that it is increasingly [Impact Type] to [Task] because [Debt Item]"
+        self.fields['description'].initial = f"As a(n) [Actor Role] of {debt_context.name}, I find that it is increasingly [Impact Type] to [Task] because [Debt Item]."
 
     def clean(self):
         cleaned_data = super(AddDebtItemForm, self).clean()
@@ -1786,7 +1786,7 @@ class AdHocDebtItemForm(forms.ModelForm):
             self.fields['debt_endpoints'].widget = forms.HiddenInput()
 
         # Use the debt story template as the descritpion
-        self.fields['description'].initial = f"As a(n) [Actor Role] of {debt_context.name}, I find that it is increasingly [Impact Type] to [Task] because [Debt Item]"
+        self.fields['description'].initial = f"As a(n) [Actor Role] of {debt_context.name}, I find that it is increasingly [Impact Type] to [Task] because [Debt Item]."
 
     def clean(self):
         cleaned_data = super(AdHocDebtItemForm, self).clean()

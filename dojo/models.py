@@ -859,23 +859,23 @@ class Debt_Context_Type(models.Model):
     @cached_property
     def critical_present(self):
         c_debt_items = Debt_Item.objects.filter(
-            test__debt_engagement__debt_context__prod_type=self, severity='Critical')
+            debt_test__debt_engagement__debt_context__debt_context_type=self, severity='Critical')
         if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def high_present(self):
         c_debt_items = Debt_Item.objects.filter(
-            test__debt_engagement__debt_context__prod_type=self, severity='High')
+            debt_test__debt_engagement__debt_context__debt_context_type=self, severity='High')
         if c_debt_items.count() > 0:
             return True
 
     @cached_property
     def calc_health(self):
         h_debt_items = Debt_Item.objects.filter(
-            test__debt_engagement__debt_context__prod_type=self, severity='High')
+            debt_test__debt_engagement__debt_context__debt_context_type=self, severity='High')
         c_debt_items = Debt_Item.objects.filter(
-            test__debt_engagement__debt_context__prod_type=self, severity='Critical')
+            debt_test__debt_engagement__debt_context__debt_context_type=self, severity='Critical')
         health = 100
         if c_debt_items.count() > 0:
             health = 40
@@ -892,7 +892,7 @@ class Debt_Context_Type(models.Model):
     # only used by bulk risk acceptance api
     @property
     def unaccepted_open_debt_items(self):
-        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, test__debt_engagement__debt_context__prod_type=self)
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, duplicate=False, debt_test__debt_engagement__debt_context__debt_context_type=self)
 
     class Meta:
         ordering = ('name',)
@@ -1461,7 +1461,7 @@ class Debt_Context(models.Model):
         if start_date is None or end_date is None:
             return {}
         else:
-            critical = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
+            critical = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self,
                                                 mitigated__isnull=True,
                                                 verified=True,
                                                 false_p=False,
@@ -1470,7 +1470,7 @@ class Debt_Context(models.Model):
                                                 severity="Critical",
                                                 date__range=[start_date,
                                                              end_date]).count()
-            high = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
+            high = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self,
                                             mitigated__isnull=True,
                                             verified=True,
                                             false_p=False,
@@ -1479,7 +1479,7 @@ class Debt_Context(models.Model):
                                             severity="High",
                                             date__range=[start_date,
                                                          end_date]).count()
-            medium = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
+            medium = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self,
                                               mitigated__isnull=True,
                                               verified=True,
                                               false_p=False,
@@ -1488,7 +1488,7 @@ class Debt_Context(models.Model):
                                               severity="Medium",
                                               date__range=[start_date,
                                                            end_date]).count()
-            low = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
+            low = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self,
                                            mitigated__isnull=True,
                                            verified=True,
                                            false_p=False,
@@ -1515,7 +1515,7 @@ class Debt_Context(models.Model):
     # only used in APIv2 serializers.py, query should be aligned with debt_items_count
     @cached_property
     def open_debt_items_list(self):
-        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
+        debt_items = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self,
                                               active=True)
         debt_items_list = []
         for i in debt_items:
@@ -1533,7 +1533,7 @@ class Debt_Context(models.Model):
 
     @property
     def violates_sla(self):
-        debt_items = Debt_Item.objects.filter(test__debt_engagement__debt_context=self,
+        debt_items = Debt_Item.objects.filter(debt_test__debt_engagement__debt_context=self,
                                               active=True)
         for f in debt_items:
             if f.violates_sla:
@@ -1742,7 +1742,7 @@ ENGAGEMENT_STATUS_CHOICES = (('Not Started', 'Not Started'),
 
 class Debt_Engagement_Presets(models.Model):
     title = models.CharField(max_length=500, default=None, help_text=_("Brief description of preset."))
-    test_type = models.ManyToManyField(Test_Type, default=None, blank=True)
+    test_type = models.ManyToManyField(Debt_Test_Type, default=None, blank=True)
     network_locations = models.ManyToManyField(Network_Locations, default=None, blank=True)
     notes = models.CharField(max_length=2000, help_text=_("Description of what needs to be tested or setting up environment for testing"), null=True, blank=True)
     scope = models.CharField(max_length=800, help_text=_("Scope of Debt_Engagement testing, IP's/Resources/URL's)"), default=None, blank=True)
@@ -2032,7 +2032,7 @@ class Debt_Engagement(models.Model):
     # only used by bulk risk acceptance api
     @property
     def unaccepted_open_debt_items(self):
-        return Debt_Item.objects.filter(risk_accepted=False, active=True, verified=True, duplicate=False, test__debt_engagement=self)
+        return Debt_Item.objects.filter(risk_accepted=False, active=True, verified=True, duplicate=False, debt_test__debt_engagement=self)
 
     def accept_risks(self, accepted_risks):
         self.risk_acceptance.add(*accepted_risks)

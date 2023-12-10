@@ -896,7 +896,7 @@ def add_risk_acceptance(request, eid, fid=None):
 
             return redirect_to_return_url_or_else(request, reverse('view_debt_engagement', args=(eid, )))
     else:
-        risk_acceptance_title_suggestion = 'Accept: %s' % debt_item
+        risk_acceptance_title_suggestion = 'Decision: %s' % debt_item
         form = DebtRiskAcceptanceForm(initial={'owner': request.user, 'name': risk_acceptance_title_suggestion})
 
     debt_item_choices = Debt_Item.objects.filter(duplicate=False, debt_test__debt_engagement=eng).filter(NOT_ACCEPTED_DEBT_ITEMS_QUERY).order_by('title')

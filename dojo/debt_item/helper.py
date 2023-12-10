@@ -543,7 +543,7 @@ def prepare_duplicates_for_delete(debt_test=None, debt_engagement=None):
     # get all originals in the debt_test/debt_engagement
     originals = Debt_Item.objects.filter(original_debt_item__isnull=False)
     if debt_engagement:
-        originals = originals.filter(debt_test__engagement=debt_engagement)
+        originals = originals.filter(debt_test__debt_engagement=debt_engagement)
     if debt_test:
         originals = originals.filter(debt_test=debt_test)
 
@@ -563,7 +563,7 @@ def prepare_duplicates_for_delete(debt_test=None, debt_engagement=None):
         logger.debug('%d/%d: preparing duplicate cluster for deletion of original: %d', i, total, original.id)
         cluster_inside = original.original_debt_item.all()
         if debt_engagement:
-            cluster_inside = cluster_inside.filter(debt_test__engagement=debt_engagement)
+            cluster_inside = cluster_inside.filter(debt_test__debt_engagement=debt_engagement)
 
         if debt_test:
             cluster_inside = cluster_inside.filter(debt_test=debt_test)
@@ -574,7 +574,7 @@ def prepare_duplicates_for_delete(debt_test=None, debt_engagement=None):
         # reconfigure duplicates outside debt_test/debt_engagement
         cluster_outside = original.original_debt_item.all()
         if debt_engagement:
-            cluster_outside = cluster_outside.exclude(debt_test__engagement=debt_engagement)
+            cluster_outside = cluster_outside.exclude(debt_test__debt_engagement=debt_engagement)
 
         if debt_test:
             cluster_outside = cluster_outside.exclude(debt_test=debt_test)
