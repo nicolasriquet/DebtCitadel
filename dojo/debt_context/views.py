@@ -802,7 +802,7 @@ def new_debt_context(request, ptid=None):
             debt_context = form.save()
             messages.add_message(request,
                                  messages.SUCCESS,
-                                 _('debt_context added successfully.'),
+                                 _('Debt Context added successfully.'),
                                  extra_tags='alert-success')
             success, jira_project_form = jira_helper.debt_process_jira_project_form(request, debt_context=debt_context)
             error = not success
@@ -1222,7 +1222,7 @@ class AdHocDebtItemView(View):
         return get_object_or_404(Debt_Context, id=debt_context_id)
 
     def get_debt_test_type(self):
-        debt_test_type, nil = Debt_Test_Type.objects.get_or_create(name=_("Pen Test"))
+        debt_test_type, nil = Debt_Test_Type.objects.get_or_create(name=_("Ad Hoc Identification Session"))
         return debt_test_type
 
     def get_debt_engagement(self, debt_context: debt_context):
