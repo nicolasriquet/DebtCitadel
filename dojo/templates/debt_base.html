@@ -274,14 +274,14 @@
                                                         {% trans "All Debt Items" %}
                                                     </a>
                                                 </li>
-                                                <li>
+                                                <!--<li>
                                                     <a href="{% url 'closed_debt_items' %}">
                                                         {% trans "Closed Debt Items" %}
                                                     </a>
-                                                </li>
+                                                </li>-->
                                                 <li>
                                                     <a href="{% url 'accepted_debt_items' %}">
-                                                        {% trans "Risk Accepted Debt Items" %}
+                                                        {% trans "Decisions" %}
                                                     </a>
                                                 </li>
                                                 {% if "Debt_Item_View"|has_global_permission %}
@@ -295,9 +295,9 @@
                                             <!-- /.nav-second-level -->
                                         </li>
                                         <li>
-                                            <a href="{% url 'debt_engagement' %}" aria-expanded="false" aria-label="Debt Debt_Engagements">
+                                            <a href="{% url 'debt_engagement' %}" aria-expanded="false" aria-label="Debt Engagements">
                                                 <i class="fa-solid fa-crosshairs fa-fw"></i>
-                                                <span>{% trans "Debt Debt_Engagements" %}</span>
+                                                <span>{% trans "Debt Engagements" %}</span>
                                                 <span class="glyphicon arrow"></span>
                                             </a>
                                             <ul class="nav nav-second-level">
@@ -695,7 +695,7 @@
                                                 <li>
                                                     <a href="{% url 'debt_context_accepted_debt_items' debt_context_tab.debt_context.id %}">
                                                         <i class="fa-solid fa-check"></i>
-                                                        {% trans "View Risk Accepted Debt Items" %}
+                                                        {% trans "View Decisions" %}
                                                     </a>
                                                 </li>
                                                 <li>

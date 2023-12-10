@@ -139,17 +139,17 @@
                             {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                 <li role="separator" class="divider"></li>
                                 {% if debt_item.mitigated %}
-                                    <li role="presentation">
+                                    <!--<li role="presentation">
                                         <a href="{% url 'reopen_debt_item' debt_item.id %}">
                                             <i class="fa-solid fa-bomb"></i> Open Debt Item
                                         </a>
-                                    </li>
+                                    </li>-->
                                 {% else %}
-                                <li role="presentation">
+                                <!--<li role="presentation">
                                     <a href="{% url 'close_debt_item' debt_item.id %}">
                                         <i class="fa-solid fa-fire-extinguisher"></i> Close Debt Item
                                     </a>
-                                </li>
+                                </li>-->
                                 {% endif %}
                             {% endif %}
                             {% if debt_item|has_object_permission:"Risk_Acceptance" %}
@@ -171,7 +171,7 @@
                                         {% if debt_item.debt_test.debt_engagement.debt_context.enable_full_risk_acceptance %}
                                         <li role="presentation">
                                             <a href ="{% url 'add_risk_acceptance' debt_item.debt_test.debt_engagement.id debt_item.id %}?return_url={{ request.get_full_path|urlencode }}">
-                                                <i class="fa-solid fa-circle-exclamation"></i> Make a Decision
+                                                <i class="fa-solid fa-fire-extinguisher"></i> Make a Decision
                                             </a>
                                         </li>
                                         {% endif %}

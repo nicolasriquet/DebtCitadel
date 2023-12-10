@@ -891,7 +891,7 @@ def add_risk_acceptance(request, eid, fid=None):
             messages.add_message(
                 request,
                 messages.SUCCESS,
-                'Risk acceptance saved.',
+                'Decisions saved.',
                 extra_tags='alert-success')
 
             return redirect_to_return_url_or_else(request, reverse('view_debt_engagement', args=(eid, )))
@@ -957,7 +957,7 @@ def view_edit_risk_acceptance(request, eid, raid, edit_mode=False):
                 messages.add_message(
                     request,
                     messages.SUCCESS,
-                    'Risk Acceptance saved successfully.',
+                    'Decision saved successfully.',
                     extra_tags='alert-success')
 
         if 'entry' in request.POST:

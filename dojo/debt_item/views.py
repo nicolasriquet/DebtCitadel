@@ -1274,14 +1274,14 @@ def close_debt_item(request, fid):
                 messages.add_message(
                     request,
                     messages.SUCCESS,
-                    "debt_item closed.",
+                    "Debt Item closed.",
                     extra_tags="alert-success",
                 )
                 create_notification(
                     event="other",
                     title="Closing of %s" % debt_item.title,
                     debt_item=debt_item,
-                    description='The debt_item "%s" was closed by %s'
+                    description='The Debt Item "%s" was closed by %s'
                     % (debt_item.title, request.user),
                     url=reverse("view_debt_item", args=(debt_item.id,)),
                 )

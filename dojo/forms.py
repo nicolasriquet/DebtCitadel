@@ -2767,7 +2767,7 @@ class CloseDebtItemForm(forms.ModelForm):
     entry = forms.CharField(
         required=True, max_length=2400,
         widget=forms.Textarea, label='Notes:',
-        error_messages={'required': ('The reason for closing a debt_item is '
+        error_messages={'required': ('The reason for closing a Debt Item is '
                                      'required, please use the text area '
                                      'below to provide documentation.')})
 

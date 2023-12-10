@@ -10,7 +10,12 @@
             <div class="panel panel-default">
                 <div class="panel-heading tight">
                     <h3 class="has-filters">
-                        {% blocktrans %}{{ filter_name }} Debt Items{% endblocktrans %}
+                        <!-- TO REWORK -->
+                        {% if filter_name == "Accepted" %}
+                            {% blocktrans %}Decisions{% endblocktrans %}
+                        {% else %}
+                            {% blocktrans %}{{ filter_name }} Debt Items{% endblocktrans %}
+                        {% endif %}
                         <div class="dropdown pull-right">
                             &nbsp;
                             <button class="btn btn-primary dropdown-toggle"
@@ -469,17 +474,17 @@
                                                         {% endif %}
                                                         {% if debt_item|has_object_permission:"Debt_Item_Edit" %}
                                                             {% if debt_item.active %}
-                                                                <li role="presentation">
+                                                                <!--<li role="presentation">
                                                                     <a href="{% url 'close_debt_item' debt_item.id %}">
                                                                         <i class="fa-solid fa-fire-extinguisher"></i> {% trans "Close Debt Item" %}
                                                                     </a>
-                                                                </li>
+                                                                </li>-->
                                                             {% else %}
-                                                                <li role="presentation">
+                                                                <!--<li role="presentation">
                                                                     <a href="{% url 'reopen_debt_item' debt_item.id %}">
                                                                         <i class="fa-solid fa-bomb"></i> {% trans "Open Debt Item" %}
                                                                     </a>
-                                                                </li>
+                                                                </li>-->
                                                             {% endif %}
                                                         {% endif %}
                                                         <li class="divider"></li>
@@ -502,7 +507,7 @@
                                                                     {% if debt_item.debt_test.debt_engagement.debt_context.enable_full_risk_acceptance %}
                                                                         <li role="presentation">
                                                                             <a href="{% url 'add_risk_acceptance' debt_item.debt_test.debt_engagement.id debt_item.id %}">
-                                                                                <i class="fa-solid fa-circle-exclamation"></i> {% trans "Make a Decision" %}
+                                                                                <i class="fa-solid fa-fire-extinguisher"></i> {% trans "Make a Decision" %}
                                                                             </a>
                                                                         </li>
                                                                     {% endif %}
