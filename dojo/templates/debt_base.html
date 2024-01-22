@@ -19,7 +19,7 @@
             {% elif debt_context_tab.title %}
                 {{ debt_context_tab.title }} |
             {% endif %}
-            Debt Citadel
+            Debt Sentinel
         </title>
         {% block add_css_before %}
         {% endblock %}
@@ -111,7 +111,7 @@
                         </button>
                         <a class="navbar-brand" href="{% url 'home' %}">
                         {% block header_logo %}
-                            <img src="{% static "dojo/img/logo.png" %}" alt="Debt Citadel Logo" width="240"/>
+                            <img src="{% static "dojo/img/logo with image.png" %}" alt="Debt Sentinel Logo" width="240"/>
                         {% endblock %}
                         </a>
 
@@ -1035,23 +1035,23 @@
                             <div class="col-md-12 text-center text-">
                                 <!--<p>
                                     <a href="{% url 'home' %}">
-                                        <img class="logo" src="{% static "dojo/img/chop.png" %}" alt="{% trans "Debt Citadel Chop" %}" height="45"/>
+                                        <img class="logo" src="{% static "dojo/img/chop.png" %}" alt="{% trans "Debt Sentinel Chop" %}" height="45"/>
                                     </a>
                                     <br/>
                                     <br/>
                                 </p>-->
-                                <!--<img src="{% static "dojo/img/chop.png" %}" alt="{% trans "Debt Citadel Chop" %}" width="300px" height="auto"/>
+                                <!--<img src="{% static "dojo/img/chop.png" %}" alt="{% trans "Debt Sentinel Chop" %}" width="300px" height="auto"/>
                                 <h5>
-                                    Debt Citadel, &copy; 2023-{% now "Y" %} Nicolas Riquet (licensed under the
+                                    Debt Sentinel, &copy; 2023-{% now "Y" %} Nicolas Riquet (licensed under the
                                     <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD License).</a>
                                 </h5>-->
                                 <!--<p>
-                                    Debt Citadel is licensed under the <a
+                                    Debt Sentinel is licensed under the <a
                                         href="https://github.com/DefectDojo/django-DefectDojo/blob/master/LICENSE.md">3-Clause BSD
                                     License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
                                 </p>
                                 <p>
-                                    Debt Citadel is based on DefectDojo {% dojo_version %} ( {% dojo_current_hash %} ), &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
+                                    Debt Sentinel is based on DefectDojo {% dojo_version %} ( {% dojo_current_hash %} ), &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
                                 </p>-->
                                 <!--<p>
                                     Detailed DefectDojo documentation can be found in our <a

@@ -1,6 +1,6 @@
-# DebtDojo
+# Debt Sentinel
 
-**DebtDojo** is a sociotechnical debt management platform.
+**Debt Centinel** is a sociotechnical debt management platform.
 
 ## Quick Start
 
@@ -37,4 +37,4 @@ Navigate to <http://localhost:8080>.
 
 ## License
 
-DebtDojo is licensed under the [BSD-3-Clause License](LICENSE.md)
+Debt Sentinel is licensed under the [BSD-3-Clause License](LICENSE.md)

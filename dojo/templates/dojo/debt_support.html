@@ -5,7 +5,7 @@
 {% block content %}
     {{ block.super }}
     <!--<p class="support-page-wrapper">
-        <img src="{% static "dojo/img/chop.png" %}" alt="Debt Citadel Chop" width="600px" height="auto"/>
+        <img src="{% static "dojo/img/chop.png" %}" alt="Debt Sentinel Chop" width="600px" height="auto"/>
     </p>-->
         <!--<h2 style="color: #546474;">Options are available for teams of all sizes.</h2>
         <br />
@@ -39,25 +39,28 @@
     </div>-->
     <div style="text-align: center;">
         <p class="support-page-wrapper">
-            <img src="{% static "dojo/img/chop.png" %}" alt="Debt Citadel Chop" width="700px" height="auto"/>
+            <img src="{% static "dojo/img/chop.png" %}" alt="Debt Sentinel Chop" width="350px" height="auto"/>
         </p>
         <br>
-        <h2>Debt Citadel</h2>
+        <h2>Debt Sentinel</h2>
         <p>
-            &copy; 2023 Nicolas Riquet.
+            &copy; 2023-{% now "Y" %} Nicolas Riquet.
         </p>
         <p>
-            Debt Citadel is licensed under the <a
+            Debt Sentinel is licensed under the <a
                 href="https://github.com/nicolasriquet/DebtDojo/blob/master/LICENSE.md">3-Clause BSD
             License</a>. | <a href="https://github.com/DefectDojo/django-DefectDojo/blob/master/NOTICE"> Dependencies Notice.</a>
         </p>
         <p>
-            Debt Citadel is based on DefectDojo, &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
+            Debt Sentinel is based on DefectDojo, &copy; 2015-{% now "Y" %} DefectDojo, Inc. All rights reserved. DefectDojo is trademark of DefectDojo, Inc.
+        </p>
+        <p>
+            The owl logo was designed by Vijay Verma (source: <a href="https://illlustrations.co/">illlustrations.co</a>) under the MIT license.
         </p>
         <br>
         <h3>Full license</h3>
         <div style="width: 50%; margin: 0 auto; text-align: justify; text-justify: inter-word;">
-            Copyright (c) 2023 Nicolas Riquet. All rights reserved. <br><br>
+            Copyright (c) 2023-{% now "Y" %} Nicolas Riquet. All rights reserved. <br><br>
 
             Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
             <ol>

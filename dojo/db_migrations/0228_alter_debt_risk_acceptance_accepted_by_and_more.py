@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='debt_risk_acceptance',
             name='accepted_by',
-            field=models.CharField(blank=True, default=None, help_text='The person that accepts the risk, can be outside of Debt Citadel.', max_length=200, null=True, verbose_name='Accepted By'),
+            field=models.CharField(blank=True, default=None, help_text='The person that accepts the risk, can be outside of Debt Sentinel.', max_length=200, null=True, verbose_name='Accepted By'),
         ),
         migrations.AlterField(
             model_name='debt_risk_acceptance',
@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='debt_risk_acceptance',
             name='owner',
-            field=models.ForeignKey(help_text='User in Debt Citadel owning this acceptance. Only the owner and staff users can edit the risk acceptance.', on_delete=django.db.models.deletion.RESTRICT, to='dojo.dojo_user'),
+            field=models.ForeignKey(help_text='User in Debt Sentinel owning this acceptance. Only the owner and staff users can edit the risk acceptance.', on_delete=django.db.models.deletion.RESTRICT, to='dojo.dojo_user'),
         ),
         migrations.AlterField(
             model_name='debt_risk_acceptance',

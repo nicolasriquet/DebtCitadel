@@ -5913,11 +5913,11 @@ class Debt_Risk_Acceptance(models.Model):
     decision = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_ACCEPT, help_text=_("Risk treatment decision by risk owner"))
     decision_details = models.TextField(default=None, blank=True, null=True, help_text=_('If a compensating control exists to mitigate the debt_item or reduce risk, then list the compensating control(s).'))
 
-    accepted_by = models.CharField(max_length=200, default=None, null=True, blank=True, verbose_name=_('Accepted By'), help_text=_("The person that accepts the risk, can be outside of Debt Citadel."))
+    accepted_by = models.CharField(max_length=200, default=None, null=True, blank=True, verbose_name=_('Accepted By'), help_text=_("The person that accepts the risk, can be outside of Debt Sentinel."))
     path = models.FileField(upload_to='risk/%Y/%m/%d',
                             editable=True, null=True,
                             blank=True, verbose_name=_('Proof'))
-    owner = models.ForeignKey(Dojo_User, editable=True, on_delete=models.RESTRICT, help_text=_("User in Debt Citadel owning this acceptance. Only the owner and staff users can edit the risk acceptance."))
+    owner = models.ForeignKey(Dojo_User, editable=True, on_delete=models.RESTRICT, help_text=_("User in Debt Sentinel owning this acceptance. Only the owner and staff users can edit the risk acceptance."))
 
     expiration_date = models.DateTimeField(default=None, null=True, blank=True, help_text=_('When the risk acceptance expires, the Debt Items will be reactivated (unless disabled below).'))
     expiration_date_warned = models.DateTimeField(default=None, null=True, blank=True, help_text=_('(readonly) Date at which notice about the risk acceptance expiration was sent.'))
