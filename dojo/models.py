@@ -4392,6 +4392,9 @@ class Debt_Item(models.Model):
                                       help_text=_('The attitude that led to the creation of this Debt Item (Prudent, Reckless).'))
     description = models.TextField(verbose_name=_('Description'),
                                    help_text=_("Longer more descriptive information about the flaw."))
+    nb_of_votes = models.IntegerField(default=0, null=True, blank=True,
+                              verbose_name=_("Number of votes"),
+                              help_text=_("The number of votes cast for this debt item."))
     mitigation = models.TextField(verbose_name=_('Payment / Mitigation action'),
                                   null=True,
                                   blank=True,

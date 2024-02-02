@@ -1493,6 +1493,7 @@ class AddDebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     description = forms.CharField(widget=forms.Textarea)
+    nb_of_votes = forms.IntegerField(required=False)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
         error_messages={
@@ -1537,7 +1538,7 @@ class AddDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review')
 
-    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'nb_of_votes', 'severity', 'impact', 'intentionality', 'attitude',
                    'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
@@ -1700,6 +1701,7 @@ class AdHocDebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     description = forms.CharField(widget=forms.Textarea)
+    nb_of_votes = forms.IntegerField(required=False)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
         error_messages={
@@ -1744,7 +1746,7 @@ class AdHocDebtItemForm(forms.ModelForm):
     #               'severity_justification', 'debt_endpoints', 'debt_endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
     #               'risk_accepted', 'under_defect_review', 'sla_start_date')
 
-    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'nb_of_votes', 'severity', 'impact', 'intentionality', 'attitude',
                    'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
@@ -1883,6 +1885,7 @@ class PromoteDebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     description = forms.CharField(widget=forms.Textarea)
+    nb_of_votes = forms.IntegerField(required=False)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
         error_messages={
@@ -1918,7 +1921,7 @@ class PromoteDebtItemForm(forms.ModelForm):
     #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
     #               'out_of_scope', 'risk_accept', 'under_defect_review')
 
-    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'nb_of_votes', 'severity', 'impact', 'intentionality', 'attitude',
                    'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
@@ -2117,6 +2120,7 @@ class DebtItemForm(forms.ModelForm):
             'required': 'Select valid choice: In Progress, On Hold, Completed',
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
     description = forms.CharField(widget=forms.Textarea)
+    nb_of_votes = forms.IntegerField(required=False)
     severity = forms.ChoiceField(
         choices=SEVERITY_CHOICES,
         error_messages={
@@ -2166,7 +2170,7 @@ class DebtItemForm(forms.ModelForm):
     #               'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
     #               'out_of_scope', 'risk_accept', 'under_defect_review')
 
-    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'severity', 'impact', 'intentionality', 'attitude',
+    field_order = ('title', 'date', 'artifact', 'impact_type', 'description', 'nb_of_votes', 'severity', 'impact', 'intentionality', 'attitude',
                    'mitigation', 'payment_cost', 'effort_for_fixing', 'planned_remediation_date', 'active', 'verified',
                    'false_p', 'duplicate', 'out_of_scope', 'risk_accepted')
 
