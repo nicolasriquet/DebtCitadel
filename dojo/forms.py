@@ -945,7 +945,7 @@ class EditRiskAcceptanceForm(forms.ModelForm):
 
 class DebtEditRiskAcceptanceForm(forms.ModelForm):
     # unfortunately django forces us to repeat many things here. choices, default, required etc.
-    recommendation = forms.ChoiceField(choices=Debt_Risk_Acceptance.TREATMENT_CHOICES, initial=Debt_Risk_Acceptance.TREATMENT_ACCEPT, widget=forms.RadioSelect)
+    #recommendation = forms.ChoiceField(choices=Debt_Risk_Acceptance.TREATMENT_CHOICES, initial=Debt_Risk_Acceptance.TREATMENT_ACCEPT, widget=forms.RadioSelect)
     decision = forms.ChoiceField(choices=Debt_Risk_Acceptance.TREATMENT_CHOICES, initial=Debt_Risk_Acceptance.TREATMENT_ACCEPT, widget=forms.RadioSelect)
 
     path = forms.FileField(label="Proof", required=False, widget=forms.widgets.FileInput(attrs={"accept": ".jpg,.png,.pdf"}))

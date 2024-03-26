@@ -1355,7 +1355,8 @@ div.custom-search-form {
     //background-color: rgba(0, 153, 153, 1);
     //background-color: rgba(201, 67, 88, 1);
     //background-color: rgba(84, 100, 116, .9);//#546474;
-    background-color: rgba(153, 217, 234, 1);
+    //background-color: rgba(153, 217, 234, 1);
+    background-color: rgba(0, 153, 153, 1);
     border-color: #A1C0D7;
 }
 

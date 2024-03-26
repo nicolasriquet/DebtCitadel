@@ -5907,11 +5907,11 @@ class Debt_Risk_Acceptance(models.Model):
 
     accepted_debt_items = models.ManyToManyField(Debt_Item)
 
-    recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_PAY, help_text=_("Recommendation from the team."), verbose_name=_('Recommendation'))
+    #recommendation = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_PAY, help_text=_("Recommendation from the team."), verbose_name=_('Recommendation'))
 
-    recommendation_details = models.TextField(null=True,
-                                              blank=True,
-                                              help_text=_("Explanation of recommendation"), verbose_name=_('Recommendation Details'))
+    #recommendation_details = models.TextField(null=True,
+    #                                          blank=True,
+    #                                          help_text=_("Explanation of recommendation"), verbose_name=_('Recommendation Details'))
 
     decision = models.CharField(choices=TREATMENT_CHOICES, max_length=2, null=False, default=TREATMENT_ACCEPT, help_text=_("Risk treatment decision by risk owner"))
     decision_details = models.TextField(default=None, blank=True, null=True, help_text=_('If a compensating control exists to mitigate the debt_item or reduce risk, then list the compensating control(s).'))
